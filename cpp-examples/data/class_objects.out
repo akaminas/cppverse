@@ -1,0 +1,6 @@
+before: 40, now: 65
+a halved copy would have 33
+the island still has 65
+after the winter: 33
+island larger than mainland: false
+after assignment the mainland has 33

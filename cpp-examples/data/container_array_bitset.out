@@ -1,0 +1,7 @@
+compartments: 3, I = 0.01
+at(3) is out of range
+occupied:           1000011001 (4 patches)
+suitable:           1110011011
+suitable and empty: 0110000010
+patch 3 occupied: true; colonisable patches: 3
+after extinction:   1000010001

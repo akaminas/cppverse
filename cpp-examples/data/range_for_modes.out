@@ -1,0 +1,6 @@
+copies: 13.5 10.8 15.1; first element still 12.5
+after the reference loop, first element 13.5
+DUNE-04, MARSH-02, HEATH-11
+DUNE-04: 13 nests
+MARSH-02: 8 nests
+MARSH-02 has 8 nests

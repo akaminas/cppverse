@@ -1,0 +1,8 @@
+year  occupied  cover
+0      2        0.050
+1      8        0.093
+2     11        0.168
+3     12        0.295
+4     12        0.482
+5     12        0.706
+peaks: 12 patches, cover 0.706

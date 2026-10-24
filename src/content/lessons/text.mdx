@@ -1,0 +1,236 @@
+---
+title: Characters and strings
+summary: Single characters as small integers, and std::string for sample codes, species names and file names that can be joined, searched, edited and converted.
+level: beginner
+module: 8
+manual: ["M8.1", "M8.2", "M11.4"]
+minutes: 35
+objectives:
+  - Write character literals and escape sequences, and explain that a char stores a numeric code
+  - Create, join and compare std::string objects
+  - Search a string with find, test the result against std::string::npos, and cut it with substr
+  - Edit strings with insert, erase and replace
+  - Convert between text and numbers with std::stoi, std::stod and std::to_string
+references:
+  - "cppreference.com: std::basic_string"
+  - "cppreference.com: std::stoi, std::stod and std::to_string"
+  - "cppreference.com: std::basic_string_view"
+---
+
+## What it is
+
+Programs handle text constantly, even when they model numbers: the identifier of a sample, the name of a species, the label of a column, the name of the file a trajectory is written to. C++ gives you two levels:
+
+- **`char`**, a single character such as `'F'`, `'7'` or a tab. Internally a `char` is a small integer, the character's numeric code.
+- **`std::string`**, a sequence of characters that knows its own length and can grow, be searched, cut and joined. It lives in the header `<string>`.
+
+A `std::string` behaves much like a `std::vector<char>` with extra member functions for text, so most of what you know about <Concept id="std-vector" /> carries over.
+
+## Why it matters
+
+Scientific code is full of small text tasks. A field data set identifies quadrats by codes such as `PLOT07-Q3`; a simulation writes each replicate to `run_017.csv`; a parameter file contains lines like `mortality 0.12` that must be split into a name and a number. Getting these right is unglamorous but essential: a file name built wrongly overwrites the results of another run, and a code compared as text instead of as a number sorts plot 10 before plot 9.
+
+## How it works in C++
+
+### Characters
+
+A character literal is written between **single** quotes: `'C'`, `'7'`, `'-'`. Double quotes make a *string* literal, even if it contains one character: `"C"` is not a `char`.
+
+Each `char` is stored as a number. On every system you are likely to use, the codes follow ASCII: `'A'` is 65, `'B'` 66, `'a'` 97, and the digit characters `'0'` to `'9'` are 48 to 57. Because the codes are numbers, you can do arithmetic with them:
+
+<Example file="data/text_characters.cpp" mark="14-15,19-20" />
+
+- `column - 'A'` turns a grid-column letter into an index (A → 0, B → 1, C → 2), because the letters of the Latin alphabet have consecutive codes in ASCII. The C++ standard guarantees consecutive codes only for the digits, but ASCII and UTF-8 also order the letters this way.
+- `digit - '0'` turns the *character* `'7'` into the *number* 7. The character `'0'` is not the number 0: its code is 48.
+- `static_cast<int>(column)` prints the code; `std::cout << column` prints the character. The value is the same, only its interpretation differs.
+
+### Escape sequences
+
+Some characters cannot be typed directly between quotes. A backslash starts an *escape sequence* that stands for one character:
+
+| Escape | Character |
+|---|---|
+| `\n` | newline |
+| `\t` | horizontal tab (handy for tab-separated output) |
+| `\\` | a backslash itself |
+| `\'` | a single quote (needed inside a character literal) |
+| `\"` | a double quote (needed inside a string literal) |
+| `\r`, `\v`, `\b` | carriage return, vertical tab, backspace (rarely needed) |
+| `\0` | the null character, code 0 |
+
+Windows paths are a common trap: `"C:\data\new"` contains the escapes `\d` (not a valid escape, so the compiler warns) and `\n` (a newline). Write `"C:\\data\\new"` or, more simply, use forward slashes, which work on every operating system.
+
+### Signed or unsigned?
+
+Because `char` is an integer type, it can hold numbers as well as characters, and you will meet code that uses `signed char` or `unsigned char` to store small values compactly. Three types exist: `char`, `signed char` (at least −127 to 127; −128 to 127 in practice) and `unsigned char` (0 to 255). Whether plain `char` behaves as signed or unsigned is *implementation-defined*: on x86 computers it is usually signed, on many ARM systems unsigned. This program reports what your platform does:
+
+<Example file="data/text_char_signedness.cpp" />
+
+<Callout kind="manual" title="char is not unsigned by default">
+Module 8 of the manual states that `char` is unsigned by default, with values from 0 to 255. The standard leaves this choice to the compiler, and the most common desktop compilers make plain `char` signed. Do not rely on either: use plain `char` for text, and `std::uint8_t` or `int` for small numbers.
+</Callout>
+
+<Anchor id="strings" />
+
+### std::string
+
+A `std::string` can be created empty, from a literal, or as a copy of another string or of a string expression:
+
+```cpp
+std::string site;                          // empty: ""
+std::string species = "Parus major";       // from a literal
+std::string backup = species;              // an independent copy
+std::string label = species + " (adult)";  // from an expression
+```
+
+Strings have *value semantics*: assigning or copying a string copies its characters, and the copy can be changed independently, just like an `int`.
+
+The operators work as you would hope:
+
+| Operation | Meaning |
+|---|---|
+| `a = b` | copy the characters of `b` into `a` |
+| `a + b`, `a += b` | join (concatenate); append to `a` |
+| `a == b`, `a != b` | same characters, in the same order? |
+| `a < b`, `<=`, `>`, `>=` | alphabetical (*lexicographic*) order by character code |
+| `a[i]` | the character at position *i* (a `char`), from 0 to `size() - 1` |
+| `std::cout << a` | print |
+| `std::cin >> a` | read one word, up to the next space, tab or newline |
+
+To read a whole line including spaces (a species name, say), use `std::getline(std::cin, a)` instead of `>>`.
+
+Strings share many members with vectors: `size()` (also called `length()`), `empty()`, `clear()`, `push_back(c)`, `front()`, `back()` and `at(i)`. Lexicographic comparison compares character by character, so `"PLOT10" < "PLOT9"` is true: the first difference is `'1'` against `'9'`. Zero-padded codes (`PLOT09`, `PLOT10`) sort in numeric order; codes without padding do not.
+
+### Searching and cutting
+
+`s.find(x)` returns the position of the first occurrence of `x` (a character or a string), counted from 0. An optional second argument starts the search at a later position: `s.find('-', 5)`. If `x` does not occur, `find` returns the special value `std::string::npos`. Always test for it before using the position.
+
+`s.substr(pos, count)` returns a new string of `count` characters starting at `pos`. If `count` is left out, or runs past the end, the substring stops at the end of `s`.
+
+The trace below takes a sample code apart in exactly this way.
+
+<Callout kind="manual" title="Store positions as std::string::size_type">
+The manual stores the result of `find` in an `int` and describes `npos` as −1. In fact positions have the unsigned type `std::string::size_type` (in practice `std::size_t`), and `npos` is the *largest* value of that type. Before C++20, converting it to `int` gives an implementation-defined result, and comparisons between `int` and unsigned positions draw compiler warnings. Declare positions as `std::string::size_type` (or `auto`, see <Concept id="auto-range-for" />).
+</Callout>
+
+### Editing
+
+Three member functions change a string in place:
+
+- `s.insert(pos, t)` inserts `t` before position `pos`.
+- `s.erase(pos, count)` removes `count` characters starting at `pos`.
+- `s.replace(pos, count, t)` removes `count` characters at `pos` and puts `t` in their place (`t` may be longer or shorter).
+
+### Converting between text and numbers
+
+| Call | Result |
+|---|---|
+| `std::stoi(s)` | the `int` at the start of `s` (`"07"` → 7, `"12 eggs"` → 12) |
+| `std::stod(s)` | the `double` at the start of `s` (`"0.85"` → 0.85) |
+| `std::to_string(x)` | the text of a number (`4` → `"4"`, `0.85` → `"0.850000"`) |
+| `s.c_str()` | a pointer to the characters, for older functions that expect a C-style string |
+
+`std::stoi` and `std::stod` skip leading spaces and read as much of a number as they can. If there is no number at the start at all (`"eggs"`), they throw an exception, `std::invalid_argument`, which stops the program unless it is caught (see <Concept id="exceptions" />). `std::to_string` for a `double` always uses six decimals; for control over the format, use a string stream (<Concept id="string-streams" />).
+
+<Example file="data/text_string_editing.cpp" mark="12,16,18,20,23-24" />
+
+<Callout kind="modern" title="std::string_view (C++17)">
+A `std::string_view`, from `<string_view>`, is a read-only *view* of characters that belong to someone else: a pointer and a length, no copy. It is the modern choice for a function parameter that only reads text, because it accepts a `std::string` and a string literal equally cheaply: `bool isControl(std::string_view code) { return code.substr(0, 4) == "CTRL"; }`. A view must not outlive the string it looks at, so do not store one that refers to a temporary string.
+</Callout>
+
+## Explore it
+
+<Trace id="text-sample-code" />
+
+<Check
+  id="char-digit"
+  kind="predict"
+  question="What does this print?"
+  code={`const char c = '4';
+std::cout << c - '0' << ' ' << c + 1 << '\\n';`}
+  options={["`4 5`", "`4 53`", "`52 53`", "`4 '5'`"]}
+  answer={1}
+  feedback={[
+    "c + 1 is int arithmetic on the code of '4' (52), so it prints 53, not the character '5'.",
+    "c - '0' is 52 − 48 = 4. c + 1 is an int, 53, and an int is printed as a number. static_cast<char>(c + 1) would print the character 5.",
+    "Subtracting '0' converts the digit character to its value, 4.",
+    "Arithmetic on a char produces an int; std::cout prints ints as numbers, never in quotes.",
+  ]}
+/>
+
+<Check
+  id="npos"
+  kind="debug"
+  question="This code is meant to print the part of a file name before the extension. What goes wrong for a file called `README`?"
+  code={`std::string name = "README";
+int dot = name.find('.');
+std::cout << name.substr(0, dot) << '\\n';`}
+  options={[
+    "Nothing: find returns −1 and substr(0, −1) prints the whole name",
+    "The program does not compile, because find needs a string, not a char",
+    "find returns npos, which does not fit in an int; the code then relies on an implementation-dependent conversion and on −1 converting back to npos",
+    "substr throws an exception for every name without a dot",
+  ]}
+  answer={2}
+  feedback={[
+    "It may appear to work, but only by accident: npos is the largest unsigned value, and storing it in an int is a narrowing conversion whose result is not guaranteed to be −1.",
+    "find accepts a single character as well as a string.",
+    "Store the position as std::string::size_type and test it: if (dot == std::string::npos) the name has no extension. Then substr(0, dot) is only called with a real position.",
+    "substr throws only if the start position is past the end; here the start is 0. The flaw is the int, not substr.",
+  ]}
+/>
+
+<Check
+  id="compare"
+  kind="interpret"
+  question="Plot codes are stored as strings: `PLOT2`, `PLOT10`, `PLOT1`. Sorted alphabetically with `<`, in which order do they come out?"
+  options={["`PLOT1`, `PLOT2`, `PLOT10`", "`PLOT1`, `PLOT10`, `PLOT2`", "`PLOT10`, `PLOT1`, `PLOT2`", "`PLOT2`, `PLOT10`, `PLOT1`"]}
+  answer={1}
+  feedback={[
+    "That is numeric order. Strings are compared character by character, and the comparison never looks at whole numbers.",
+    "All three share PLOT and then differ at position 4: '1', '1' and '2'. PLOT1 is a prefix of PLOT10, so it comes first; '2' > '1' puts PLOT2 last. Zero-padded codes (PLOT01, PLOT02, PLOT10) sort numerically.",
+    "A string that is a prefix of another sorts before it, so PLOT1 comes before PLOT10.",
+    "That is the original order, unsorted.",
+  ]}
+/>
+
+## In biological modelling
+
+- **Identifiers.** Sample, plot and individual codes are strings. Keep the parts you need for analysis (plot number, quadrat) as numbers as well, so that you never compare `"10"` with `"9"` as text.
+- **File names per run.** `"run_" + std::to_string(seed) + ".csv"` gives every replicate its own output file. Pad numbers to a fixed width if the files should list in order.
+- **Species and parameter names.** Abbreviations such as `P. major` are built with `substr` and `+`. Names read from a parameter file are compared with `==` to decide which parameter a value belongs to (see <Concept id="parameter-files" />).
+- **Output tables.** `'\t'` and `','` separate columns; `"\n"` ends a row. A header line made of strings tells the reader, and the plotting script, what each column is.
+
+## Common mistakes
+
+<Callout kind="pitfall" title="Adding two string literals">
+`"PLOT" + "07"` does not compile: two string literals are arrays of characters, not `std::string` objects, and `+` cannot join them. GCC reports `invalid operands of types 'const char [5]' and 'const char [3]' to binary 'operator+'`. Make one operand a string: `std::string("PLOT") + "07"`, or build the string step by step with `+=`.
+</Callout>
+
+<Example file="data/text_literal_plus.cpp" mark="11" />
+
+- **Single and double quotes.** `'a'` is a `char`; `"a"` is a string literal. `'ab'` is a multicharacter literal with an implementation-defined value, almost never what you want.
+- **`'0'` for 0.** The character `'0'` has code 48. Convert a digit with `c - '0'` and a whole number with `std::stoi`.
+- **Positions in an `int`.** Use `std::string::size_type` and test against `std::string::npos` before using the result of `find`.
+- **Expecting `std::cin >> s` to read a line.** It reads one word. Use `std::getline`.
+- **`std::to_string` for formatted output.** It always gives six decimals for a `double`. Use stream formatting when the number of digits matters (<Concept id="output-formatting" />).
+
+## Practice
+
+<Practice>
+
+1. Field codes have the form `SITE-PLOT-QUADRAT`, for example `DUNE-04-12`. Write a program that splits such a code at both dashes and prints the three parts on separate lines, with the plot and quadrat as integers. (Use the second argument of `find` to start the second search after the first dash.)
+2. Write a loop that builds the file names `rep01.csv` to `rep12.csv`, adding a leading zero when the replicate number has only one digit.
+3. Turn a binomial name such as `Fagus sylvatica` into a six-letter code made of the first three letters of the genus and of the epithet, in upper case: `FAGSYL`. Convert each letter with `std::toupper` from `<cctype>`.
+
+<details>
+<summary>Hint for exercise 1</summary>
+Find the first dash with `code.find('-')`, then the second with `code.find('-', first + 1)`. The middle part is `code.substr(first + 1, second - first - 1)`: its length is the distance between the dashes minus one.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+`std::toupper` takes and returns an `int`. Pass the character as `unsigned char` to stay safe for every possible value, and convert the result back: `static_cast<char>(std::toupper(static_cast<unsigned char>(c)))`. Collect the six characters with `push_back`.
+</details>
+
+</Practice>

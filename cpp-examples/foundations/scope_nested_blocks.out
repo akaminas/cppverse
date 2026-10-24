@@ -1,0 +1,6 @@
+global temperature: 12
+inside the block: 48
+after the block: 48
+local temperature: 18.5
+::temperature: 12
+global again: 12

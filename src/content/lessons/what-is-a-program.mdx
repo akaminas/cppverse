@@ -1,0 +1,160 @@
+---
+title: What a program is
+summary: A program is a precise list of instructions. How programs relate to algorithms and to biological models, and how this site is organised.
+level: beginner
+module: 1
+manual: ["M1.1", "M0.readme"]
+minutes: 15
+objectives:
+  - Distinguish a biological model, an algorithm and an implementation
+  - Explain why the instructions in a program must be accurate, unambiguous and complete
+  - Say in a few sentences what C++ is and why it is used for simulation
+  - Find your way through the levels, pathways and atlas of this site
+references:
+  - "Stroustrup, B. A Tour of C++, 3rd edition. Addison-Wesley, 2022."
+---
+
+## What it is
+
+A *program* is a list of instructions that a computer carries out exactly as written. The instructions are written in a *programming language*, which has a small vocabulary, a strict grammar and a precise meaning for every construction.
+
+C++ has a few dozen *keywords*, words such as `if`, `return` and `const` that the language reserves for itself, and a few dozen *operators*, symbols such as `+`, `/` and `*=`. That is the whole vocabulary. Learning to program is mostly learning to combine these few elements into instructions that do what you intend, and nothing else.
+
+### Model, algorithm and implementation
+
+When a biologist writes a simulation, three different things are involved. It pays to keep them apart from the first day.
+
+- A **model** is a set of biological assumptions stated precisely, usually as mathematics. "The population grows by the same factor $\lambda$ every year" is a model: $N_{t+1} = \lambda N_t$, where $N_t$ is the number of individuals in year $t$. It says nothing about computers.
+- An **algorithm** is a finite, unambiguous procedure that computes something about the model. "Start with $N_0$ individuals. Repeat for each year: multiply the population by $\lambda$, then record it." Notice that this is not the only algorithm for this model: the closed form $N_t = \lambda^t N_0$ gives the same numbers in one step.
+- An **implementation** is an algorithm written in a particular programming language. The repeated multiplication above can be written in C++, R or Python, and in many different ways within each language. Some are faster, clearer or more robust than others.
+
+Most of the work happens before any code is typed: deciding what the model assumes and choosing a strategy, the algorithm, to compute its consequences. The code then has to express that strategy faithfully.
+
+## Why it matters
+
+A computer does not guess. Consider an instruction that sounds clear in a methods section: *"each year, individuals reproduce and then a fraction die over winter"*. To program it you must decide whether newborns can die in their first winter, whether the census is taken before or after mortality, and what happens to a fractional individual. A verbal model can leave these questions open; a program cannot. Instructions must be **accurate**, **unambiguous** and **complete**, and they must follow the language's rules of grammar (syntax) and meaning (semantics).
+
+That strictness is a scientific benefit. Writing the program forces every assumption into the open, where it can be read, questioned and changed. The order of updates is one example: <Concept id="update-order">the order in which state variables are updated</Concept> can change the outcome of a model completely, and the code is where that order is decided.
+
+Keeping the three levels apart also tells you where to look when results are wrong. A surprising result may come from the model (an assumption that does not hold), from the algorithm (a numerical method that is too crude, such as a time step that is too large) or from the implementation (a bug). Each needs a different remedy.
+
+## How it works in C++
+
+C++ was created by Bjarne Stroustrup at Bell Labs from 1979 as an extension of the language C, first under the name "C with classes". It became an international (ISO) standard in 1998 and has been revised every three years since 2011, as C++11, C++14, C++17, C++20 and C++23. It is a general-purpose, *compiled* language: a program called a compiler translates your text into machine code before it runs, which is why C++ programs are fast. That speed is the main reason it is used for simulation, where a model may be run millions of times. This site uses C++17 as its baseline and marks newer features, such as <Std v="c++20" />, as optional alternatives.
+
+A C++ program is plain text. You write it in an editor, the compiler turns it into an executable file, and you run that file (see <Concept id="compilation" />). When the program runs, its instructions are carried out one after another, from the top of a function called `main` to the bottom. Some instructions repeat others (loops) or choose between them (decisions), but at every moment exactly one instruction is being carried out.
+
+## A minimal example
+
+Here is the growth model implemented with the repeated-multiplication algorithm. You do not need to understand every symbol yet; the next lessons explain each one. Read the comments and the line marked in the middle, which is the model's update rule.
+
+<Example file="foundations/program_geometric_growth.cpp" mark="15" />
+
+The parameter $\lambda$ becomes a named constant, the state $N_t$ becomes a variable called `population`, and the equation $N_{t+1} = \lambda N_t$ becomes the instruction `population = lambda * population;`. The loop on line 14 is the "repeat for each year" of the algorithm.
+
+## Explore it
+
+Step through the program. At each step, the highlighted line has just been carried out; the table shows every named value that exists at that moment.
+
+<Trace id="what-is-a-program-growth" />
+
+<Check
+  id="levels"
+  kind="model"
+  question="A simulation of a predator–prey system settles at the wrong equilibrium. The equations are correct and the code does exactly what the equations say, but the time step used to approximate the continuous dynamics is far too large. Where is the problem?"
+  options={["In the model", "In the algorithm", "In the implementation", "In the compiler"]}
+  answer={1}
+  feedback={[
+    "The model, the equations and their assumptions, is stated to be correct.",
+    "The procedure chosen to compute the model’s consequences, a numerical method with a coarse step, is not accurate enough. Changing the algorithm (a smaller step or a better method) fixes it without touching the model or introducing a bug.",
+    "The code does exactly what the algorithm says, so there is no bug to fix. It faithfully implements an inaccurate algorithm.",
+    "Compilers translate code faithfully. When a result is wrong, the cause is almost always in the model, the algorithm or the program.",
+  ]}
+/>
+
+<Check
+  id="which-is-algorithm"
+  kind="read"
+  question="Which of these is an algorithm rather than a model?"
+  options={[
+    "Seedlings die at a rate proportional to the density of neighbours",
+    "dN/dt = r N (1 − N/K)",
+    "Set N to 10. Repeat 50 times: compute the change r N (1 − N/K) h, add it to N, record N",
+    "Females choose the male with the longest tail",
+  ]}
+  answer={2}
+  feedback={[
+    "A biological assumption: it says what happens, not how to compute it.",
+    "The logistic equation is a model. It defines how N changes but not how to compute a trajectory.",
+    "A finite list of unambiguous steps that computes an approximate trajectory of the logistic model. This particular algorithm is Euler’s method.",
+    "An assumption about behaviour, which a model would make precise and an algorithm would then simulate.",
+  ]}
+/>
+
+<Check
+  id="predict-lambda"
+  kind="predict"
+  question="In the program above, λ is changed from 1.5 to 0.5. What is the last line of output?"
+  options={["year 3: 135", "year 3: 5", "year 3: 20", "year 3: 0"]}
+  answer={1}
+  feedback={[
+    "That is the output for λ = 1.5. The instructions are the same, but they now multiply by 0.5.",
+    "40 × 0.5 = 20, then 10, then 5. The program carries out the same three updates with the new parameter.",
+    "20 is the population after one year. The loop runs three times.",
+    "Halving a positive number never reaches exactly zero. The population is a double, so 5 is stored exactly.",
+  ]}
+/>
+
+## In biological modelling
+
+Almost every simulation on this site has the shape of the small program above: **parameters** that stay fixed during a run, a **state** that describes the system at one moment, an **update rule** that turns one state into the next, and **output** that records the trajectory (see <Concept id="state-representation" /> and <Concept id="update-rule" />). Learning C++ is learning how to express each of these clearly.
+
+Treat a program as a scientific instrument. Like a balance or a sequencer, it should be checked against known cases before it is trusted: does it reproduce the closed-form solution $N_t = \lambda^t N_0$, does a population with $\lambda = 1$ stay constant? <Concept id="verification" /> develops this idea.
+
+### How this site is organised
+
+The course manual on which this site is built offers several *tracks* through its modules, so that learners with different backgrounds can start at different points. This site keeps that idea in three ways.
+
+- **Levels.** Every lesson is marked beginner, intermediate or seasoned. Beginner lessons explain every symbol; later lessons link back instead of repeating.
+- **Pathways.** You can choose a goal, such as *write my first C++ program*, *build a discrete-time population model* or *learn Gillespie simulation*. The site then lists exactly the lessons that goal depends on, in an order that respects their prerequisites.
+- **The atlas.** [The atlas](/atlas/) is a map of all concepts and the dependencies between them, grouped into regions from language foundations to modelling destinations. Use it to see where a lesson sits and what it leads to.
+
+Each lesson has the same structure, ends with original exercises, and links to the concepts it connects to. Every complete program is compiled and run with two compilers whenever the site is built, so the code you see is code that works.
+
+<Callout kind="manual" title="Tracks, levels and pathways">
+The Groningen manual groups its modules into tracks (elementary procedural, advanced procedural and object-oriented programming) with a suggested plan for each week of the course. Here the tracks become levels and goal-based pathways, and each lesson lists the manual sections it covers. You do not need to work through the lessons in the manual's order.
+</Callout>
+
+## Common mistakes
+
+- **Typing before thinking.** Starting to write code before the algorithm is clear produces programs that are hard to fix. Write the steps in plain language first (<Concept id="pseudocode" />), then translate them.
+- **Confusing "it runs" with "it is right".** A program that compiles and prints numbers may still implement the wrong model or the right model badly. Check it against cases whose answer you know.
+- **Leaving decisions implicit.** If you cannot say in which order events happen in your model, the program will decide for you, silently, in whatever order you happened to write the lines.
+
+## Practice
+
+<Practice>
+
+1. A cohort of 1,000 eggs loses 12% of its members each day. Write, in numbered plain-language steps, an algorithm that finds the first day on which fewer than 100 remain. Make sure every step can be carried out without further questions.
+2. A verbal model says: *"Each spring, adults breed; offspring join the population; over winter, a fraction of individuals die."* List at least three decisions a programmer must make that the sentence leaves open.
+3. For the growth model $N_{t+1} = \lambda N_t$, the closed form $N_t = \lambda^t N_0$ and repeated multiplication are two algorithms. Suppose $\lambda$ now varies from year to year, drawn from measured values. Which algorithm is easier to adapt, and why?
+
+<details>
+<summary>Worked answer to exercise 1</summary>
+
+1. Set *count* to 1000 and *day* to 0.
+2. While *count* is at least 100: increase *day* by 1, then replace *count* by *count* × 0.88.
+3. Report *day*.
+
+The open questions you had to settle: is "fewer than 100" strict (yes, so the loop continues while *count* is at least 100), and is the loss applied once per day to the current count (yes, so multiply by 0.88 rather than subtract 120 each day). The answer is day 19.
+</details>
+
+<details>
+<summary>Possible answers to exercises 2 and 3</summary>
+
+Exercise 2: whether offspring born this spring can die in their first winter; whether the census is taken before breeding, after breeding or after winter; whether the winter mortality fraction is the same for adults and young; how many offspring an adult produces and whether that depends on density; what happens to fractional individuals if the model works with counts.
+
+Exercise 3: repeated multiplication. Each year's update simply uses that year's $\lambda_t$: $N_{t+1} = \lambda_t N_t$. The closed form no longer applies as written; it becomes a product of all the $\lambda_t$, which you would compute by repeated multiplication anyway.
+</details>
+
+</Practice>

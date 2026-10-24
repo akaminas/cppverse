@@ -1,0 +1,7 @@
+genome length: 3100000000 bp
+mutation rate: 1.2e-08
+new mutations per genome copy: 37.2
+0x3F = 63
+0b1010 = 10
+017 = 15 (a leading zero means octal)
+7 / 2 = 3, but 7.0 / 2 = 3.5

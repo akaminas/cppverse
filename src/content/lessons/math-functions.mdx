@@ -1,0 +1,204 @@
+---
+title: Mathematical functions and equations
+summary: Exponentials, logarithms, powers and trigonometry from <cmath>, and how to translate a biological equation into C++ without the usual transcription errors.
+level: beginner
+module: 3
+manual: ["M3.3", "M3.2"]
+minutes: 35
+objectives:
+  - "Call the common functions of <cmath> with the std:: prefix"
+  - Avoid the pitfalls of radians, log versus log10 and rounding
+  - Translate a growth or dose-response equation into a correct C++ expression
+  - Check a transcribed equation against special cases and a hand calculation
+references:
+  - "cppreference.com: Common mathematical functions (<cmath>)"
+  - "cppreference.com: Mathematical constants (<numbers>)"
+---
+
+## What it is
+
+The header `<cmath>` gives C++ the functions of a scientific calculator: exponentials and logarithms, powers and roots, trigonometric functions, rounding and a few others. Each is called by name with its arguments in parentheses, and the call is an expression whose value is the result:
+
+```cpp
+#include <cmath>
+
+const double growthFactor = std::exp(0.25);         // e^0.25
+const double doublingTime = std::log(2.0) / 0.25;   // ln 2 / r
+```
+
+All of them live in the namespace `std`, take `double` arguments and return a `double`.
+
+## Why it matters
+
+Biological models are full of these functions. Exponential growth and decay, survival curves, the temperature dependence of rates, allometric scaling with body mass, dose-response and saturating functional responses, seasonal forcing, and the angles of an animal's path all need `exp`, `log`, `pow` or a trigonometric function. Translating such an equation into code is easy to do almost right: a missing pair of parentheses or a logarithm to the wrong base gives a program that runs and produces numbers of the right order of magnitude, and they are wrong.
+
+## How it works in C++
+
+### The functions
+
+| Function | Computes | Notes |
+|---|---|---|
+| `std::exp(x)` | $e^x$ | overflows to infinity for x above about 709 |
+| `std::log(x)` | $\ln x$, the natural logarithm | `log(0)` is −∞, `log` of a negative number is NaN |
+| `std::log10(x)`, `std::log2(x)` | logarithms to base 10 and 2 | |
+| `std::pow(x, y)` | $x^y$ | a negative x with a non-integer y gives NaN |
+| `std::sqrt(x)`, `std::cbrt(x)` | square and cube root | |
+| `std::hypot(x, y)` | $\sqrt{x^2 + y^2}$ | avoids overflow for very large x or y |
+| `std::sin(x)`, `std::cos(x)`, `std::tan(x)` | trigonometric functions | x in **radians** |
+| `std::asin`, `std::acos`, `std::atan`, `std::atan2(y, x)` | inverse functions, in radians | `atan2` gives the angle of the vector (x, y) in the correct quadrant |
+| `std::floor(x)`, `std::ceil(x)` | round down, round up | the results are doubles |
+| `std::trunc(x)`, `std::round(x)` | round toward zero, round to nearest | `round` sends halves away from zero; `std::lround` returns an integer |
+| `std::fmod(x, y)` | floating-point remainder of x / y | takes the sign of x, like `%` |
+| `std::fmin(x, y)`, `std::fmax(x, y)` | smaller and larger of two values | |
+| `std::abs(x)` | absolute value | for `int` too (declared also in `<cstdlib>`) |
+
+<Example file="foundations/cmath_tour.cpp" mark="18-19" />
+
+A few points from that output deserve attention.
+
+- **Angles are in radians.** `std::sin(30.0)` is the sine of 30 radians, −0.988. For 30 degrees, convert first: multiply by π / 180.
+- **`std::log` is the natural logarithm.** Many papers write "log" for ln; others mean log₁₀. Decide which the author means before translating.
+- **Rounding functions differ for negative numbers.** For −2.5, `floor` gives −3, `ceil` −2, `trunc` −2 and `round` −3.
+- **Always write `std::`.** The unqualified `abs` inherited from C works on integers only; `abs(-3.2)` can silently become 3. `std::abs(-3.2)` chooses the version for `double`.
+
+Invalid arguments do not stop the program. `std::sqrt(-1.0)` returns NaN ("not a number"), `std::log(0.0)` returns −∞, and both then propagate through every later calculation. `std::isnan(x)` and `std::isfinite(x)` test for them.
+
+`std::pow(x, 2.0)` and `x * x` give the same result; for small whole powers the product is shorter and at least as clear. Use `pow` for powers that are not small integers, such as the 3/4 power of body mass in metabolic scaling.
+
+C++17 has no standard constant for π. Define one, `constexpr double pi = 3.14159265358979323846;`, or compute it as `std::acos(-1.0)`. The macro `M_PI` is not part of standard C++ and is missing on some compilers.
+
+<Callout kind="modern" title="std::numbers::pi">
+C++20 adds the header `<numbers>` with constants such as `std::numbers::pi`, `std::numbers::e` and `std::numbers::ln2`. <Std v="c++20" />
+</Callout>
+
+<Example file="foundations/math_numbers_pi.cpp" />
+
+<Callout kind="manual" title="cmath in the manual">
+The manual's table of mathematical functions uses the names without `std::`, as in C. In C++ use the qualified names, which also select the right version for each argument type. The functions are part of the C++ standard library and are linked automatically by `g++` and `clang++`; no extra library option is needed.
+</Callout>
+
+<Anchor id="equation-to-code" />
+
+### From equation to code
+
+Translating an equation is a small procedure, and it is worth following every time:
+
+1. **Define every symbol** and its unit. Decide which logarithm is meant and whether angles are in degrees.
+2. **Give each symbol a variable**, with a name and a comment that link it to the equation.
+3. **Translate operator by operator.** Put parentheses around every numerator, every denominator and every exponent that consists of more than one term, even where C++ would not need them.
+4. **Use floating-point literals**, `10.0` rather than `10`, so that no division is accidentally an integer division.
+5. **Check the result** at special values where the answer is known, and against one value worked out by hand or with a calculator.
+
+Three equations used throughout biology, transcribed this way:
+
+<Example file="foundations/math_growth_equations.cpp" mark="18,26,33-34" />
+
+- **Von Bertalanffy growth**, $L(t) = L_\infty \left(1 - e^{-k (t - t_0)}\right)$: length at age $t$, approaching the asymptotic length $L_\infty$ at rate $k$. Check: at $t = t_0$ the length is 0, and for large $t$ it approaches $L_\infty$.
+- **Q10 temperature scaling**, $R(T) = R_\text{ref} \, Q_{10}^{(T - T_\text{ref})/10}$: a rate $R_\text{ref}$ measured at temperature $T_\text{ref}$ multiplies by $Q_{10}$ for every 10 °C of warming. Check: at $T = T_\text{ref}$ the rate is $R_\text{ref}$, and at $T_\text{ref} + 10$ it is $Q_{10} R_\text{ref}$.
+- **Hill function**, $f(S) = \dfrac{S^n}{K^n + S^n}$: a saturating, sigmoid response to a signal or resource concentration $S$, with half-saturation constant $K$ and steepness $n$. Check: $f(K) = 0.5$, and $f$ approaches 1 for large $S$.
+
+Select a term in the equation, or a line of code, to see how they correspond:
+
+<MathCode id="math-functions-von-bertalanffy" />
+
+### Common transcription errors
+
+| Equation | Wrong code | What it computes instead | Correct code |
+|---|---|---|---|
+| $e^{-k(t - t_0)}$ | `std::exp(-k * t - t0)` | $e^{-kt - t_0}$ | `std::exp(-k * (t - t0))` |
+| $\dfrac{S^n}{K^n + S^n}$ | `sn / kn + sn` | $\frac{S^n}{K^n} + S^n$ | `sn / (kn + sn)` |
+| $Q_{10}^{(T - T_\text{ref})/10}$, with `int` temperatures | `std::pow(q10, (T - Tref) / 10)` | $Q_{10}^0 = 1$ for any warming below 10 °C | `std::pow(q10, (T - Tref) / 10.0)` |
+| $x^2$ | `x ^ 2` | bitwise exclusive or (and no compile for `double`) | `x * x` or `std::pow(x, 2.0)` |
+| $\sin(30^\circ)$ | `std::sin(30.0)` | the sine of 30 radians | `std::sin(30.0 * pi / 180.0)` |
+| doubling time $\ln 2 / r$ | `std::log10(2.0) / r` | a time 2.3 times too short | `std::log(2.0) / r` |
+| $B_0 M^{3/4}$ | `std::pow(M, 3 / 4)` | $M^0 = 1$: `3 / 4` is integer division | `std::pow(M, 0.75)` |
+
+Each of these compiles (except `^` on a `double`) and produces a number. Only a check against a known value reveals them. The special cases listed for each equation are cheap and catch most errors: if the Hill function does not give 0.5 at $S = K$, the transcription is wrong.
+
+## Explore it
+
+<Check
+  id="exponent-grouping"
+  kind="debug"
+  question="A student writes the von Bertalanffy equation as lengthInfinity * (1.0 - std::exp(-k * age - t0)). With t0 = −0.5, what is wrong?"
+  options={[
+    "Nothing: the expressions are equivalent",
+    "The exponent is −k·t − t₀ instead of −k(t − t₀), so the curve is shifted and scaled wrongly",
+    "std::exp cannot take a negative argument",
+    "The multiplication by lengthInfinity happens before the subtraction",
+  ]}
+  answer={1}
+  feedback={[
+    "−k(t − t₀) = −kt + kt₀, which differs from −kt − t₀ unless t₀ = 0.",
+    "Without parentheses around age - t0, the multiplication by −k applies only to age, and t₀ is subtracted unscaled. At t = t₀ the length is then not 0, which the special-case check reveals immediately.",
+    "std::exp accepts any double; e to a negative power is a number between 0 and 1.",
+    "The parentheses around (1.0 - std::exp(...)) are present, so the subtraction happens first.",
+  ]}
+/>
+
+<Check
+  id="hill-check"
+  kind="predict"
+  question="With S = K = 2 and n = 2, what does sn / std::pow(K, n) + sn evaluate to, where sn = std::pow(S, n)?"
+  options={["0.5", "5", "1", "0.2"]}
+  answer={1}
+  feedback={[
+    "0.5 is the correct value of the Hill function at S = K, but this expression is missing the parentheses around the denominator.",
+    "Division binds more tightly than addition: 4 / 4 + 4 = 5. A Hill function never exceeds 1, so the check at S = K exposes the error at once.",
+    "That would be sn / std::pow(K, n) alone.",
+    "This does not correspond to any grouping of these operations.",
+  ]}
+/>
+
+<Check
+  id="q10-int"
+  kind="debug"
+  question="A program declares const int temperature = 22; and const int temperatureRef = 15;, and computes rateRef * std::pow(q10, (temperature - temperatureRef) / 10). What rate does it give?"
+  options={[
+    "The correct rate, rateRef × Q10^0.7",
+    "rateRef × Q10, as if the temperature had risen by 10 °C",
+    "rateRef, unchanged, because the exponent is 0",
+    "It does not compile: pow needs double arguments",
+  ]}
+  answer={2}
+  feedback={[
+    "The exponent is computed before pow sees it, and it is computed with integers.",
+    "That would need an exponent of 1.",
+    "(22 − 15) / 10 is integer division, 7 / 10 = 0, and anything to the power 0 is 1. Writing 10.0 makes the exponent 0.7.",
+    "An int argument is converted to double for pow, so it compiles. The damage is done earlier, in the integer division.",
+  ]}
+/>
+
+## In biological modelling
+
+Write each equation of a model once, close to its definition, with the symbols of the paper in a comment. Before using it, check it at its special cases. Soon you will package each equation as a function with a name such as `vonBertalanffyLength` (see <Concept id="functions" />), so that the checks can be written as tests and every part of the model uses the same, verified transcription.
+
+Guard against arguments outside the domain of a function when they can occur in a model: the logarithm of a density that has reached zero, the square root of a variance that rounding has made slightly negative, or `pow` of a negative base. A NaN that appears in generation 300 of a simulation is far harder to trace than a check that stops the program where the problem arises.
+
+## Common mistakes
+
+- **Degrees for radians.** Every trigonometric function in `<cmath>` uses radians.
+- **`log` for `log10`, or the reverse.** Find out which logarithm the source means.
+- **Missing parentheses** around an exponent, a numerator or a denominator.
+- **Integer division inside an exponent or a fraction**, such as `3 / 4` or `(T - Tref) / 10` with `int` operands.
+- **`^` for a power.**
+- **Unqualified `abs`.** Use `std::abs`.
+- **No check.** Every transcribed equation should be evaluated at a value whose answer you know.
+
+## Practice
+
+<Practice>
+
+1. The metabolic rate of an animal is often modelled as $B = B_0 M^{3/4}$, with body mass $M$ in grams. Write the C++ expression and evaluate it for $B_0 = 0.02$ W and $M = 16$ g. What would `std::pow(M, 3 / 4)` give, and why?
+2. The logistic equation has the closed-form solution $N(t) = \dfrac{K}{1 + \frac{K - N_0}{N_0} e^{-rt}}$. Write it as a C++ expression and name two special cases you would use to check your transcription.
+3. An animal takes a 2 m step on a bearing of 30°, measured clockwise from north. Write the expressions for its displacement east, $x = d \sin\theta$, and north, $y = d \cos\theta$, and evaluate them.
+
+<details>
+<summary>Answers</summary>
+
+1. `B0 * std::pow(M, 0.75)`, which gives 0.02 × 16^0.75 = 0.02 × 8 = 0.16 W. `std::pow(M, 3 / 4)` computes `3 / 4` as integer division, 0, so it returns M⁰ = 1 for every mass, and B = B₀ regardless of body size.
+2. `K / (1.0 + (K - N0) / N0 * std::exp(-r * t))`. Note the parentheses around the whole denominator and around `K - N0`. At t = 0 the result must be N₀; for large t it must approach K. A third check: with N₀ = K, the population stays at K for all t.
+3. With `constexpr double pi = 3.14159265358979323846;` and `const double theta = 30.0 * pi / 180.0;`: `x = 2.0 * std::sin(theta)` is 1.0 m (to rounding) and `y = 2.0 * std::cos(theta)` is about 1.732 m.
+</details>
+
+</Practice>

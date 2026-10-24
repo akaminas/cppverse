@@ -1,0 +1,180 @@
+---
+title: Range, precision and overflow
+summary: Integers have a limited range and floating-point numbers limited precision. What goes wrong at the limits, and how to stay clear of them.
+level: intermediate
+module: 2
+manual: ["M2.5"]
+minutes: 35
+objectives:
+  - Find the size and range of a type with sizeof and std::numeric_limits
+  - Choose an integer type wide enough for large counts, using the fixed-width types of <cstdint>
+  - Explain why signed overflow is undefined behaviour and how to prevent it
+  - Recognise absorption, inexact decimal fractions and underflow in floating-point arithmetic
+  - Compare floating-point values with a tolerance and work with log-likelihoods
+references:
+  - "cppreference.com: std::numeric_limits"
+  - "cppreference.com: Fixed width integer types"
+  - "Goldberg, D. (1991). What every computer scientist should know about floating-point arithmetic. ACM Computing Surveys 23: 5–48."
+---
+
+## What it is
+
+Every variable of a given type occupies the same number of bytes, whatever value it holds. An `int` holding 3 takes as much memory as one holding two billion. A fixed number of bits can represent only a fixed set of values, which has two consequences:
+
+- **Integers have a limited range.** A 32-bit `int` can hold whole numbers from −2,147,483,648 to 2,147,483,647, and nothing outside that range.
+- **Floating-point numbers have limited precision.** A `double` stores about 15 to 16 significant decimal digits. Most real numbers, including simple ones such as 0.1, are stored as the nearest value that fits.
+
+## Why it matters
+
+These limits are far away for most quantities in a model, which is why they are easy to forget. They come within reach in a few typical situations: counting sequencing reads or bases, summing births over a long simulation with a large population, advancing a clock in tiny steps for a long time, multiplying many probabilities into a likelihood, and testing whether two computed values are equal. None of these produce an error message. The program carries on with a wrong number.
+
+## How it works in C++
+
+### Sizes: `sizeof`
+
+`sizeof(type)` gives the size of a type in bytes; `sizeof x` (the parentheses are optional for a variable or an expression) gives the size of the type of `x`. The result depends only on the type. The sizes, and hence the ranges, are not fixed by the C++ standard, which guarantees only minimums: `short` and `int` have at least 16 bits, `long` at least 32 and `long long` at least 64, and `sizeof(short) <= sizeof(int) <= sizeof(long) <= sizeof(long long)`. This program prints the values for your system:
+
+<Example file="foundations/limits_sizes.cpp" />
+
+On 64-bit Linux and macOS, `int` is 4 bytes and `long` 8. On 64-bit Windows, `long` is only 4 bytes. A program that relies on `long` holding large counts can therefore work on a Linux cluster and fail on a Windows laptop, or the other way round.
+
+### Integer ranges and `std::numeric_limits`
+
+A type with *n* bits has 2ⁿ possible bit patterns. A signed 32-bit integer uses them for the values −2³¹ to 2³¹ − 1; an `unsigned` 32-bit integer for 0 to 2³² − 1 = 4,294,967,295. Rather than memorising limits, ask for them: the header `<limits>` provides `std::numeric_limits<T>`, with members such as `max()`, `lowest()` and, for floating-point types, `epsilon()` and `digits10`.
+
+When a count needs a known size, use the *fixed-width* types from `<cstdint>`: `std::int32_t` and `std::int64_t` (signed), `std::uint32_t` and `std::uint64_t` (unsigned), which have exactly the stated number of bits on every platform. `long long` is at least 64 bits everywhere and is also a safe choice. A 64-bit signed integer holds counts up to about 9.2 × 10¹⁸.
+
+### Overflow
+
+Going beyond the range of an integer type is called *overflow*, and what happens depends on whether the type is signed.
+
+- **Signed overflow is undefined behaviour.** The C++ standard does not say that the value wraps around to a negative number; it says nothing at all about what the program then does. Compilers assume that it never happens and optimise on that basis, so a loop that "should" stop when a counter wraps may run forever, and a test for overflow written *after* the addition may be removed entirely. Never let a signed integer overflow, and never rely on what you observed when one did.
+- **Unsigned arithmetic wraps around** modulo 2ⁿ: one past the largest value is 0. This is well defined, but for a count it is just as wrong.
+
+<Example file="foundations/limits_read_counts.cpp" mark="16-17,24-25,29-31" />
+
+Eight lanes of 400 million reads give 3.2 billion reads, already more than a `std::int32_t` can hold, and 480 billion bases. In 64-bit integers both are correct. Computed in `std::uint32_t`, the number of bases wraps around and comes out as 3,258,630,144: an answer with the right number of digits and nothing to show that it is wrong.
+
+To protect a signed calculation, test *before* the operation whether the result would fit, as the last lines of the program do: `total > max - more` is safe to evaluate, whereas `total + more > max` would already overflow. Better still, choose a type with ample room. When debugging, compile with `-fsanitize=undefined`, which reports signed overflow at run time (see <Concept id="debugging" />).
+
+<Callout kind="manual" title="Overflow and long double">
+The manual describes signed overflow as dependent on compiler and machine. In standard C++ it is undefined behaviour, and since C++20 signed integers are required to use two's-complement representation without that changing. The manual's figure of 10 bytes for `long double` is also not what `sizeof` reports: with GCC and Clang on x86-64 it is 16 bytes (an 80-bit extended format, padded), with Microsoft's compiler 8 bytes, the same as `double`.
+</Callout>
+
+### Floating-point precision
+
+A `double` is stored in the IEEE 754 binary64 format: a sign, an exponent and a 53-bit *significand*. That gives about 15–16 significant decimal digits and a range from about 2.2 × 10⁻³⁰⁸ to 1.8 × 10³⁰⁸. A `float` has a 24-bit significand: about 7 digits, and a range up to about 3.4 × 10³⁸. The gap between 1 and the next representable number is `std::numeric_limits<double>::epsilon()`, about 2.2 × 10⁻¹⁶ (about 1.2 × 10⁻⁷ for `float`). The gap between neighbouring values grows with their size: around 10⁶ it is about 10⁻¹⁰ for a `double`, and around 2 × 10⁷ it is 2 for a `float`.
+
+Three consequences follow, each shown by this program:
+
+<Example file="foundations/limits_precision.cpp" />
+
+**Absorption.** Adding 0.5 g to a total of 2 × 10⁷ g stored in a `float` changes nothing: the nearest `float` to 20,000,000.5 is 20,000,000. The `double` total has precision to spare. In general, an increment smaller than about epsilon times the total is lost, wholly or partly. This *loss of significance* also strikes a clock advanced with `t += dt` over a very long run, and a sum of many small terms added to one large one.
+
+**Decimal fractions are not exact.** 0.1 has no finite binary representation, so the stored value is very slightly off, and ten of them add up to 0.99999999999999989. The test `sum == 1.0` is false. Compare floating-point results with a tolerance instead:
+
+```cpp
+// true if a and b agree to within an absolute or a relative tolerance
+const bool close = std::abs(a - b) <= 1e-12 + 1e-9 * std::max(std::abs(a), std::abs(b));
+```
+
+The tolerances depend on the problem. The relative part handles large values; the absolute part handles values near zero.
+
+**Underflow.** A result closer to zero than the smallest normal `double`, about 2.2 × 10⁻³⁰⁸, first becomes *subnormal*, with fewer significant digits, and below about 4.9 × 10⁻³²⁴ it becomes exactly 0. The likelihood of 400 independent observations, each with probability 0.01, is 10⁻⁸⁰⁰: far below anything a `double` can hold. Multiplying the probabilities one by one gives exactly 0 after 162 observations, and every comparison between models based on that number is then meaningless. The logarithm of the likelihood, a sum of logarithms, is about −1842 and is no problem at all.
+
+<Callout kind="manual" title="Underflow and absorption">
+The manual calls the lost increment in its float example an "underflow". The usual term is absorption or loss of significance: the result is large, but the change was too small to register. Underflow, in the IEEE sense used here, means a result too close to zero to be represented normally.
+</Callout>
+
+Floating-point numbers can also *overflow*: `std::exp(1000.0)` gives infinity rather than undefined behaviour, and infinity then spreads through later calculations. And subtracting two nearly equal numbers leaves few correct digits (*cancellation*); `std::log1p(x)` and `std::expm1(x)` compute log(1 + x) and eˣ − 1 accurately for small x.
+
+## Explore it
+
+<Figure id="numeric-limits-underflow" />
+
+<Check
+  id="wide-type"
+  kind="model"
+  question="A program sums the number of bases sequenced in a run, about 4.8 × 10¹¹. Which type should the total have?"
+  options={["int", "unsigned int", "std::int64_t", "float"]}
+  answer={2}
+  feedback={[
+    "A 32-bit int holds at most about 2.1 × 10⁹, and signed overflow is undefined behaviour.",
+    "An unsigned 32-bit integer reaches about 4.3 × 10⁹ and then wraps around silently.",
+    "A 64-bit integer holds counts up to about 9.2 × 10¹⁸ on every platform, and counts stay exact.",
+    "A float can represent 4.8 × 10¹¹ approximately, but with 7 significant digits it cannot count individual bases: adding one base to such a total changes nothing.",
+  ]}
+/>
+
+<Check
+  id="absorb"
+  kind="predict"
+  question="What does this fragment print?"
+  code={`double t = 1e16;
+t += 1.0;
+std::cout << std::boolalpha << (t == 1e16) << '\\n';`}
+  options={["true", "false", "It depends on the compiler", "Nothing: this is undefined behaviour"]}
+  answer={0}
+  feedback={[
+    "Around 10¹⁶, neighbouring doubles are 2 apart, so 10¹⁶ + 1 is rounded back to 10¹⁶. The increment is absorbed.",
+    "That would need at least 17 significant digits. A double has about 16.",
+    "IEEE 754 arithmetic gives the same result on every common platform.",
+    "Floating-point rounding is well defined. Only signed integer overflow is undefined here.",
+  ]}
+/>
+
+<Check
+  id="sum-to-one"
+  kind="read"
+  question="A test should confirm that ten computed genotype frequencies sum to 1. Which condition is appropriate?"
+  options={[
+    "sum == 1.0",
+    "std::abs(sum - 1.0) < 1e-9",
+    "static_cast<int>(sum) == 1",
+    "sum >= 1.0",
+  ]}
+  answer={1}
+  feedback={[
+    "Rounding in each frequency makes an exact sum of 1.0 a matter of luck, as ten times 0.1 shows.",
+    "The sum is accepted if it is within a small tolerance of 1. Choose the tolerance to suit the calculation: here, far larger than the expected rounding error and far smaller than any real mistake.",
+    "Truncation makes 0.99999999999999989 into 0, so a correct sum would fail, and 1.7 would pass.",
+    "A sum of 0.99999999999999989 is correct but fails, and a sum of 3 would pass.",
+  ]}
+/>
+
+## In biological modelling
+
+Use `double` for continuous state variables; reserve `float` for storing very large arrays where memory is tight, and never use it for accumulators. Use a 64-bit integer type for any count that could conceivably exceed two billion, such as reads, bases, cumulative events in a long simulation, or the number of possible genotypes.
+
+Work with log-likelihoods rather than likelihoods: sum `std::log(p)` instead of multiplying `p`. Products of many probabilities are common in inference (see <Concept id="uncertainty" />), and on a log scale they never underflow.
+
+In a time-stepping loop, compute time from the step count, `t = step * dt`, rather than accumulating `t += dt`. Each addition rounds a little, and over a million steps the errors add up; with the multiplication, each time is only rounded once.
+
+Write tests that compare floating-point results with a tolerance (see <Concept id="verification" />), and remember that a different compiler, optimisation level or summation order may change the last digits of a result without either answer being wrong.
+
+## Common mistakes
+
+- **Assuming `int` or `long` is big enough** for every count. Check the order of magnitude, and use `std::int64_t` when in doubt.
+- **Testing for overflow after it has happened.** For signed types the test itself may be optimised away.
+- **Accumulating in `float`.** Small additions are absorbed long before the total looks large.
+- **Comparing doubles with `==`.** Use a tolerance.
+- **Multiplying probabilities.** Add their logarithms.
+- **Accumulating time with `t += dt`** over very many steps.
+
+## Practice
+
+<Practice>
+
+1. An individual-based simulation keeps 100,000 individuals for 10,000 generations, and each individual produces on average two offspring per generation. Will a 32-bit `int` hold the total number of births? Choose a type for it.
+2. Write a program that adds 0.001 to a time variable one million times, once in `float` and once in `double`, and prints both totals with `std::setprecision(10)` next to the exact value, 1000. Then compute the time as `step * 0.001` instead. What do you observe?
+3. Each of 1,000 seeds independently survives the winter with probability 0.3. Compute the probability that all survive, first by multiplying, then as the logarithm of the product. What does each approach print, and how would you report the result?
+
+<details>
+<summary>Answers</summary>
+
+1. Births total about 100,000 × 2 × 10,000 = 2 × 10⁹, uncomfortably close to the limit of 2,147,483,647 and above it as soon as the mean is slightly higher than 2. Use `std::int64_t` (or `long long`).
+2. The `float` total is far from 1000: once `t` is in the hundreds, each 0.001 is rounded heavily, and the error accumulates over a million additions. The `double` total is very close to 1000 but usually not exact. `step * 0.001` is rounded only once and gives 1000 (or a value within one rounding step of it) for the last step. The exact digits depend on your platform, which is why no expected output is given.
+3. The product underflows to 0, since 0.3¹⁰⁰⁰ ≈ 10⁻⁵²³. The sum of logarithms is 1000 ln 0.3 ≈ −1204.0. Report it as a natural log-likelihood, or convert it to a decimal exponent: log₁₀ of the probability is about −522.9, so the probability is about 1.3 × 10⁻⁵²³.
+</details>
+
+</Practice>

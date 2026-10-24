@@ -1,0 +1,196 @@
+---
+title: Variables and types
+summary: A variable is a named, typed piece of memory. Choosing types for biological quantities, initialising safely and reading values from the keyboard.
+level: beginner
+module: 2
+manual: ["M2.1", "M11.1", "M1.4"]
+minutes: 30
+objectives:
+  - Declare variables of the types int, double, bool and char
+  - Choose a suitable type for a biological quantity
+  - Initialise every variable, and use braces to prevent narrowing
+  - Declare variables where they are first needed and mark fixed values const
+  - Read values typed by the user with std::cin
+references:
+  - "cppreference.com: Fundamental types"
+  - "cppreference.com: Initialization"
+---
+
+## What it is
+
+A *variable* is a named piece of the computer's memory that holds a value. Every variable has a **type**, fixed when it is declared, which decides how many bytes of memory it occupies, how the bits in those bytes are interpreted, and which operations make sense on it. A *declaration* introduces a variable:
+
+```cpp
+int eggCount = 4;
+```
+
+This reserves memory for a whole number (`int`), names it `eggCount` and stores 4 in it. From this line on, `eggCount` can be used anywhere a whole number is expected. Its value may change; its type never does.
+
+## Why it matters
+
+A model is built from quantities, and quantities come in kinds. Some are counts (individuals, eggs, generations), some are continuous measurements (mass, temperature, a rate), some are yes-or-no states (infected, flowering, alive), and some are categories (a nucleotide, a habitat code). The type you choose must be able to represent every value the quantity can take. Store a mean clutch size of 3.6 in a variable meant for whole numbers and C++ keeps 3, without complaint. Errors of this kind do not crash a program; they quietly bias every result that depends on them.
+
+## How it works in C++
+
+### Declaring a variable
+
+A declaration names the type, then the variable, then (preferably) its initial value, and ends with a semicolon. C++ requires every variable to be declared before it is used, so that the compiler knows its type.
+
+The name, or *identifier*, may contain letters, digits and underscores, must not start with a digit, and must not be one of the language's keywords (`int`, `double`, `return`, `const`, `if`, and so on). C++ is case-sensitive: `eggCount`, `eggcount` and `EggCount` are three different names. <Concept id="code-style" /> has advice on choosing good ones.
+
+Several variables of one type can be declared in one statement, `int adults = 0, juveniles = 0;`, but a qualifier such as `const` then applies to all of them. One declaration per line is clearer.
+
+### Four basic types
+
+| Type | Holds | Examples | Use it for |
+|---|---|---|---|
+| `int` | whole numbers, typically from about −2.1 to +2.1 billion | `0`, `120`, `-3` | counts, generations, indices |
+| `double` | real numbers with about 15–16 significant digits | `23.5`, `0.003`, `6.0e9` | masses, lengths, times, rates, probabilities, concentrations |
+| `bool` | `true` or `false` | `true` | yes/no states: flowering, infected, alive |
+| `char` | a single character | `'A'`, `'H'` | a nucleotide, a one-letter code |
+
+Other types exist: `float` (less precise than `double`; use it only when memory is tight), `long long` and `unsigned` integers for very large counts, and `long double` (see <Concept id="numeric-limits" />). Text is stored in `std::string` (see <Concept id="strings" />).
+
+Some choices need thought. The number of eggs in one nest is an `int`, but the *mean* number of eggs per nest is a `double`. A proportion of germinated seeds is a `double` between 0 and 1, not an `int` percentage. A day of the year is an `int`; a time in days since the start of an experiment, if it can take values such as 3.25, is a `double`.
+
+Here is one plant record from a monitoring plot, with one variable of each type:
+
+<Example file="foundations/variables_plant_record.cpp" mark="10-13" />
+
+By default `std::cout` prints a `bool` as `1` or `0`. After `std::boolalpha` has been sent to the stream, it prints `true` and `false` instead.
+
+### `const` and declaring at first use
+
+Each value in that program is recorded once and never changes, so each is declared `const`. A `const` variable must be initialised in its declaration and can never be assigned a new value; the compiler rejects any attempt. Use `const` for every value that stays fixed: a measured trait, a model parameter, the number of replicates. It documents your intent and turns accidental changes into compile errors. (<Concept id="literals-constants" /> introduces `constexpr` for values known when the program is compiled.)
+
+Declare each variable where it is first needed, already holding its first meaningful value, rather than in a list at the top of the function. The reader then sees the type, the name and the initial value together, at the place where the value matters, and no variable exists in a half-defined state.
+
+<Anchor id="initialisation" />
+
+### Initialisation
+
+Giving a variable its first value when it is created is called *initialisation*. C++ offers three forms:
+
+```cpp
+int clutchSize = 4;   // copy initialisation
+int clutchSize(4);    // direct initialisation
+int clutchSize{4};    // brace initialisation (C++11)
+```
+
+For a value of the right type, all three do the same. They differ when the value does not fit the type. With `=` or `()`, C++ converts silently: `int clutchSize = 4.5;` stores 4. Braces forbid such *narrowing* conversions, which lose information:
+
+<Example file="foundations/variables_narrowing_error.cpp" mark="10" />
+
+GCC reports `narrowing conversion of '4.5e+0' from 'double' to 'int'`, Clang `type 'double' cannot be narrowed to 'int' in initializer list`. Converting from a floating-point type to an integer type always counts as narrowing, even for a value such as `2.0`, as does converting a value that does not fit, such as a large `long long` into an `int`. When the value comes from another variable rather than a literal, GCC only warns, which is one more reason to build with `-Werror`.
+
+Empty braces give a zero of the right type: `int n{};` is 0, `double x{};` is 0.0. Beware the empty parentheses `int n();`: that does *not* declare a variable but a function called `n`, and the error appears later, where `n` is used.
+
+<Callout kind="pitfall" title="Uninitialised variables">
+`int survivors;` inside a function creates a variable with an *indeterminate* value: whatever bits happened to be in that memory. Reading it is undefined behaviour. The program may print 0, or 32767, or something different on each run, and the optimiser may assume the read never happens. Compilers warn about some cases (`-Wall` includes `-Wuninitialized`), but not all. The only reliable rule is to initialise every variable when you declare it. (Variables declared outside any function, and `static` ones, are set to zero, but you should not rely on that either.)
+</Callout>
+
+<Callout kind="manual" title="Three equivalent forms?">
+The manual presents the three forms of initialisation as equivalent. For simple values they behave alike, but braces reject narrowing conversions, which is why this site prefers them where a conversion could silently lose information. The manual's advice to declare variables late is sound; the main reason is clarity and safety rather than speed.
+</Callout>
+
+<Anchor id="input" />
+
+### Reading input from the keyboard
+
+`std::cin` is the *input stream* connected to the keyboard, the counterpart of `std::cout`. The *extraction operator* `>>` reads a value from it into a variable, interpreting the typed characters according to the variable's type:
+
+<Example file="foundations/variables_read_nests.cpp" mark="13,15" />
+
+`std::cin >> nests;` waits until the user has typed something and pressed Enter, skips any spaces and line breaks, reads characters as long as they can form an `int`, and stores the result. Extractions can be chained, `std::cin >> nests >> meanClutchSize;`, and the user may then type both values on one line, separated by a space. The expected output above looks run together because the input was supplied from a file, `variables_read_nests.in`, which is not echoed to the screen; in a terminal you would see your own typing after each prompt.
+
+Input that does not fit the type is a common source of confusion:
+
+- If the user types `twelve` where an `int` is expected, the extraction fails. The variable is set to 0 and `std::cin` enters a *fail state* in which every further extraction does nothing. The program above would print `Expected number of eggs: 0` without waiting for the second value.
+- If the user types `3.7` where an `int` is expected, `>>` reads `3` and stops at the decimal point. The `.7` stays in the input and is read by the next extraction.
+
+A program can test whether a read succeeded with `if (std::cin >> nests)`; <Concept id="stream-state" /> shows how to recover from bad input. For simulation models, typing parameters by hand quickly becomes tedious and error-prone, and they are better read from the command line or a file (see <Concept id="parameter-files" />).
+
+## Explore it
+
+<Anatomy id="variables-and-types-declaration" />
+
+<Check
+  id="choose-type"
+  kind="model"
+  question="Which of these quantities should not be stored in an int?"
+  options={["The number of eggs in a nest", "The generation number in a simulation", "The mean number of eggs per nest in a survey", "The number of loci in a genetic model"]}
+  answer={2}
+  feedback={[
+    "A count of eggs is always a whole number, so int is right.",
+    "Generations are counted 0, 1, 2, …: an int.",
+    "A mean of whole numbers is usually not a whole number (3.6 eggs per nest). Stored in an int it would be truncated to 3. Use a double.",
+    "The number of loci is a count: an int.",
+  ]}
+/>
+
+<Check
+  id="narrowing"
+  kind="predict"
+  question="What does this fragment print?"
+  code={`int eggs = 7.9;
+std::cout << eggs << '\\n';`}
+  options={["7.9", "8", "7", "Nothing: it does not compile"]}
+  answer={2}
+  feedback={[
+    "An int cannot hold a fraction.",
+    "The conversion from double to int does not round: it discards the fraction.",
+    "With =, the double 7.9 is converted to int by discarding the fraction, so eggs is 7. Clang warns about this by default and GCC with -Wconversion; written as int eggs{7.9}; it would not compile at all.",
+    "With = the conversion is allowed, at most with a warning. Braces would make it an error.",
+  ]}
+/>
+
+<Check
+  id="input"
+  kind="predict"
+  question="The program variables_read_nests.cpp is run, and at the first prompt the user types 3.7 and presses Enter. What is the last line of output?"
+  options={[
+    "Expected number of eggs: 0",
+    "Expected number of eggs: 2.1",
+    "Expected number of eggs: 11.1",
+    "The program waits for the second number",
+  ]}
+  answer={1}
+  feedback={[
+    "The first extraction does not fail: it successfully reads 3 and stops at the decimal point.",
+    "nests receives 3. The characters .7 are still waiting in the input, so the second extraction reads 0.7 immediately, without waiting. 3 × 0.7 = 2.1.",
+    "That would require nests to be 3.7, which an int cannot hold.",
+    "There is already input waiting (.7), so the second extraction uses it at once.",
+  ]}
+/>
+
+## In biological modelling
+
+The variables of a model fall into two groups. **Parameters** stay fixed during a run: declare them `const`. **State variables** describe the system and change as time passes: they are ordinary variables, updated by the model's rule (see <Concept id="state-representation" />).
+
+The type of a state variable is a modelling decision. In a deterministic model, the "number" of individuals is really an expected value and should be a `double`, even though real populations consist of whole animals: $N = 41.7$ is a meaningful state of the equation. In a stochastic or individual-based model, where individuals are born and die one at a time, counts are `int`. A `bool` records a binary state such as infected or susceptible, and a `char` a one-letter code. Whatever the type, the variable's name or a comment should record its unit.
+
+## Common mistakes
+
+- **Uninitialised variables.** Always give a value at declaration.
+- **Whole-number types for fractions.** Proportions, rates, probabilities and means need `double`.
+- **Silent narrowing.** `int n = 2.7;` keeps 2. Use braces where a conversion could lose information.
+- **`int n();`** declares a function, not a variable. Write `int n{};` or `int n = 0;`.
+- **Unchecked input.** A typo in typed input can turn a parameter into 0 without any error message.
+
+## Practice
+
+<Practice>
+
+1. Choose a type and a name for each of these, and say why: the number of wolves in a pack; the body temperature of a lizard; whether a quadrat contains an invasive species; the one-letter code of an amino acid; the expected number of recruits in a deterministic model; the year of a census.
+2. Write a program that reads the number of eggs in a clutch and the mean mass of one egg in grams, and prints the total mass of the clutch. Then run it and type the clutch size as `5.5`. Explain the output.
+3. Which of these declarations compile? `int seeds{2.0};` `double mass{3};` `int adults{1000000};` `char base{'G'};`
+
+<details>
+<summary>Answers</summary>
+
+1. `int packSize` (a count); `double bodyTemperature` (a continuous measurement, in °C); `bool hasInvasive` (yes or no); `char aminoAcid` (one character); `double expectedRecruits` (an expected value, generally not whole); `int censusYear` (a whole number, never fractional).
+2. With `int clutchSize` and `double eggMass`, typing `5.5` and pressing Enter stores 5 in `clutchSize`; `.5` is left in the input and immediately read as the egg mass, 0.5 g, without waiting. The program prints 2.5.
+3. `int seeds{2.0};` does not compile: any floating-point to integer conversion is narrowing in braces, even when the value is whole. `double mass{3};` compiles: the int 3 is represented exactly as a double. `int adults{1000000};` compiles, since one million fits in an int. `char base{'G'};` compiles.
+</details>
+
+</Practice>

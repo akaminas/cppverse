@@ -1,0 +1,5 @@
+reads: 3200000000
+bases: 480000000000
+largest std::int32_t: 2147483647
+bases counted in std::uint32_t: 3258630144
+adding 25 would overflow std::int32_t

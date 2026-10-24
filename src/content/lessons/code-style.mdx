@@ -1,0 +1,218 @@
+---
+title: Readable code
+summary: Names, layout, comments and function interfaces that let a reader check the code against the model it implements.
+level: beginner
+module: 7
+manual: ["M7.1", "M7.2", "M7.3", "M7.4"]
+minutes: 30
+objectives:
+  - Choose names that say what a value means in the model
+  - Lay out code consistently, by hand or with a formatter
+  - Write comments that explain purpose, units and assumptions rather than repeating the code
+  - Design function interfaces that are hard to misuse
+  - Structure a program so that its parts correspond to the parts of the model
+references:
+  - "C++ Core Guidelines, section NL: Naming and layout suggestions"
+  - "clang-format documentation: Style options"
+---
+
+## What it is
+
+*Style* is the set of conventions you follow for names, layout, comments and the interfaces of functions. The compiler ignores almost all of it. C++ is a free-form language: spaces, line breaks and indentation mean nothing to the compiler, and a variable called `x` works as well as one called `seedSurvival`.
+
+People are a different audience. A program is read far more often than it is written: by you, while you look for a bug; by you again, six months later; by a collaborator who wants to change a parameter; by a reviewer who wants to know whether the code does what the methods section says. Style is how you make that reading quick and reliable.
+
+## Why it matters
+
+The two programs below compute exactly the same thing and print exactly the same output. The first is correct:
+
+<Example file="foundations/style_seed_bank_before.cpp" />
+
+but nobody can check that without reverse-engineering it. What is `x`? Where do 0.3, 0.2, 12 and 0.6 come from? Is `1-0.3` meant to be the same 0.3 as before, and what happens if someone changes one of them but not the other? Here is the same calculation written for a reader:
+
+<Example file="foundations/style_seed_bank_after.cpp" mark="15-20" />
+
+Now the program states its model in the header, names every parameter after its role in the model, and splits next year's seed bank into its two biological pathways: seeds from plants that germinated and flowered, and seeds that stayed dormant and survived. A reader can compare each line with the equation. A typo such as `(1.0 - seedSurvival)` instead of `(1.0 - germination)` would stand out; in the first version it would be invisible.
+
+Code that is easy to read is also easier to get right. Most bugs in models are not exotic: a term with the wrong sign, a parameter used in the wrong place, two quantities in different units. Clear names and a structure that mirrors the model make such errors visible.
+
+## How it works in C++
+
+### Names
+
+- **Use words that say what the value means**, in English: `seedSurvival`, `clutchSize`, `bodyMass`. Avoid private abbreviations and dropped letters (`sdSrv`, `nmbOffspr`); a name you have to decode is a name someone will misread.
+- **Match the length of a name to its reach.** A loop counter used for three lines can be `i`. A parameter used throughout the program needs a full name.
+- **Symbols from the model are fine** when the code sits next to the equation and a comment says what they mean: `N`, `K` and `r` in a ten-line logistic update are clearer than long names. In larger programs, prefer words.
+- **Let names reveal their kind.** Variables that hold a yes/no state read as a question: `isFlowering`, `hasParasite`. Functions are named after what they do or what they return: `computeFitness`, `nextSeedBank`, `isExtinct`.
+- **Avoid confusable names**: `n1` and `nl`, or `count` and `Count` in the same program. Names that begin with an underscore, or contain two underscores in a row, are reserved for the compiler and standard library.
+
+This site follows one convention throughout, which you are welcome to adopt: variables and functions in *camelCase* (lower-case first letter, a capital for each further word: `seedSurvival`, `nextSeedBank`); types in *PascalCase* (`SeedBank`, `Individual`); namespaces short and lower case; file names lower case with underscores (`seed_bank.cpp`); and constants named like other variables, with `const` or `constexpr` to say that they do not change. Names never encode the type: a count is `eggCount`, not `iEggCount`. The C++ Core Guidelines recommend the same, because the type is already in the declaration, every editor can show it, and a type prefix becomes a lie when the type changes.
+
+<Callout kind="manual" title="Type prefixes">
+The Groningen manual uses mixed-case names with a prefix for the type of important variables (`d` for double, `i` for int, `vec` for a vector), plus `k` for global constants and `m` for class members. You will meet this Hungarian-style notation in older code. This site does not use it, for the reasons above. The manual's other naming rules, descriptive English words, a verb for functions and `is`/`has` for booleans, are kept.
+</Callout>
+
+### Layout
+
+- **Indent each block** by the same amount; this site uses four spaces. Indentation is how a reader sees which statements belong to a loop or a branch.
+- **Put braces in one consistent place.** On this site the opening brace ends the line that starts the block (`int main() {`, `for (...) {`) and the closing brace sits on its own line, aligned with the start of that line. Placing the opening brace of a function on a line of its own, as the manual does, is equally common. Choose one and keep to it.
+- **One statement per line**, and one declaration per line.
+- **Spaces around binary operators** (`a * b + c`), none between a unary operator and its operand (`-x`, `++i`, `!isFlowering`), and none just inside parentheses.
+- **Keep lines short**, under about 100 characters. Break a long expression after an operator and indent the continuation so that its structure stays visible:
+
+```cpp
+const double consumption = attackRate * prey * predators /
+                           (1.0 + attackRate * handlingTime * prey
+                                + interference * predators);
+```
+
+- **Break long output statements** at `<<` and align the operators. Two string literals written next to each other are joined into one by the compiler, which lets you split long text:
+
+```cpp
+std::cout << "generation " << t
+          << ", prey " << prey
+          << ", predators " << predators << '\n';
+std::cout << "columns: generation, prey density (per ha), "
+             "predator density (per ha)\n";
+```
+
+- **Write `&` and `*` next to the type** in declarations, as in `const std::vector<double>& masses` and `char* argv[]`. (The manual attaches them to the name instead; with one declaration per line the difference does not matter.)
+
+You do not have to do this by hand. `clang-format` reformats a file according to a style written in a `.clang-format` file, and most editors can run it every time you save.
+
+### Comments
+
+C++ has two kinds of comment: `//` runs to the end of the line, and `/* … */` can span several lines or sit inside one. The compiler discards both. Use `//` for ordinary comments.
+
+- **Start each file with a header** that says what the program does, which model it implements, how to build and run it, and who wrote it. The examples on this site begin with a short header of `//` lines.
+- **Comment each function** with its purpose, the meaning and unit of each parameter, the valid range of values and what it returns. Put this comment where users look: at the declaration, which in larger programs is in a header file.
+- **Comment every global constant** with its meaning, unit and, where relevant, its source.
+- **Explain why, not what.** `i = i + 1; // add one to i` repeats the code. `// census before breeding, as in the field protocol` records a decision that the code cannot show.
+- **Describe a tricky algorithm in plain steps** above the code that implements it.
+- **Keep comments true.** A comment that contradicts the code is worse than none, because the reader cannot tell which is wrong. Delete commented-out code; version control keeps old versions for you.
+
+### Function interfaces
+
+The *interface* of a function is its name, its parameters and its return type: everything a caller needs to know. A good interface is hard to misuse.
+
+- **Pass cheap values by value** (`int`, `double`, `bool`) and large objects, such as vectors and strings, by `const` reference, which avoids a copy and promises not to change them (see <Concept id="pass-by-value" /> and <Concept id="const-reference" />). Use a non-`const` reference only when changing the caller's object is the function's whole purpose, and prefer returning a result.
+- **Order parameters sensibly**: the most important first, inputs before outputs, and parameters with default values last.
+- **Give a default value only when there is a natural default**, and never one that changes what the function fundamentally does. A function that writes results to a file, but deletes the folder when called without a file name, is a trap.
+- **Overload a name only for the same operation** on different types, such as `mean` for a vector of `int` and a vector of `double`. A user should never have to know which version runs (see <Concept id="overloading-defaults" />).
+- **Keep functions small and single-purpose.** If you cannot name a function without "and", it probably does two things.
+
+<Callout kind="manual" title="Passing and inlining">
+The manual recommends `const` references as the default way of passing arguments, and `inline` for small, frequently called functions. For `int` and `double`, passing by value is at least as fast and simpler, so this site passes them by value. Compilers decide for themselves which calls to inline; today the keyword `inline` mainly matters for functions defined in header files (see <Concept id="inline-static" />).
+</Callout>
+
+## Explore it
+
+Select the elements of the tidied function to see which conventions they follow.
+
+<Anatomy id="code-style-function" />
+
+<Check
+  id="naming"
+  kind="read"
+  question="A variable holds the probability that a dormant seed survives one year in the soil. Which name is best on this site?"
+  options={["p", "dSeedSurv", "seedSurvival", "SEED_SURVIVAL_PROBABILITY_PER_YEAR_IN_THE_SOIL"]}
+  answer={2}
+  feedback={[
+    "A single letter is fine for a symbol in a short, commented equation, but a program with several probabilities would soon have p, p2 and pp.",
+    "The type prefix d adds nothing that the declaration does not already say, and the abbreviation must be decoded.",
+    "Two plain words that say what the value means. The unit (per year) belongs in a comment next to the declaration.",
+    "All capitals are conventionally reserved for preprocessor macros, and the name is so long that expressions using it become unreadable.",
+  ]}
+/>
+
+<Check
+  id="comments"
+  kind="read"
+  question="Which comment adds the most information to the line `seeds = seeds * 0.6;`?"
+  options={[
+    "// multiply seeds by 0.6",
+    "// update seeds",
+    "// 0.6 is the yearly survival of dormant seeds; germinated seeds are counted elsewhere",
+    "// TODO",
+  ]}
+  answer={2}
+  feedback={[
+    "This repeats the code in words. A reader learns nothing that the line itself does not show.",
+    "Equally empty: every assignment updates something.",
+    "It says what the number means, its unit of time, and an assumption about the model. Better still: give 0.6 a name, such as seedSurvival, and keep the comment at its declaration.",
+    "A reminder for the author, but it does not tell the reader anything about the code.",
+  ]}
+/>
+
+<Check
+  id="interface"
+  kind="read"
+  question="A function computes the mean of 10,000 body masses stored in a std::vector<double>. Which interface is best?"
+  options={[
+    "double meanMass(std::vector<double> masses)",
+    "double meanMass(const std::vector<double>& masses)",
+    "double meanMass(std::vector<double>& masses)",
+    "void meanMass(const std::vector<double>& masses, double& result)",
+  ]}
+  answer={1}
+  feedback={[
+    "Correct, but it copies all 10,000 values every time the function is called.",
+    "No copy is made, the const promises that the data are not changed, and the result is returned. This is the conventional interface.",
+    "Without const, the function may change the caller's data, and it cannot be called with a const vector. Nothing about computing a mean requires either.",
+    "Returning the result through a reference parameter is harder to read and to use than returning it: the caller must declare a variable first.",
+  ]}
+/>
+
+## In biological modelling
+
+Let the structure of the code follow the structure of the model. If the model has processes, such as germination, survival and reproduction, give each one a function named after it. If a paper writes the model with symbols, use those symbols or their names consistently, and put the symbol next to each parameter in a comment, as the tidied program does. Keep parameters together, at the top of `main` or later in a `struct` (see <Concept id="structs" />), rather than scattered through the code as unexplained numbers. Record the unit of every quantity.
+
+The payoff comes when the model changes. Adding density-dependent germination to the tidied program means changing one function whose name says where to look. In the original version it means finding the right `0.3` among several.
+
+## Common mistakes
+
+- **Magic numbers.** A bare `0.6` in an expression says neither what it is nor whether the same 0.6 appears elsewhere. Give every parameter a name.
+- **Inconsistent style.** Mixing conventions makes a reader wonder whether a difference in spelling means a difference in kind. Pick one convention per project.
+- **Comments that drift.** A comment that still says "per day" after the model moved to weekly steps actively misleads.
+- **Clever one-liners.** Packing several operations into one expression saves nothing at run time and costs a great deal when checking. Use intermediate variables with names.
+- **Commented-out code.** Old versions belong in version control, not in the file.
+
+## Practice
+
+<Practice>
+
+1. This function computes the number of prey a single predator eats per day under a Holling type II functional response, with attack rate 0.8 per day and handling time 0.1 days per prey. Rewrite it for a reader: choose names, turn the numbers into parameters, and add a comment that states the equation.
+
+   ```cpp
+   double f(double x){return 0.8*x/(1+0.8*0.1*x);}
+   ```
+
+2. Write the comment that should accompany the declaration `double hatchingProbability(double temperature);`, for a function that returns the probability that a turtle egg hatches at a given incubation temperature. Decide what a user needs to know.
+3. Choose an interface (parameter types and return type) for: (a) a function that moves every individual in a `std::vector<Individual>` one step; (b) a function that returns the variance of a `std::vector<double>`; (c) a function that returns the logistic growth increment $r N (1 - N/K)$.
+
+<details>
+<summary>One possible answer to exercise 1</summary>
+
+```cpp
+// Prey eaten per predator per day, Holling type II:
+//     consumption = a N / (1 + a h N)
+// prey: prey density N (per square metre)
+// attackRate: a (square metres searched per day)
+// handlingTime: h (days per prey item)
+double consumptionRate(double prey, double attackRate, double handlingTime) {
+    return attackRate * prey / (1.0 + attackRate * handlingTime * prey);
+}
+```
+
+The caller now writes `consumptionRate(prey, 0.8, 0.1)`, or better, passes named constants. The units in the comment show at once that a and h must use the same unit of time.
+</details>
+
+<details>
+<summary>Answers to exercises 2 and 3</summary>
+
+Exercise 2: what the function returns (a probability between 0 and 1), the unit of the argument (degrees Celsius), the range of temperatures for which the relationship is valid, and what happens outside it. For example: `// Probability (0 to 1) that an egg hatches when incubated at a constant temperature (degrees C). Fitted for 24-34 C; outside that range the result is an extrapolation.`
+
+Exercise 3: (a) `void moveAll(std::vector<Individual>& population)`: changing the caller's vector is the whole point, so a non-const reference is appropriate. (b) `double variance(const std::vector<double>& values)`. (c) `double logisticIncrement(double N, double r, double K)`: three cheap values passed by value, the result returned.
+</details>
+
+</Practice>

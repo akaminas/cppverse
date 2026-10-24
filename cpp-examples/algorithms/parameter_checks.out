@@ -1,0 +1,6 @@
+heathland: equilibrium 32.0
+meadow: rejected, R0 must be positive (got -1.5)
+dune: declines to extinction
+saltmarsh: rejected, M must be positive (got 0)
+woodland: rejected, N0 cannot be negative (got -2)
+2 scenarios accepted

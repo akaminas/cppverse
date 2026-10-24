@@ -1,0 +1,274 @@
+---
+title: Matrix population models
+summary: Project a stage-structured plant population with a matrix, then find its asymptotic growth rate λ and stable stage structure by renormalised iteration.
+level: intermediate
+module: 14
+manual: ["M14.3"]
+minutes: 50
+lab: matrix
+objectives:
+  - Build a projection matrix from stage-specific survival, transition and fecundity rates, and check that it is biologically possible
+  - Multiply a matrix by a vector into a new vector and project a population over time
+  - Compute λ and the stable stage structure with the power method, using a tolerance, an iteration cap and exceptions
+  - Interpret λ and the stable structure, and recognise transient dynamics
+references:
+  - "Caswell, H. (2001) Matrix Population Models: Construction, Analysis, and Interpretation, 2nd edn. Sunderland, MA: Sinauer."
+  - "Leslie, P. H. (1945) On the use of matrices in certain population mathematics. Biometrika 33, 183–212."
+  - "Lefkovitch, L. P. (1965) The study of population growth in organisms grouped by stages. Biometrics 21, 1–18."
+---
+
+## What it is
+
+In many populations, what an individual does next year depends on what it is now. A seedling of a perennial herb cannot flower; a large rosette may flower next summer or wait another year; a plant that has just flowered may flower again or fall back to the vegetative state. Counting "plants" without distinguishing these *stages* throws away the information that determines the population's future.
+
+A *matrix population model* keeps one number per stage. For the three-stage plant used throughout this lesson, the state in year $t$ is the vector
+
+$$
+\mathbf n(t) = \begin{pmatrix} n_S(t) \\ n_V(t) \\ n_F(t) \end{pmatrix},
+$$
+
+the numbers of seedlings, vegetative rosettes and flowering plants at the annual census. The model says how next year's vector follows from this year's:
+
+$$
+\mathbf n(t+1) = A\,\mathbf n(t), \qquad
+A = \begin{pmatrix}
+0 & 0 & 4.5\\
+0.12 & 0.5 & 0.35\\
+0 & 0.25 & 0.4
+\end{pmatrix}.
+$$
+
+The entry $a_{ij}$ in row $i$ and column $j$ is the number of stage-$i$ individuals next year per stage-$j$ individual this year. Read down a column to see what becomes of one plant of a stage; read along a row to see where next year's plants of a stage come from. Here a flowering plant produces 4.5 seedlings (row 1, column 3); 12% of seedlings become rosettes; a rosette stays vegetative with probability 0.5 and flowers with probability 0.25; a flowering plant reverts to a rosette with probability 0.35 and flowers again with probability 0.4. These are illustrative values, not estimates for a real species. Because stages can be skipped, repeated and reversed, this is a *stage-classified* (Lefkovitch) model; the special case in which every individual moves on by one age class each year is the *Leslie* model.
+
+Written out, the matrix product is one equation per stage:
+
+$$
+n_i(t+1) = \sum_{j=1}^{k} a_{ij}\,n_j(t), \qquad i = 1, \dots, k,
+$$
+
+with $k = 3$ stages here.
+
+## Why it matters
+
+Matrix models are among the most widely used tools in plant and animal demography, conservation biology and evolutionary ecology. They answer two questions directly from field estimates of survival, growth and reproduction: *at what rate will the population grow or decline if conditions stay as they are?* and *what mix of stages will it then have?* The answers are the dominant eigenvalue $\lambda$ and its eigenvector, and computing them is a short, instructive algorithm.
+
+## How it works in C++
+
+### Building the matrix from the life history
+
+A projection matrix is easiest to check when it is split into two parts, $A = U + F$: a matrix $U$ of survival and stage transitions, and a matrix $F$ of reproduction. Every entry of $U$ is a probability, and since a plant can be in only one stage next year, the entries of each column of $U$ must sum to at most 1. The shortfall from 1 is the probability of dying.
+
+For the plant: rosettes stay (0.5) or flower (0.25), so 75% survive and 25% die. A typing error that puts 0.8 instead of 0.5 would make rosettes survive with probability 1.05, an impossible matrix that would still run. The program below checks every column before using a matrix:
+
+<Example file="algorithms/stage_matrix_checks.cpp" mark="20-35" />
+
+The check throws a `std::invalid_argument` (see <Concept id="exceptions" />), so an impossible matrix cannot reach the projection. Fecundities are not probabilities and may exceed 1; that is why they are kept in $F$ and checked separately, if at all.
+
+### Matrix–vector multiplication
+
+The canonical program stores the matrix as a vector of rows, `std::vector<std::vector<double>>` (see <Concept id="nested-vectors" />), and multiplies with two nested loops:
+
+<Example file="algorithms/stage_matrix.cpp" mark="36-46" />
+
+The result goes into a **new** vector `y`. Every stage of next year is computed from the same, unchanged vector of this year. Writing into `x` while reading from it would mix old and new values: the update-order bug of <Concept id="update-order" />, which here would silently change the matrix.
+
+### Projection over time
+
+Projecting the population is the simulation loop of a discrete-time model with a vector as its state (lines 89–94 of the program): print the year, multiply, repeat. Starting from 100 seedlings, 20 rosettes and 5 flowering plants:
+
+<Figure id="matrix-models-projection" />
+
+The first years are irregular. Most of the initial seedlings die, so the total drops from 125 to 53 plants in one year, then *rises* for two years as the surviving rosettes flower. After about ten years all three lines are straight and parallel on the logarithmic axis: every stage changes by the same factor each year. That factor is $\lambda$, and the proportions between the lines no longer change.
+
+<Anchor id="power-iteration" />
+
+### The growth rate and the stable structure
+
+The parallel lines are no accident. If $A$ is non-negative and *primitive* (every stage can eventually produce every other stage, and the lengths of the possible cycles through the life-cycle graph have no common divisor greater than 1), the Perron–Frobenius theorem guarantees a real, positive eigenvalue $\lambda$ larger in magnitude than all others, with an eigenvector $\mathbf w$ whose entries are all positive. For large $t$,
+
+$$
+\mathbf n(t) \approx c\,\lambda^t\,\mathbf w,
+$$
+
+where $c$ is a constant set by the initial vector. $\lambda$ is the *asymptotic growth rate* (dimensionless, per year) and $\mathbf w$, scaled to sum to 1, is the *stable stage structure*. Repeated projection is therefore itself an algorithm for $\lambda$ and $\mathbf w$: the *power method*.
+
+Two refinements make it a good algorithm:
+
+- **Renormalise each step.** After many years, $\lambda^t$ becomes too large or too small for a `double`. Dividing the vector by its total after each multiplication keeps it at sum 1. Then the total of $A\mathbf n$ is precisely the growth over that one step, which converges to $\lambda$.
+- **Stop when the structure stops changing, but not later than a cap.** Compare successive normalised vectors. When their distance falls below a tolerance $\varepsilon$, stop. Some matrices never converge, so a maximum number of iterations is needed as well, and reaching it is an error, not an answer.
+
+```text
+Input:  projection matrix A (k × k), tolerance ε, iteration cap itMax
+Output: λ and the stable structure w, or an error
+
+n ← (1/k, …, 1/k)
+for it ← 1 to itMax do
+    v ← A n                       (into a new vector)
+    λ ← sum of the entries of v
+    if λ ≤ 0 then error "the population vanished"
+    v ← v / λ
+    if ‖v − n‖ < ε then return λ, v
+    n ← v
+error "no convergence within itMax iterations"
+```
+
+The C++ follows the pseudocode line by line; select a term to see the corresponding code.
+
+<MathCode id="matrix-models-power" />
+
+Two failures are reported by throwing an exception: a matrix that kills everything ($\lambda = 0$) and a matrix that does not converge. `main` catches both with `catch (const std::exception& e)`, prints the message to `std::cerr` and returns `EXIT_FAILURE`. The convergence test compares the *squared* distance with $\varepsilon^2$, which avoids a square root and gives the same decision.
+
+With $\varepsilon = 10^{-10}$, the program reports after 26 iterations
+
+```text
+lambda,0.9342525588
+structure,0.6055908274,0.2686814436,0.1257277289
+iterations,26
+```
+
+The proportions of the projection converge to this structure as well:
+
+<Figure id="matrix-models-structure" />
+
+### Interpreting λ and the stable structure
+
+- **$\lambda < 1$**: the population declines in the long run. With $\lambda \approx 0.934$ this plant loses about 6.6% of its plants per year, and the projected total halves roughly every ten years ($\ln 0.5 / \ln 0.934 \approx 10.2$).
+- **$\lambda = 1$**: each stage exactly replaces itself; the population neither grows nor declines.
+- **$\lambda > 1$**: the population grows, by $100(\lambda - 1)$ percent per year.
+
+<Figure id="matrix-models-lambda" />
+
+The model has no density dependence, so these are not predictions that a real population will grow for ever or vanish. They describe what the current vital rates imply: $\lambda$ measures how well the population performs under the conditions in which the rates were estimated, and is often used to compare sites, years or management options.
+
+The stable structure says that, at these rates, 61% of plants would be seedlings, 27% rosettes and 13% flowering. A field census with a very different mix tells you that the population is far from its stable structure, because of a recent disturbance or a good recruitment year, or that the matrix does not describe it. Far from the stable structure, the short-term dynamics can differ strongly from $\lambda$: in the projection above the population grew in years 2 and 3 although $\lambda < 1$.
+
+## Explore it
+
+Change the vital rates and watch $\lambda$, the stable structure and the projection respond. Try to find the fecundity at which the plant just replaces itself (the answer is in the third figure above).
+
+<Lab id="matrix" />
+
+The multiplication itself, term by term:
+
+<MathCode id="matrix-models-multiply" />
+
+<Check
+  id="entry"
+  kind="read"
+  question="What does the entry in row 2 (vegetative), column 3 (flowering), a₂₃ = 0.35, mean?"
+  options={[
+    "35% of rosettes flower next year",
+    "Each flowering plant this year becomes, with probability 0.35, a vegetative rosette next year",
+    "Flowering plants produce 0.35 rosettes each",
+    "35% of next year's rosettes come from flowering plants",
+  ]}
+  answer={1}
+  feedback={[
+    "That would be an entry in the vegetative column (column 2). The rosette-to-flowering transition is a₃₂ = 0.25.",
+    "Column j is the stage now, row i the stage next year. a₂₃ is reversion: a plant that flowered this year survives but does not flower next year.",
+    "Plants do not produce rosettes directly; new plants enter as seedlings (row 1). a₂₃ is a survival-and-transition probability, not a fecundity.",
+    "The share of next year's rosettes that come from flowering plants depends on how many flowering plants there are; it is not an entry of A.",
+  ]}
+/>
+
+<Check
+  id="impossible"
+  kind="debug"
+  question="Which change to the plant's matrix makes it biologically impossible, so that checkSurvival should reject it?"
+  options={[
+    "Fecundity raised from 4.5 to 12 seedlings per flowering plant",
+    "Rosette stasis 0.6 and rosette flowering 0.5",
+    "Seedling survival lowered to 0.01",
+    "Flowering plants never flower twice: reflowering set to 0",
+  ]}
+  answer={1}
+  feedback={[
+    "Fecundities are numbers of offspring, not probabilities, and may exceed 1. The plant would grow faster, but the matrix is possible.",
+    "0.6 + 0.5 = 1.1: more rosettes would be alive next year than exist now. The vegetative column of U sums to more than 1.",
+    "A very low survival is possible. λ falls, but the matrix is valid.",
+    "That describes a plant that dies or reverts after flowering, which is possible. Check that every stage can still reach every other (primitivity) before trusting the power method.",
+  ]}
+/>
+
+<Check
+  id="biennial"
+  kind="predict"
+  question="The power method (tolerance 10⁻¹⁰, cap 10 000 iterations) is applied to a strict biennial: A = [[0, 4], [0.25, 0]], with juveniles in stage 1 and flowering adults in stage 2. What happens?"
+  options={[
+    "It converges quickly to λ = 1",
+    "It returns λ = 2.125 after one iteration",
+    "It throws std::runtime_error: the normalised vector alternates between two states for ever",
+    "It loops for ever",
+  ]}
+  answer={2}
+  feedback={[
+    "λ is indeed 1 (the eigenvalues are +1 and −1), but because both have magnitude 1, the vector never settles.",
+    "2.125 is the growth over the first step from the uniform start. The next step gives 0.47, then 2.125 again: the estimates alternate.",
+    "The matrix is not primitive: every individual alternates between the two stages, so the structure flips each year. The cap stops the loop and the function throws instead of returning a wrong λ.",
+    "The iteration cap guarantees that the loop ends.",
+  ]}
+/>
+
+<Check
+  id="lambda-meaning"
+  kind="interpret"
+  question="A report concludes: 'λ = 0.934, so the population will be extinct in about 50 years.' What is the most accurate criticism?"
+  options={[
+    "λ < 1 means the population grows, so the conclusion is reversed",
+    "λ describes the long-run rate under constant vital rates and no density dependence; it says the current rates cannot sustain the population, not when it will go extinct",
+    "λ applies only to the flowering stage",
+    "Nothing: 0.934⁵⁰ is close to zero",
+  ]}
+  answer={1}
+  feedback={[
+    "λ < 1 means decline: the stable-structure population is multiplied by 0.934 each year.",
+    "Extinction time depends on the starting numbers, on transient dynamics, on density dependence and on chance, none of which λ contains. Use λ to compare conditions; use a stochastic model with a quasi-extinction threshold to talk about extinction risk.",
+    "In the long run every stage changes by the same factor λ.",
+    "0.934⁵⁰ ≈ 0.03 is a proportional decline. A deterministic model never reaches zero; 'extinct' requires a threshold and, realistically, demographic stochasticity.",
+  ]}
+/>
+
+## In biological modelling
+
+Projection matrices are usually estimated from marked individuals followed from one census to the next: each transition probability is the fraction of plants in stage $j$ found in stage $i$ the next year, and fecundity is the number of new recruits per reproductive plant. Two details matter when you build $A$ from such data:
+
+- **The census point.** With a census just before breeding, fecundity must include the survival of offspring to their first census; with a census just after breeding, it must include the survival of the parents. Both are correct if applied consistently.
+- **Primitivity.** Strict biennials and other organisms with fixed life cycles give imprimitive matrices, for which $\mathbf n(t)$ oscillates for ever and the power method does not converge. Adding stasis, even rarely, makes the matrix primitive.
+
+$\lambda$ is a function of every entry of $A$. How much it changes when one entry changes (its sensitivity or elasticity) tells you which part of the life cycle matters most, for example where management would have the largest effect. See <Concept id="sensitivity" />.
+
+The same algorithm finds the dominant eigenpair of any linear recurrence $\mathbf x_{t+1} = M\,\mathbf x_t$ with a dominant eigenvalue, for example a discrete-time Markov chain describing transitions of individuals between habitat patches.
+
+## Common mistakes
+
+- **Multiplying in place.** `x[i] += …` while still reading `x[j]` mixes years. Always write into a new vector.
+- **Swapping rows and columns.** `A[i][j]` is "to stage $i$ from stage $j$". Transposing $A$ gives the same $\lambda$ but a different eigenvector (the reproductive values, not the stable structure), so the error can go unnoticed.
+- **No iteration cap, or a cap that returns silently.** A loop that waits for convergence must end, and a result that did not converge must not look like one that did.
+- **A tolerance below machine precision.** With $\varepsilon = 10^{-20}$ the test can never be met in double precision; the loop runs to the cap. Values around $10^{-8}$ to $10^{-12}$ are typical.
+- **Reading $\lambda$ off the first years of a projection.** Year-to-year ratios start at 0.43, 1.08 and 1.09 here before settling at 0.934.
+- **Unchecked matrices.** Survival columns above 1, negative entries and typing errors produce valid-looking output. Check them before projecting.
+
+## Practice
+
+<Practice>
+
+1. A bird population has juveniles and adults. Each adult produces 1.5 female fledglings per year that survive to the census; juveniles survive their first year with probability 0.3, adults with probability 0.7, and all survivors are adults the next year. Write the matrix, compute $\lambda$ by hand from the characteristic equation $\det(A - \lambda I) = 0$, and check your answer by replacing `stageMatrix` in `stage_matrix.cpp`.
+2. Increase each non-zero entry of the plant's matrix by 0.01 in turn, recompute $\lambda$, and estimate $\Delta\lambda / \Delta a_{ij}$. Which transition would management most usefully improve, per unit change? Is "per unit change" a fair comparison between a fecundity and a probability?
+3. Starting from 100 seedlings, 20 rosettes and 5 flowering plants, in which year does the projected total first fall below 10 plants? Combine the projection loop with the first-occurrence scan from <Concept id="algorithm-design" />.
+
+<details>
+<summary>Worked answer for exercise 1</summary>
+$A = \begin{pmatrix} 0 & 1.5 \\ 0.3 & 0.7 \end{pmatrix}$. The characteristic equation is $\lambda^2 - 0.7\lambda - 0.45 = 0$, so $\lambda = \bigl(0.7 + \sqrt{0.49 + 1.8}\bigr)/2 \approx 1.1066$: the population grows by about 11% per year. From the first row, $\lambda w_J = 1.5\,w_A$, so the stable structure is about 57.5% juveniles and 42.5% adults. The power method agrees after about 22 iterations.
+</details>
+
+<details>
+<summary>Worked answer for exercise 2</summary>
+Approximately: seedling survival 1.05, rosette flowering 0.82, rosette stasis 0.48, reflowering 0.39, reversion 0.22, fecundity 0.029 (change in λ per unit change of the entry). Per unit, seedling survival matters most. But a change of 0.01 in a probability is large, and in a fecundity of 4.5 seedlings it is tiny. *Elasticities*, $(a_{ij}/\lambda)\,\partial\lambda/\partial a_{ij}$, compare proportional changes instead; here rosette stasis has the largest elasticity (about 0.26), and the elasticities sum to 1.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+Inside the projection loop, stop at the first year whose total is below 10. The answer is year 30: the total is about 10.2 in year 29 and 9.6 in year 30. Note how slowly a population with λ = 0.934 declines once it is at its stable structure.
+</details>
+
+</Practice>

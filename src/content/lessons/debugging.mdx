@@ -1,0 +1,298 @@
+---
+title: Assertions and debugging
+summary: The kinds of error a model program can contain, how assert and static_assert check a model's invariants, and how debuggers and sanitizers find the rest.
+level: intermediate
+module: 14
+manual: ["M14.2"]
+minutes: 40
+objectives:
+  - Tell compile-time, link, run-time and silent errors apart, and choose a strategy for each
+  - Check a model's invariants with assert during development, and explain what NDEBUG does
+  - Use static_assert to turn an inconsistency in the program into a compiler error
+  - Inspect a running program with a debugger (breakpoints, stepping, watches) and with sanitizers
+references:
+  - "cppreference.com: assert, static_assert"
+  - "GDB documentation: Debugging with GDB (sourceware.org/gdb/documentation)"
+  - "Clang documentation: AddressSanitizer, UndefinedBehaviorSanitizer"
+---
+
+## What it is
+
+A *bug* is any difference between what a program does and what you meant it to do. *Debugging* is finding and removing bugs, and it is easier when you know which kind you are dealing with:
+
+- **Compile-time errors.** The code is not valid C++: a missing semicolon, a misspelt name, a type mismatch. The compiler stops and reports roughly where (see <Concept id="compiler-diagnostics" />).
+- **Link errors.** Every file compiles, but the linker cannot assemble the program: a function was declared but never defined, a library was not linked, or something was defined twice. The message names the missing or duplicated symbol (see <Concept id="compilation" />).
+- **Run-time errors.** The program builds, then crashes, aborts, throws an exception that nobody catches, or never finishes. The symptom is obvious; its cause can be far away from where the program stops.
+- **Silent errors.** The program runs to completion and produces output, and the output is wrong. Nothing tells you so.
+
+For a scientist the last kind is the most dangerous. A crash costs an afternoon; a silent error can end up in a figure, a thesis or a paper.
+
+## Why it matters
+
+Even experienced programmers introduce roughly one bug for every few hundred lines of new code. A model of a few hundred lines therefore very probably contains at least one when it first runs, and the program cannot tell you which of its numbers are wrong. Error checking has to be designed in, alongside the algorithm, rather than added once something looks odd.
+
+Here is a silent error in four lines. Both survival estimates compile without a warning:
+
+<Example file="algorithms/silent_survival_bug.cpp" mark="14-15" />
+
+`recaptured / ringed` divides two `int`s, so the result is truncated to 0 *before* it is stored in a `double` (see <Concept id="integer-division" />). The program then predicts that the whole colony dies over winter. Here the number is absurd enough to notice; in a model with fifty parameters, a truncated survival rate in one stage of the life cycle need not be.
+
+## How it works in C++
+
+The tools below catch different kinds of error at different times. Use them together.
+
+### assert: checking invariants while you develop
+
+An *invariant* is a statement that must be true at a given point if the program is correct. Models are full of them, and they come from the biology:
+
+- densities and counts are never negative;
+- probabilities and fractions lie between 0 and 1;
+- proportions over all stages sum to 1;
+- a process that only moves individuals, such as dispersal, neither creates nor destroys them.
+
+The macro `assert` from `<cassert>` checks such a statement. If the condition is true, nothing happens. If it is false, the program prints the condition, the file, the line and the function, and stops immediately by calling `std::abort`. The program below asserts three invariants of a source–sink model, in which a sink patch ($R < 1$) persists only through immigration from a source:
+
+<Example file="algorithms/dispersal_invariants.cpp" mark="21,23,29" />
+
+With the parameters as given, every assertion holds and the program prints the trajectory. Change `m` on line 34 to `1.2` and run it again. The first assertion fails before any arithmetic is done, with a message such as
+
+```text
+dispersal_invariants: dispersal_invariants.cpp:21: Patches disperse(const Patches&, double):
+Assertion `m >= 0.0 && m <= 1.0 && "the dispersal fraction must be a probability"' failed.
+Aborted (core dumped)
+```
+
+The exact wording differs between compilers and systems, but it always gives the location. Two details of the example are worth copying:
+
+- **`&& "message"`.** A string literal is always true, so adding it to the condition does not change the test; it only makes the message readable.
+- **A tolerance in the conservation check.** Floating-point arithmetic rounds, so `total(next) == total(n)` might fail for a correct program. Line 23 allows a relative difference of $10^{-12}$, many times the rounding error of one step and far smaller than any real bug would produce.
+
+Assertions are a development tool. Defining the macro `NDEBUG`, by compiling with `-DNDEBUG` or writing `#define NDEBUG` before `#include <cassert>`, removes every `assert` from the program: the conditions are not even evaluated. Release builds usually define it (CMake's Release configuration does). Two rules follow:
+
+- Never put work that must happen inside an `assert`. In `assert(++generation <= maxGenerations);` the increment disappears with `NDEBUG`.
+- Never use `assert` to check things a *user* can get wrong, such as a parameter file. Those checks must stay active in every build: use exceptions for them (see <Concept id="exceptions" />).
+
+### static_assert: checking at compile time
+
+Some facts about a program are known before it runs: the number of stages, the size of an array, the type used for densities. `static_assert(condition, "message")` checks such a condition during compilation and stops the build with the message if it is false. It costs nothing at run time and cannot be switched off.
+
+<Example file="algorithms/static_assert_stages.cpp" mark="11-14" />
+
+A model was extended from three to four stages, but the list of labels was not updated. Without the `static_assert`, the program would compile and quietly print three labels for four stages. With it, the compiler reports `static assertion failed: every stage needs exactly one label`. The condition must be a constant expression, which is why both quantities are declared `constexpr`.
+
+### Printing the state
+
+The quickest way to look inside a running model is still to print its state. A few habits make this far more useful:
+
+- Print to `std::cerr`, so that diagnostic lines do not mix with the data written to `std::cout` or to a file.
+- Print enough digits. `std::setprecision(17)` shows a `double` in full; the default six significant digits can hide the difference you are looking for.
+- Print *selectively*: one generation in a hundred, or only when something unusual happens, such as a density above a plausible bound.
+- Print the inputs of the failing step, not only its result: the state, the parameters and the time.
+
+### Debuggers
+
+A *debugger* runs your program under its control. It can stop the program at a chosen line, show every variable at that moment, and continue one line at a time. For C++ the common debuggers are **gdb** (with GCC, mostly on Linux and Windows) and **lldb** (with Clang, the default on macOS). Compile with debugging information and without optimisation, so that every variable is still there to inspect:
+
+```text
+g++ -std=c++17 -g -O0 dispersal_invariants.cpp -o dispersal_invariants
+```
+
+The essential operations are the same in every debugger:
+
+| Operation | What it does | gdb | lldb |
+|---|---|---|---|
+| Breakpoint | Stop just before a line or a function runs | `break grow` or `break dispersal_invariants.cpp:44` | `b grow` |
+| Conditional breakpoint | Stop only when a condition holds | `break dispersal_invariants.cpp:44 if t == 5` | `breakpoint set -l 44 -c 't == 5'` |
+| Run, continue | Start the program; carry on to the next stop | `run`, `continue` | `run`, `continue` |
+| Step over | Execute the current line, including any calls, as one step | `next` | `next` |
+| Step into | Enter the function called on the current line | `step` | `step` |
+| Step out | Finish the current function and return to its caller | `finish` | `finish` |
+| Inspect | Show a variable or expression | `print n` | `p n` |
+| Watch | Stop whenever a variable changes | `watch n.sink` | `watchpoint set variable n.sink` |
+| Call stack | Show which functions led to this point | `backtrace` | `bt` |
+
+After a crash, `backtrace` shows the line at which the program stopped and the chain of calls that led there, with their arguments. That is usually the fastest route from a crash to its cause.
+
+In **Visual Studio Code** the same operations are buttons. With the C/C++ extension installed, click in the margin to set a breakpoint (right-click for a condition), start debugging with F5, and use the toolbar to step over, into and out. The Variables panel shows locals, the Watch panel evaluates expressions you choose, and the Call Stack panel shows the backtrace. The extension needs a `launch.json` file that names the program and the debugger:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug model",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/dispersal_invariants",
+      "cwd": "${workspaceFolder}",
+      "MIMode": "gdb"
+    }
+  ]
+}
+```
+
+On macOS, use `"MIMode": "lldb"`.
+
+<Callout kind="manual" title="Other debuggers">
+The course manual describes the debugger of Visual Studio on Windows. Its Step Into, Step Over and Step Out, breakpoints and variable panels are the operations in the table above under different names. This site uses gdb, lldb and VS Code because they work on every platform.
+</Callout>
+
+### Sanitizers
+
+Some of the worst run-time errors are *undefined behaviour*: reading past the end of a vector with `[]`, using memory after it has been freed, or overflowing a signed integer. The C++ standard places no requirement at all on what such a program does. It may crash, it may print plausible numbers, or it may behave differently with another compiler. Typical examples in model code:
+
+```cpp
+for (std::size_t t = 0; t <= trajectory.size(); ++t) {  // <= reads one element too many
+    total += trajectory[t];
+}
+```
+
+GCC and Clang can build the program with *sanitizers* that check for such errors as it runs:
+
+```text
+g++ -std=c++17 -g -fsanitize=address,undefined model.cpp -o model
+```
+
+AddressSanitizer stops the program at the first out-of-bounds access and reports the offending line, the size of the memory block that was overrun and where it was allocated. UndefinedBehaviorSanitizer reports signed overflow, invalid shifts, division by zero in integers and similar errors. The program runs two to three times more slowly, which is perfectly acceptable while testing. Sanitizers are available with GCC and Clang on Linux and macOS; on Windows, MSVC offers AddressSanitizer with `/fsanitize=address`.
+
+Two cheaper alternatives catch the commonest case, an index out of range: `v.at(i)` checks the index and throws `std::out_of_range`, and with GCC's standard library, compiling with `-D_GLIBCXX_ASSERTIONS` makes `operator[]` check its index too.
+
+### Warnings come first
+
+Before any of these tools, let the compiler help. Build with `-Wall -Wextra -Wpedantic`, read every warning, and fix it. Warnings point at code that is legal but probably wrong: an unused variable that was meant to be used, a comparison between signed and unsigned values, a variable used before it is initialised. Every program on this site compiles with `-Werror`, which turns each warning into an error.
+
+## Explore it
+
+<Check
+  id="category"
+  kind="read"
+  question="A model of seed dispersal compiles and links, runs to completion and writes a file of results. Every mean dispersal distance in the file is exactly 0.0 m. What kind of error is this, and what should you try first?"
+  options={[
+    "A compile-time error: read the compiler messages",
+    "A link error: check that all source files were compiled",
+    "A silent error: print or inspect the intermediate values that feed the mean, starting with the computation of each distance",
+    "Not an error: zero is a possible mean distance",
+  ]}
+  answer={2}
+  feedback={[
+    "The program compiled, so there was nothing for the compiler to report. Its warnings are still worth reading, though.",
+    "A link error stops the build; there would be no program to run.",
+    "The program runs and is wrong. Work backwards from the output: check a few individual distances, then the sum, then the division. Exactly 0.0 everywhere suggests integer division or a variable that is never updated.",
+    "A mean of exactly zero for every species is implausible for dispersal distances, which are never negative. Treat implausible output as a bug until shown otherwise.",
+  ]}
+/>
+
+<Check
+  id="ndebug"
+  kind="predict"
+  question="The dispersal program is compiled with -DNDEBUG and run with m = 1.2. What happens?"
+  options={[
+    "The first assertion fails and the program aborts, as without NDEBUG",
+    "The compiler rejects the program, because the assertions refer to m",
+    "The program runs to the end and prints negative densities, with no message",
+    "The program throws std::invalid_argument",
+  ]}
+  answer={2}
+  feedback={[
+    "NDEBUG removes every assert before compilation: the conditions are never evaluated.",
+    "With NDEBUG the assertions become empty statements; the program compiles normally.",
+    "With m = 1.2 the source keeps (1 − m) = −0.2 of its individuals, so densities go negative and nothing stops the run. That is why invalid parameters must be checked by code that stays active in release builds.",
+    "assert never throws; when it is active, a failed assertion calls std::abort.",
+  ]}
+/>
+
+<Check
+  id="side-effect"
+  kind="debug"
+  question="What is wrong with this loop?"
+  code={`int generation = 0;
+while (N > 1.0) {
+    N = nextGeneration(N, p);
+    assert(++generation <= maxGenerations && "the population should decline within the limit");
+}`}
+  options={[
+    "Nothing: the assertion checks the limit and counts the generations",
+    "In a build with NDEBUG, generation is never incremented, so any code that uses it afterwards is wrong",
+    "assert cannot contain ++",
+    "The string literal makes the condition always true",
+  ]}
+  answer={1}
+  feedback={[
+    "It works only while assertions are active. A program must behave the same with and without NDEBUG apart from the checks themselves.",
+    "The increment is part of the asserted expression and disappears with it. Increment on its own line, then assert generation <= maxGenerations.",
+    "It can, and that is the problem: the compiler accepts it, and the side effect silently vanishes in release builds.",
+    "The literal is joined with &&, so the condition is true only if the comparison is true. It just adds a readable message.",
+  ]}
+/>
+
+<Check
+  id="invariant"
+  kind="model"
+  question="Which statement is a true invariant of a closed SIR epidemic model (no births, deaths or migration) that could be asserted after every time step?"
+  options={[
+    "The number infected increases every week",
+    "S + I + R equals the initial population size, within rounding",
+    "S is always larger than I",
+    "R is always smaller than S",
+  ]}
+  answer={1}
+  feedback={[
+    "The number infected rises and then falls during an outbreak. Asserting it would stop a correct program at the peak.",
+    "In a closed population individuals only move between classes, so the total is conserved. Compare with a relative tolerance, not with ==. Each class should also be non-negative.",
+    "Late in a large outbreak the susceptibles can be fewer than the infected. This is a property of some runs, not an invariant.",
+    "In a severe outbreak most hosts end up recovered, so R can exceed S.",
+  ]}
+/>
+
+## In biological modelling
+
+Write the invariants of a model down when you design it, and put them into the code as assertions while you develop it. They document the assumptions, and they catch the update-order mistakes, sign errors and unit slips that otherwise produce silent errors. Good candidates include non-negativity, probabilities in $[0, 1]$, conservation in closed systems, and totals that must match, such as the sum of the stages and the population size.
+
+A model that passes its assertions can still be wrong; assertions only check what you thought of. Combine them with verification against known results, such as closed-form solutions and equilibria (see <Concept id="verification" />), and turn every bug you find into a test that would have caught it (see <Concept id="testing-reproducibility" />).
+
+When something goes wrong, debug like an experimentalist. Reproduce the error with the smallest input that shows it; form a hypothesis about the cause; test it with a breakpoint, a print or an assertion; change one thing at a time; and keep a record of what you tried.
+
+## Common mistakes
+
+- **Trusting a program because it does not crash.** Absence of a crash is not evidence of correctness.
+- **Side effects inside `assert`.** They disappear with `NDEBUG`.
+- **Asserting exact floating-point equality.** Rounding makes `==` fail for correct code; use a tolerance scaled to the magnitude of the values.
+- **Using `assert` for input validation.** Parameter files and command-line arguments must be checked in every build; throw an exception instead.
+- **Debugging an optimised build.** With `-O2`, variables are often "optimised out" and lines execute out of order. Debug with `-g -O0`.
+- **Changing several things at once.** If the bug disappears, you do not know which change fixed it, or whether it is merely hidden.
+
+## Practice
+
+<Practice>
+
+1. Add assertions to `seed_bank_cycle.cpp` (in <Concept id="algorithm-design" />): what must be true of each parameter, and what relation must hold between `seeds`, `seedlings` and `dormant` after germination?
+2. Run `dispersal_invariants.cpp` in a debugger. Set a breakpoint on line 44 that triggers only when `t == 5`, step into `disperse`, step out again, then step into `grow`, and check that the returned densities equal the values printed for generation 5.
+3. A colleague's model prints `nan` for every density after generation 40. List, in order, the checks you would add to find the first generation and the first quantity that becomes `nan`. Which standard function tests for it?
+
+<details>
+<summary>Worked answer for exercise 1</summary>
+
+```cpp
+assert(germination >= 0.0 && germination <= 1.0);
+assert(establishment >= 0.0 && establishment <= 1.0);
+assert(winterSurvival >= 0.0 && winterSurvival <= 1.0);
+assert(seedsPerPlant >= 0.0);
+// inside the loop, after germination:
+assert(seedlings >= 0.0 && dormant >= 0.0);
+assert(std::abs((seedlings + dormant) - seeds) <= 1e-12 * seeds);
+```
+
+The parameter checks belong before the loop, because the parameters do not change. If the parameters were read from a file, they would be checked with exceptions instead, since a user can get them wrong.
+</details>
+
+<details>
+<summary>Hint for exercise 2</summary>
+In gdb: `break dispersal_invariants.cpp:44 if t == 5`, `run`, `step` (into `disperse`), `finish` (prints the returned value), `step` (into `grow`), `finish`. In VS Code, right-click the margin of line 44, choose a conditional breakpoint, and use the Step Into and Step Out buttons. With `-O0`, `finish` shows "Value returned" for each function.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+`nan` ("not a number") spreads: once one quantity is `nan`, everything computed from it is too. Assert `!std::isnan(x)` (from `<cmath>`) for each state variable after every step, then for the intermediate quantities of the failing step. Typical sources are `0.0 / 0.0`, `std::sqrt` or `std::log` of a negative number, and `inf - inf` after an overflow.
+</details>
+
+</Practice>

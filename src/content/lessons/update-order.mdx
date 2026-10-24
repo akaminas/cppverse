@@ -1,0 +1,245 @@
+---
+title: Simultaneous versus sequential updates
+summary: Overwriting one variable before another has used its old value silently changes the model. Temporary storage keeps every update simultaneous.
+level: intermediate
+module: 14
+manual: ["M14.3"]
+minutes: 35
+lab: discrete
+objectives:
+  - Explain why the equations of a multi-variable model define a simultaneous update
+  - Recognise a sequential-update bug in code that compiles, runs and gives plausible numbers
+  - Keep updates simultaneous with temporary variables, a new state object or a second vector
+  - Explain how an update-order bug changed the stability of a host–parasitoid model, and the conclusion drawn from it
+references:
+  - "Nicholson, A. J. and Bailey, V. A. (1935) The balance of animal populations. Part I. Proceedings of the Zoological Society of London 105, 551–598."
+  - "Beddington, J. R., Free, C. A. and Lawton, J. H. (1975) Dynamic complexity in predator–prey models framed in difference equations. Nature 255, 58–60."
+  - "Huberman, B. A. and Glance, N. S. (1993) Evolutionary games and computer simulations. Proceedings of the National Academy of Sciences USA 90, 7716–7718."
+---
+
+## What it is
+
+A model with more than one state variable needs more than one equation. Consider a host insect and a parasitoid wasp that lays its eggs in the host's larvae. With one generation per year, a classic description (Nicholson and Bailey, with host self-limitation added by Beddington, Free and Lawton) is
+
+$$
+\begin{aligned}
+H_{t+1} &= H_t \exp\!\bigl[r\,(1 - H_t/K) - a\,P_t\bigr],\\
+P_{t+1} &= c\,H_t\,\bigl(1 - e^{-a P_t}\bigr).
+\end{aligned}
+$$
+
+- $H_t$, $P_t$: hosts and adult female parasitoids per unit area in generation $t$.
+- $r$: intrinsic growth rate of the host per generation (dimensionless).
+- $K$: host carrying capacity without parasitoids (hosts per unit area).
+- $a$: searching efficiency, the area searched by one parasitoid in its lifetime. $aP_t$ is the mean number of encounters per host, and $e^{-aP_t}$ the fraction of hosts that escape every encounter.
+- $c$: adult parasitoids emerging from each parasitised host (dimensionless).
+
+Both right-hand sides use the state of generation $t$ only. Next year's parasitoids emerge from hosts parasitised *this* year, $H_t$, not from next year's hosts, which have not yet been born. The equations therefore define a **simultaneous update**: compute every new value from the old state, and only then replace the old state.
+
+A **sequential update** overwrites one variable first and computes the next one from the new value. Written as equations, it is a different model:
+
+$$
+P_{t+1} = c\,H_{t+1}\,\bigl(1 - e^{-a P_t}\bigr).
+$$
+
+## Why it matters
+
+The sequential version is not a crash or a compiler error. It is the most natural way to type two assignments one below the other, it produces plausible numbers, and its trajectory looks like a textbook result. Yet it answers a different biological question from the one in the paper. Of all the bugs in this atlas, it is one of the few that can change a qualitative scientific conclusion without leaving any trace in the output.
+
+## How it works in C++
+
+The canonical host–parasitoid program contains both versions:
+
+<Example file="algorithms/host_parasitoid.cpp" mark="29-42" />
+
+In `simultaneousStep` (lines 30–34), both new values are stored in `const` local variables computed from `now`, and a new `State` is returned. Nothing is overwritten while the equations are being evaluated.
+
+In `sequentialStep` (lines 37–42), line 39 overwrites `s.H`, and line 40 then reads `s.H` again, so the parasitoid equation sees the *new* hosts. Notice that the author did think about update order: line 38 saves the old `P` before anything changes. They protected one variable and forgot the other. This is the typical form of the bug.
+
+### Three ways to keep an update simultaneous
+
+**Temporaries.** Compute every new value into its own variable, then assign them all. This is what lines 31–33 do. It is the simplest fix for a handful of variables.
+
+**A new state object.** Give the update rule the old state as a `const` reference and let it return a new one:
+
+```cpp
+State step(const State& now, const Parameters& p);  // now cannot be modified
+s = step(s, p);                                     // the whole state is replaced at once
+```
+
+The `const&` makes the compiler enforce the rule: any attempt to assign to `now.H` inside `step` is an error. Because a `State` is a value type, the returned object is independent of the old one (see <Concept id="object-semantics" />).
+
+**A second container.** When the state is a vector (patches, stages, grid cells), write the new values into a separate vector and replace the old one afterwards. The next section shows what goes wrong otherwise.
+
+### The general rule
+
+> Evaluate every right-hand side from the same state, and overwrite nothing until all of them have been evaluated.
+
+The rule applies to the time step of the model. Within a time step, a model may well prescribe a sequence of events: in an annual life cycle, germination happens before establishment, which happens before seed set, and each sub-step uses the result of the one before (see <Concept id="algorithm-design" />). That is not a bug, because the sequence is part of the model. The bug is a mismatch between the code and the equations. Writing each sub-step as its own named quantity, as the equations would, makes the intended order visible in both.
+
+## A minimal example
+
+The same mistake is easy to make with a vector. Nine habitat patches form a ring, and each generation a fraction $m = 0.4$ of the individuals in each patch moves, half to each neighbour:
+
+$$
+n_i(t+1) = (1 - m)\,n_i(t) + \tfrac{m}{2}\,\bigl[n_{i-1}(t) + n_{i+1}(t)\bigr],
+$$
+
+where $n_i(t)$ is the number of individuals in patch $i$ in generation $t$, and indices wrap around the ring. All 100 individuals start in the middle patch.
+
+<Example file="algorithms/ring_dispersal_order.cpp" mark="26-34" />
+
+`disperse` writes into a new vector `next` and reads only from `old`. `disperseInPlace` loops through the same vector it is changing, so when it reaches patch $i$, patch $i - 1$ already holds its new density. The output after three generations:
+
+```text
+simultaneous    0.0   0.8   7.2  24.0  36.0  24.0   7.2   0.8   0.0   total 100.0
+in place        0.1   0.8   7.7  26.1  36.4  18.7   7.1   2.3   0.7   total 99.9
+```
+
+Three things have gone wrong at once. Symmetric dispersal has produced an asymmetric distribution. Individuals have reached patch 8, four patches to the right, in three generations, because a density updated at patch $i$ is used at once for patch $i + 1$, and so on round the loop. And individuals have been lost: emigration from a patch is computed from its old density but immigration from its new one, so the two no longer balance. None of these problems produces a warning.
+
+## Explore it
+
+### A false equilibrium
+
+Run the host–parasitoid program both ways with the same parameters ($r = 1.2$, $K = 80$, $a = 0.06$, $c = 0.8$) and the same start ($H_0 = 20$, $P_0 = 2$):
+
+<Figure id="update-order" />
+
+<Figure id="update-order-parasitoids" />
+
+The two versions share their fixed points. At an equilibrium $H_{t+1} = H_t$, so substituting $H_{t+1}$ for $H_t$ in the parasitoid equation changes nothing there. Both versions have the interior fixed point $H^* \approx 29.7$, $P^* \approx 12.6$.
+
+What differs is its *stability*. In the model as written, the fixed point is unstable: trajectories spiral away from it into persistent oscillations, with host densities ranging from about 9 to 68 per unit area long after the start. In the sequential version the same fixed point is stable, and the oscillations die out. One intuition: in the true model, parasitoids respond to the host density with a one-generation delay, and delayed negative feedback is a classic source of oscillations. The bug removes the delay.
+
+Now imagine the sequential version in a thesis. It supports a clear and plausible conclusion: "with host self-limitation of this strength, the interaction settles to a stable equilibrium." The conclusion is wrong for the stated model. Nothing in the output hints at the problem, and checking the equilibrium values against the analytical fixed point would not catch it either, because they agree.
+
+### The laboratory
+
+The laboratory has an update-order mode. Change $r$ and $a$ and look for parameters where the two orders agree, and parameters where only one of them oscillates.
+
+<Lab id="discrete" />
+
+<Check
+  id="competition"
+  kind="debug"
+  question="These two lines implement Leslie–Gower competition between two species: N₁′ = R₁N₁ / (1 + a₁₁N₁ + a₁₂N₂) and N₂′ = R₂N₂ / (1 + a₂₁N₁ + a₂₂N₂). What is wrong?"
+  code={`N1 = R1 * N1 / (1.0 + a11 * N1 + a12 * N2);
+N2 = R2 * N2 / (1.0 + a21 * N1 + a22 * N2);`}
+  options={[
+    "Nothing: each line is a correct transcription of its equation",
+    "The second line uses the new N1, computed on the line above, instead of the current one",
+    "The two lines must be swapped so that N2 is updated first",
+    "N1 and N2 should be integers, because they count individuals",
+  ]}
+  answer={1}
+  feedback={[
+    "Each line on its own matches its equation, but together they do not: by the time the second line runs, N1 already holds next year's value.",
+    "Species 2 now competes with next year's species 1. Compute both new values into temporaries (or return a new state) and assign them afterwards.",
+    "Swapping moves the problem: species 1 would then see the new N2. Neither order is the model.",
+    "Densities are expected values and can be fractional. Integers would add truncation on top of the update-order bug.",
+  ]}
+/>
+
+<Check
+  id="equilibrium-test"
+  kind="interpret"
+  question="To test the host–parasitoid code, a student starts both versions exactly at the analytical fixed point (H*, P*) and checks that the state does not change. Both pass. What does this show?"
+  options={[
+    "Both versions implement the model correctly",
+    "Only the simultaneous version is correct, because it passed first",
+    "Very little about update order: both versions share the fixed point, so a test at equilibrium cannot tell them apart",
+    "The fixed point must be stable in both versions",
+  ]}
+  answer={2}
+  feedback={[
+    "The sequential version passes too, yet it is a different model. A passed test only rules out the errors it can detect.",
+    "The order in which tests run says nothing about correctness.",
+    "At equilibrium H(t+1) = H(t), so the bug has no effect there. A useful test compares one step from a state away from equilibrium with values computed by hand, or checks the stability of the fixed point.",
+    "Staying at a fixed point says nothing about stability: an unstable equilibrium is also unchanged by the update if you start exactly on it.",
+  ]}
+/>
+
+<Check
+  id="life-cycle"
+  kind="model"
+  question="In an annual-plant program, the number of flowering plants is computed from the number of seedlings that germinated earlier in the same loop pass, and seed production from the number of flowering plants. Is this an update-order bug?"
+  options={[
+    "Yes: every quantity must be computed from the state at the start of the year",
+    "No, if the model defines the year as a sequence of events (germination, then establishment, then seed set); the code follows that sequence",
+    "Yes, unless the variables are stored in a vector",
+    "It cannot be decided without running the program",
+  ]}
+  answer={1}
+  feedback={[
+    "The rule applies to the state variables of the time step, not to intermediate quantities within it. Seedlings and flowering plants are steps of one year's life cycle.",
+    "The equations of such a model compose the sub-steps in order, so the code should too. The bug is a mismatch between code and equations, not a sequence as such.",
+    "Storage does not decide what the model is; the equations do.",
+    "It can be decided by comparing the code with the model's equations, which is better than inferring the model from the output.",
+  ]}
+/>
+
+## In biological modelling
+
+Update order comes up wherever a model has more than one state variable:
+
+- **Matrix models.** The projection $\mathbf n_{t+1} = A\,\mathbf n_t$ must be computed into a new vector, because every stage receives contributions from the old values of other stages (see <Concept id="matrix-models" />).
+- **Cellular automata and grid models.** A synchronous update keeps two grids, the current one and the next one, and swaps them after each step. Updating cells in place makes the result depend on the direction of the loop, as in the ring example.
+- **Individual-based models.** Synchronous updating (everyone acts on the same old state) and asynchronous updating (individuals act one at a time, in a random order, each seeing the changes made by the others) are both legitimate modelling choices, and they can lead to different results. Huberman and Glance showed this for spatial games of cooperation. The choice must be deliberate and reported (see <Concept id="scheduling" />).
+- **ODE integrators.** Euler's method and its relatives evaluate all derivatives at the old state before changing any variable (see <Concept id="euler" />).
+
+## Common mistakes
+
+- **Updating the members of a state struct in place**, one after the other, as in `sequentialStep`.
+- **Saving some old values but not all.** Line 38 of the host–parasitoid program saves `P` and forgets `H`. Copy the whole state, `const State old = s;`, or use temporaries for every variable.
+- **In-place loops over neighbours** in vectors and grids.
+- **Aliasing.** A function `void step(const std::vector<double>& in, std::vector<double>& out)` is safe only if `in` and `out` are different vectors. Calling `step(n, n)` reintroduces the in-place bug.
+- **Copying a large state every step without need.** Keep two vectors and exchange them with `std::swap(current, next)`, which swaps their contents without copying elements.
+
+## Practice
+
+<Practice>
+
+1. Rewrite the ring simulation so that it keeps two vectors, `current` and `next`, for the whole run, and exchanges them after each generation instead of allocating a new vector. Check that the output equals the simultaneous line above.
+2. Design a test that the sequential host–parasitoid step fails and the simultaneous step passes. Compute the expected values by hand, or with a calculator, for one step from $H = 20$, $P = 2$.
+3. A row of 20 habitat sites is either occupied (1) or empty (0). Each year, an empty site becomes occupied if at least one neighbour was occupied the year before; occupied sites stay occupied. Write pseudocode for one synchronous year. Then predict what an in-place left-to-right loop would do to a row with only site 0 occupied.
+
+<details>
+<summary>Worked answer for exercise 1</summary>
+
+```cpp
+Densities current(9, 0.0);
+current[4] = 100.0;
+Densities next(current.size(), 0.0);
+for (int t = 1; t <= 3; ++t) {
+    const std::size_t k = current.size();
+    for (std::size_t i = 0; i < k; ++i) {
+        next[i] = (1.0 - m) * current[i] + 0.5 * m * (current[(i + k - 1) % k] + current[(i + 1) % k]);
+    }
+    std::swap(current, next);  // include <utility>
+}
+```
+
+Every element of `next` is overwritten in each generation, so its old contents never leak into the result. After the swap, `current` holds the new state.
+</details>
+
+<details>
+<summary>Worked answer for exercise 2</summary>
+From $H = 20$, $P = 2$: $H' = 20 \exp[1.2\,(1 - 0.25) - 0.12] = 20\,e^{0.78} \approx 43.63$. The correct parasitoid value is $P' = 0.8 \times 20 \times (1 - e^{-0.12}) \approx 1.81$. The sequential version gives $0.8 \times 43.63 \times (1 - e^{-0.12}) \approx 3.95$. A test that checks $P'$ to two decimals distinguishes them; testing $H'$ alone would not.
+</details>
+
+<details>
+<summary>Worked answer for exercise 3</summary>
+
+```text
+for i ← 0 to 19 do
+    leftOccupied  ← i > 0  and old[i − 1] = 1
+    rightOccupied ← i < 19 and old[i + 1] = 1
+    new[i] ← 1 if old[i] = 1 or leftOccupied or rightOccupied, else 0
+old ← new
+```
+
+A synchronous update colonises one more site per year. An in-place left-to-right loop sees site 0 occupied when it updates site 1, then the newly occupied site 1 when it updates site 2, and so on: the whole row is colonised in a single year. The simulated invasion speed would be an artefact of the loop direction.
+</details>
+
+</Practice>

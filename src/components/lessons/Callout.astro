@@ -1,0 +1,21 @@
+---
+// Asides in a lesson. Kinds are labelled in words, never by colour alone.
+interface Props {
+  kind?: 'note' | 'pitfall' | 'modern' | 'biology' | 'manual' | 'tip' | 'standard';
+  title?: string;
+}
+const { kind = 'note', title } = Astro.props;
+const LABEL = {
+  note: 'Note',
+  pitfall: 'Common mistake',
+  modern: 'Modern C++',
+  biology: 'In biological models',
+  manual: 'In the Groningen manual',
+  tip: 'Tip',
+  standard: 'Language standard',
+} as const;
+---
+<aside class={`callout callout-${kind}`}>
+  <p class="callout-label">{LABEL[kind]}{title && <span class="callout-title"> · {title}</span>}</p>
+  <div class="callout-body"><slot /></div>
+</aside>

@@ -1,0 +1,10 @@
+---
+import { CITATION } from '../../data/citation.ts';
+interface Props { label?: string }
+const { label = 'Curriculum source' } = Astro.props;
+---
+<p class="attribution"><span class="attribution-label">{label}:</span> <cite>{CITATION}</cite></p>
+<style>
+  .attribution cite { font-style: normal; }
+  .attribution-label { color: var(--v-secondary); }
+</style>

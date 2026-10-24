@@ -1,0 +1,90 @@
+# Build, test and deploy C++ Atlas to GitHub Pages.
+#
+# Repository setting required once: Settings → Pages → Build and deployment
+# → Source: "GitHub Actions".
+name: Build, test and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  site:
+    name: Curriculum, unit tests and site build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Validate the curriculum graph and manual coverage
+        run: npm run validate
+      - name: Unit and scientific model tests
+        run: npm test
+      - name: Type-check
+        run: npx astro check
+      - name: Build the static site
+        run: npx astro build
+      - name: Browser tests (navigation, atlas, accessibility)
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  cpp:
+    name: Compile and cross-validate the C++ examples
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++-14, clang++-18]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Compiler version
+        run: ${{ matrix.compiler }} --version
+      - name: Compile, run and compare expected output
+        run: CXX=${{ matrix.compiler }} bash scripts/check-cpp.sh
+      - name: Cross-validate C++ models against the TypeScript laboratories
+        run: node --experimental-strip-types scripts/compare-cpp-benchmarks.ts
+      - name: Keep program outputs for inspection
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cpp-outputs-${{ matrix.compiler }}
+          path: |
+            cpp-build/**/*.stdout
+            cpp-build/**/*.stderr
+            cpp-build/**/*.log
+            cpp-build/**/*.diff
+          if-no-files-found: ignore
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [site, cpp]
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

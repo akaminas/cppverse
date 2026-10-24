@@ -1,0 +1,31 @@
+---
+import CodeBlock from '../code/CodeBlock';
+import { buildCommand, getExample } from '../../lib/examples';
+import { highlight, parseLines } from '../../lib/highlight';
+import { url } from '../../lib/url';
+interface Props {
+  file: string;
+  /** Lines to highlight, e.g. "4-6,9". */
+  mark?: string;
+  editable?: boolean;
+  /** Hide the build/expected-output footer. */
+  bare?: boolean;
+}
+const { file, mark, editable = true, bare = false } = Astro.props;
+const ex = getExample(file);
+const html = await highlight(ex.code, { mark: parseLines(mark) });
+---
+<CodeBlock
+  client:visible
+  html={html}
+  code={ex.code}
+  name={ex.name}
+  title={ex.title}
+  standard={ex.standard}
+  download={url(`/examples/${ex.file}`)}
+  build={bare ? undefined : buildCommand(ex)}
+  expected={bare ? undefined : ex.expected}
+  stdin={bare ? undefined : ex.stdin}
+  expectCompileError={ex.expectCompileError}
+  editable={editable}
+/>

@@ -1,0 +1,26 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Atlas from '../../components/atlas/Atlas';
+import { buildAtlasData, lessonCheckCounts } from '../../lib/atlas-data';
+import { url } from '../../lib/url';
+import '../../styles/atlas.css';
+
+const data = buildAtlasData(import.meta.env.BASE_URL);
+const checkCounts = lessonCheckCounts();
+---
+<BaseLayout
+  title="Atlas"
+  section="atlas"
+  app
+  bodyClass="atlas-page"
+  description="A zoomable map of C++ for biological modelling: from program anatomy to algorithms, numerical integration, stochastic and individual-based models."
+>
+  <h1 class="sr-only">Concept atlas</h1>
+  <Atlas client:load data={data} checkCounts={checkCounts} />
+  <noscript>
+    <p class="wrap" style="padding: 24px 0">
+      The interactive atlas needs JavaScript. The <a href={url('/curriculum/')}>curriculum outline</a> lists every concept, lesson and
+      connection as text.
+    </p>
+  </noscript>
+</BaseLayout>

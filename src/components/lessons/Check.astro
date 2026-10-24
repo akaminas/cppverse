@@ -1,0 +1,18 @@
+---
+import CheckIsland from './CheckIsland';
+import { lessonSlugFrom } from './lessonSlug';
+interface Props {
+  id: string;
+  kind?: 'predict' | 'read' | 'debug' | 'model' | 'interpret';
+  question: string;
+  code?: string;
+  options: string[];
+  answer: number;
+  feedback: string[];
+}
+const props = Astro.props;
+if (props.answer < 0 || props.answer >= props.options.length) throw new Error(`Check ${props.id}: answer index out of range`);
+if (props.feedback.length !== props.options.length) throw new Error(`Check ${props.id}: one feedback string per option is required`);
+const lesson = lessonSlugFrom(Astro.url.pathname);
+---
+<CheckIsland client:visible {...props} lesson={lesson} />

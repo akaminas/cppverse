@@ -1,0 +1,168 @@
+---
+title: Anatomy of a first program
+summary: Every element of the smallest complete C++ program, what it does, and why each one is there.
+level: beginner
+module: 1
+manual: ["M1.4", "M1.2"]
+minutes: 30
+objectives:
+  - Name every element of a minimal C++ program and say what it does
+  - Explain what std::cout and the << operator do
+  - Print text and computed numbers on separate lines
+  - Recognise the most common first compiler errors
+references:
+  - "cppreference.com: std::cout and the basic_ostream insertion operators"
+---
+
+## What it is
+
+A C++ program is a text file of instructions that a compiler translates into something your computer can run. Every program, from a six-line greeting to a simulation of a million individuals, shares the same skeleton. Here is the smallest one that does something visible:
+
+<Example file="foundations/hello.cpp" />
+
+It prints `Hello, world!` and stops. The program is trivial on purpose: with the arithmetic and the model taken away, only the skeleton is left to look at.
+
+## Why it matters
+
+Programming languages are strict. C++ will not guess what you meant: a missing semicolon or a misspelt name stops the build. That strictness is useful in science. A program does exactly what it says, so once you can read every symbol in it you can check it against the model you intended.
+
+This lesson therefore takes nothing for granted. Each element of the program gets a name and a purpose. Later lessons will add variables, decisions, loops and functions, but they all sit inside this skeleton.
+
+## How it works in C++
+
+Select any element of the program below to see its role. The arrow keys step through them in order.
+
+<Anatomy id="hello" />
+
+Read top to bottom, the program says:
+
+1. **`#include <iostream>`** — before compiling, paste in the declarations of the standard input/output library. This is how the compiler learns what `std::cout` is.
+2. **`int main() { … }`** — define the function `main`, where every C++ program starts. It takes no parameters, `()`, and returns an `int` to the operating system. The braces enclose its body.
+3. **`std::cout << "Hello, world!\n";`** — send the text between the quotes, followed by a newline, to the console.
+4. **`return 0;`** — end `main` and report success (zero) to the operating system.
+
+<Anchor id="namespaces" />
+
+### Namespaces and `std::`
+
+Large programs and libraries define thousands of names. A *namespace* groups names so that they cannot collide. The whole C++ standard library lives in the namespace `std`, and the scope-resolution operator `::` reaches into it: `std::cout` is "the `cout` that belongs to `std`".
+
+You will often see programs that write `using namespace std;` once and then use `cout` without the prefix. That works, but it imports hundreds of names into your program at once, and some of them (`count`, `distance`, `size`) are names you will want for your own variables. This site keeps the `std::` prefix everywhere, which also makes clear at a glance which names come from the library.
+
+<Anchor id="output" />
+
+### Printing text and values
+
+`std::cout` is an *output stream*: whatever you insert into it with `<<` is converted to text and written to the console. You can chain insertions, and you can print numbers, including the results of calculations:
+
+<Example file="foundations/hello_population.cpp" mark="8-11" />
+
+A few details are worth noticing:
+
+- `'\n'` (single quotes) is a single newline *character*; `"\n"` (double quotes) is a *string* containing one newline. Both print a line break.
+- `120 + 45` is evaluated before it is printed, so the program prints `165`, not the text `120 + 45`. Text you want to appear literally goes inside quotes.
+- Spaces inside quotes are printed exactly. Spaces outside quotes only make the code easier to read.
+
+<Callout kind="modern" title="std::endl and '\n'">
+Many older programs end lines with `std::endl`. It prints a newline *and* flushes the output buffer, forcing the text to be written immediately. In a simulation that prints thousands of lines, repeated flushing can make output noticeably slower. Use `'\n'` and flush only when you need to (for example `std::cout << std::flush;` before a long computation).
+</Callout>
+
+## Explore it
+
+<Check
+  id="output"
+  kind="predict"
+  question="What does this statement print?"
+  code={`std::cout << "N = " << 3 * 40 << '\\n';`}
+  options={["N = 3 * 40", "N = 120", "N = 3 * 40 = 120", "Nothing: the line does not compile"]}
+  answer={1}
+  feedback={[
+    "The multiplication is outside the quotes, so it is evaluated as C++ arithmetic, not printed as text.",
+    "The text \"N = \" is printed literally, then the value of 3 * 40, then a newline.",
+    "Only text inside quotes is printed literally; the expression itself never appears in the output.",
+    "This is valid C++: insertions can be chained, and an int expression can be inserted into std::cout.",
+  ]}
+/>
+
+<Check
+  id="include"
+  kind="debug"
+  question="A student deletes the first line, `#include <iostream>`, and compiles. What happens?"
+  options={[
+    "The program compiles and runs as before, because cout is built into C++",
+    "The compiler reports that std::cout (or the namespace member cout) is not declared",
+    "The program compiles but prints nothing",
+    "The linker reports a missing main function",
+  ]}
+  answer={1}
+  feedback={[
+    "Nothing in the standard library is built in: without the header the compiler has never seen a declaration of std::cout.",
+    "The compiler meets the name std::cout without having seen its declaration and stops with an error such as “'cout' is not a member of 'std'”.",
+    "A missing declaration is a compile-time error, so no program is produced at all.",
+    "main is still defined. The error comes earlier, from the compiler, not from the linker.",
+  ]}
+/>
+
+<Check
+  id="return"
+  kind="read"
+  question="Why does `main` return `0`?"
+  options={[
+    "To print the number 0 after the greeting",
+    "To tell the operating system that the program finished successfully",
+    "Because every function must return zero",
+    "To reset all variables before the program ends",
+  ]}
+  answer={1}
+  feedback={[
+    "return does not print anything; only std::cout prints.",
+    "The return value of main is the program's exit status. Zero means success; scripts and workflow managers check it to see whether a run failed.",
+    "Functions return whatever their return type says; many will return computed values such as population sizes.",
+    "return simply ends the function and hands back a value.",
+  ]}
+/>
+
+## In biological modelling
+
+Every simulation in this atlas, whether a matrix population model, an ODE integrator or an individual-based model, is built on this skeleton. `main` will grow into a short, readable outline of the experiment:
+
+```cpp
+int main() {
+    // 1. set parameters and the initial state
+    // 2. run the model forward in time
+    // 3. write the trajectory to a file
+    return 0;
+}
+```
+
+`std::cout` is also your first debugging and inspection tool. Printing the state of a model at a few time points is the quickest way to see whether a simulation is doing what you intended, long before you make polished figures.
+
+## Common mistakes
+
+<Callout kind="pitfall" title="A forgotten semicolon">
+The compiler reports the error where it *noticed* the problem, which is often the line after the missing semicolon. For the program below, GCC says something like `error: expected ';' before 'return'`, pointing at line 10 although the semicolon is missing at the end of line 9.
+</Callout>
+
+<Example file="foundations/missing_semicolon.cpp" mark="9" editable={true} />
+
+Other first errors to recognise:
+
+- **Wrong case.** C++ is case-sensitive: `Main`, `STD::cout` and `std::Cout` are all different names from `main` and `std::cout`.
+- **Curly quotes.** Code pasted from a word processor may contain “typographic quotes”, which the compiler does not accept as string delimiters. Use the plain `"` key.
+- **Unbalanced braces.** Every `{` needs a matching `}`. Consistent indentation makes a missing brace easy to spot.
+- **Building with `gcc` instead of `g++`.** `gcc` compiles C++ source but does not link the C++ standard library by default, so the program fails at the link step with errors about undefined references to `std::cout`. See <Concept id="compilation" />.
+
+## Practice
+
+<Practice>
+
+1. Change the greeting so that it prints your name and the name of an organism you study, on two separate lines, using a single `std::cout` statement.
+2. A field team counted 37 nests in one plot and 52 in another. Write a program that prints each count on its own line and then the total, with the total computed by the program rather than typed in by hand.
+3. Delete the closing brace `}` of `main`, compile, and read the compiler's message. Which line does it point to, and why?
+
+<details>
+<summary>Hint for exercise 3</summary>
+The compiler reaches the end of the file while still inside `main`. Most compilers report "expected '}' at end of input" and point at the last line of the file, which may be far from where you deleted the brace.
+</details>
+
+</Practice>

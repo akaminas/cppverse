@@ -1,0 +1,12 @@
+---
+import TraceIsland from './TraceIsland';
+import { traces } from '../../data/traces/index';
+import { getExample } from '../../lib/examples';
+import { highlight } from '../../lib/highlight';
+interface Props { id: string }
+const t = traces[Astro.props.id];
+if (!t) throw new Error(`Unknown trace "${Astro.props.id}"`);
+const code = t.file ? getExample(t.file).code : t.code!;
+const html = await highlight(code);
+---
+<TraceIsland client:visible html={html} title={t.title} steps={t.steps} />

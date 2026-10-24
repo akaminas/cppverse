@@ -1,0 +1,152 @@
+---
+import 'katex/dist/katex.min.css';
+import '../styles/lesson.css';
+import type { CollectionEntry } from 'astro:content';
+import type { MarkdownHeading } from 'astro';
+import BaseLayout from './BaseLayout.astro';
+import MiniMap from '../components/lessons/MiniMap.astro';
+import LessonProgress from '../components/progress/LessonProgress';
+import { lessonContext } from '../lib/lesson-context';
+import { lessonCheckCounts } from '../lib/atlas-data';
+import { url } from '../lib/url';
+import { CITATION } from '../data/citation';
+
+interface Props {
+  entry: CollectionEntry<'lessons'>;
+  headings: MarkdownHeading[];
+}
+const { entry, headings } = Astro.props;
+const d = entry.data;
+const slug = entry.id;
+const ctx = lessonContext(slug);
+const checkCounts = lessonCheckCounts();
+const LEVEL = { beginner: 'Beginner', intermediate: 'Intermediate', seasoned: 'Seasoned' } as const;
+const toc = headings.filter((h) => h.depth === 2);
+const kindNote = (k: string) => (k === 'landmark' ? 'destination' : k === 'capstone' ? 'capstone' : '');
+---
+<BaseLayout title={d.title} section="learn" description={d.summary}>
+  <article class="lesson">
+    <header class="lesson-head wrap">
+      <p class="eyebrow lesson-crumbs">
+        <a href={url(`/atlas/?domain=${ctx.domain.id}`)}>{ctx.domain.title}</a>
+        <span aria-hidden="true"> · </span>
+        {d.module ? `Groningen manual, Module ${d.module}` : 'Original material'}
+        {d.optional && <span> · optional branch</span>}
+      </p>
+      <h1>{d.title}</h1>
+      <p class="lead">{d.summary}</p>
+      <ul class="lesson-meta">
+        <li><span class="tag">{LEVEL[d.level]}</span></li>
+        <li><span class="tag">About {d.minutes} min</span></li>
+        <li><span class:list={['std-badge', { 'is-new': d.standard !== 'c++17' }]}>{d.standard.toUpperCase()}</span></li>
+        {ctx.destinations.length > 0 && ctx.destinations.length < 5 && (
+          <li class="lesson-dests">
+            Leads to {ctx.destinations.map((l, i) => (<>{i > 0 && ', '}<a href={l.href}>{l.title}</a></>))}
+          </li>
+        )}
+      </ul>
+    </header>
+
+    <div class="wrap lesson-grid">
+      <div class="lesson-main">
+        <section class="lesson-objectives" aria-labelledby="objectives">
+          <h2 id="objectives" class="lesson-small-h">After this lesson you can</h2>
+          <ul>{d.objectives.map((o) => <li>{o}</li>)}</ul>
+          {ctx.needs.length > 0 && (
+            <p class="lesson-needs">
+              <span>Builds on</span>{' '}
+              {ctx.needs.map((n, i) => (<>{i > 0 && ' · '}<a href={n.href}>{n.title}</a></>))}
+            </p>
+          )}
+        </section>
+
+        <div class="prose">
+          <slot />
+        </div>
+
+        <section class="lesson-connections" aria-labelledby="connections">
+          <h2 id="connections">Connections</h2>
+          <div class="grid grid-2">
+            <div>
+              <h3>Needs first</h3>
+              {ctx.needs.length ? (
+                <ul class="link-list">
+                  {ctx.needs.map((n) => (
+                    <li><a href={n.href}>{n.title}</a>{n.note && <span class="muted"> — {n.note}</span>}</li>
+                  ))}
+                </ul>
+              ) : <p class="muted">Nothing: this is a starting point.</p>}
+            </div>
+            <div>
+              <h3>What you can build with it</h3>
+              {ctx.leads.length ? (
+                <ul class="link-list">
+                  {ctx.leads.map((n) => (
+                    <li>
+                      <a href={n.href}>{n.title}</a>{kindNote(n.kind) && <span class="tag">{kindNote(n.kind)}</span>}
+                      {n.note && <span class="muted"> — {n.note}</span>}
+                    </li>
+                  ))}
+                </ul>
+              ) : <p class="muted">This is a destination.</p>}
+            </div>
+          </div>
+          {ctx.related.length > 0 && (
+            <>
+              <h3>Related ideas</h3>
+              <ul class="link-list inline-list">
+                {ctx.related.map((n) => <li><a href={n.href}>{n.title}</a>{n.note && <span class="muted"> — {n.note}</span>}</li>)}
+              </ul>
+            </>
+          )}
+        </section>
+
+        {ctx.nextLessons.length > 0 && (
+          <section class="lesson-next" aria-labelledby="next-steps">
+            <h2 id="next-steps">Suggested next steps</h2>
+            <div class="grid grid-2">
+              {ctx.leads.filter((l, i, arr) => l.lesson && arr.findIndex((x) => x.lesson === l.lesson) === i).slice(0, 4).map((l) => (
+                <a class="card-link" href={l.href}>
+                  <span class="eyebrow">Next</span>
+                  <h3>{l.title}</h3>
+                  {l.note && <p class="muted">{l.note}</p>}
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <footer class="lesson-source">
+          {ctx.manual.length > 0 ? (
+            <>
+              <p>
+                <strong>Source.</strong> This lesson teaches material from the Groningen course manual:{' '}
+                {ctx.manual.map((m, i) => (<>{i > 0 && '; '}{m.module ? `§${m.section}` : m.section} {m.title}</>))}.
+                The text, examples and exercises here are written independently.
+              </p>
+              <p class="muted">{CITATION}.</p>
+            </>
+          ) : (
+            <p><strong>Source.</strong> Original material of this site, connecting the Groningen curriculum to scientific practice.</p>
+          )}
+          {d.references.length > 0 && (
+            <ul class="lesson-refs">{d.references.map((r) => <li>{r}</li>)}</ul>
+          )}
+        </footer>
+      </div>
+
+      <aside class="lesson-rail" aria-label="Lesson tools">
+        <div class="rail-sticky">
+          <MiniMap mini={ctx.mini} href={ctx.atlasHref} label={d.title} />
+          <LessonProgress client:idle slug={slug} checkCount={checkCounts[slug] ?? 0} base={import.meta.env.BASE_URL} checkCounts={checkCounts} />
+          {toc.length > 0 && (
+            <nav class="lesson-toc" aria-label="On this page">
+              <p class="eyebrow">On this page</p>
+              <ol>{toc.map((h) => <li><a href={`#${h.slug}`}>{h.text}</a></li>)}</ol>
+            </nav>
+          )}
+        </div>
+      </aside>
+    </div>
+  </article>
+</BaseLayout>

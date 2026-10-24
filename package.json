@@ -1,0 +1,63 @@
+{
+  "name": "cppverse",
+  "description": "C++ Atlas — Programming and Modelling for Biologists",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.23.4"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "npm run validate && astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "validate": "node --experimental-strip-types scripts/validate-curriculum.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "cpp:benchmarks": "node --experimental-strip-types scripts/write-benchmarks.ts"
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "7.3.4",
+    "@astrojs/mdx": "8.1.1",
+    "@astrojs/react": "7.1.1",
+    "@codemirror/lang-cpp": "6.0.3",
+    "@codemirror/language": "6.13.1",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.15",
+    "@lezer/highlight": "1.2.5",
+    "@types/d3-transition": "3.0.9",
+    "astro": "7.4.2",
+    "codemirror": "6.0.2",
+    "d3-array": "3.2.4",
+    "d3-scale": "4.0.2",
+    "d3-selection": "3.0.0",
+    "d3-shape": "3.2.0",
+    "d3-transition": "3.0.1",
+    "d3-zoom": "3.0.0",
+    "katex": "0.19.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "rehype-katex": "7.0.1",
+    "remark-math": "6.0.0",
+    "shiki": "4.5.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.64.1",
+    "@types/d3-array": "3.2.2",
+    "@types/d3-scale": "4.0.9",
+    "@types/d3-selection": "3.0.12",
+    "@types/d3-shape": "3.2.0",
+    "@types/d3-zoom": "3.0.9",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "6.0.3",
+    "unist-util-visit": "5.1.0",
+    "vitest": "5.0.5",
+    "yaml": "2.9.1"
+  }
+}

@@ -1,0 +1,78 @@
+/* Code blocks. Shiki emits colours as var(--code-token-*) (see
+   src/lib/markdown/code-theme.mjs). Colours use Vellum deep steps in the
+   light twin and tones in the dark twin, both ≥ 4.5:1 on the panel colour;
+   comments use the secondary neutral so they stay readable. */
+
+:root {
+  --code-foreground: var(--v-ink);
+  --code-background: var(--panel);
+  --code-token-keyword: var(--v-indigo);
+  --code-token-constant: var(--v-teal-deep);
+  --code-token-string: var(--v-terracotta-deep);
+  --code-token-string-expression: var(--v-terracotta-deep);
+  --code-token-comment: var(--v-secondary);
+  --code-token-function: var(--v-moss-deep);
+  --code-token-parameter: var(--v-ink);
+  --code-token-punctuation: var(--v-secondary);
+  --code-token-link: var(--accent);
+  --code-token-inserted: var(--v-moss-deep);
+  --code-token-deleted: var(--v-terracotta-deep);
+  --code-token-changed: var(--v-ochre-deep);
+}
+:root[data-theme='dark'] {
+  --code-token-keyword: var(--v-indigo);
+  --code-token-constant: var(--v-teal);
+  --code-token-string: var(--v-terracotta);
+  --code-token-string-expression: var(--v-terracotta);
+  --code-token-function: var(--v-moss);
+  --code-token-inserted: var(--v-moss);
+  --code-token-deleted: var(--v-terracotta);
+  --code-token-changed: var(--v-ochre);
+}
+
+code, kbd, samp, pre { font-family: var(--v-font-mono); font-size: 0.9em; }
+:not(pre) > code {
+  background: var(--soft); border-radius: 4px; padding: 0.1em 0.35em; font-size: 0.88em; white-space: nowrap;
+}
+kbd { background: var(--soft); border-radius: 4px; padding: 0.1em 0.4em; box-shadow: inset 0 -1px 0 var(--v-grid); font-size: 0.85em; }
+
+pre {
+  background: var(--panel); color: var(--code-foreground); border-radius: var(--radius);
+  padding: 18px 20px; overflow-x: auto; line-height: 1.6; tab-size: 4; margin: 0 0 1.4em;
+  font-size: 0.86rem;
+}
+pre.astro-code, pre.shiki { background-color: var(--code-background) !important; }
+pre code { background: none; padding: 0; white-space: pre; font-size: inherit; }
+
+/* Code figure: header (file name, standard, actions) + highlighted body. */
+.code-figure { margin: 0 0 1.6em; border-radius: var(--radius); background: var(--panel); overflow: hidden; }
+.code-figure pre { margin: 0; border-radius: 0; background: transparent !important; }
+.code-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 14px 10px 20px; border-bottom: 1px solid var(--line); font-size: 0.8rem; color: var(--v-muted);
+}
+.code-head .code-name { font-family: var(--v-font-mono); color: var(--v-secondary); }
+.code-head .code-actions { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; }
+.code-head .code-actions button, .code-head .code-actions a {
+  font: inherit; font-size: 0.74rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-secondary);
+  background: transparent; border: 0; border-radius: 6px; padding: 5px 8px; cursor: pointer; text-decoration: none;
+}
+.code-head .code-actions button:hover, .code-head .code-actions a:hover { color: var(--accent); background: var(--soft); }
+.code-foot { padding: 10px 20px 14px; border-top: 1px solid var(--line); font-size: 0.82rem; color: var(--v-secondary); }
+.code-foot pre { background: var(--bg) !important; border-radius: 8px; padding: 10px 14px; margin: 6px 0 0; font-size: 0.8rem; }
+.code-foot .label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-muted); }
+
+/* Line numbers, generated as data-line on .line spans. */
+.code-lines .line { display: inline-block; width: 100%; }
+.code-lines .line::before {
+  content: attr(data-line); display: inline-block; width: 2.2em; margin-right: 1.1em;
+  text-align: right; color: var(--v-muted); user-select: none; opacity: 0.8;
+}
+.line.is-marked { background: color-mix(in srgb, var(--v-terracotta-tint) 45%, transparent); box-shadow: inset 3px 0 0 var(--v-terracotta); }
+.line.is-dim { opacity: 0.45; }
+
+.std-badge {
+  display: inline-flex; align-items: center; font-family: var(--v-font-mono); font-size: 0.7rem; letter-spacing: 0.06em;
+  border-radius: 4px; padding: 1px 6px; background: var(--soft); color: var(--v-secondary); white-space: nowrap;
+}
+.std-badge.is-new { background: var(--v-ochre-tint); color: var(--v-ochre-deep); }

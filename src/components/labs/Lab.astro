@@ -1,0 +1,22 @@
+---
+// Embeds one of the five interactive model laboratories. Laboratories are
+// hydrated only when scrolled into view.
+import DiscreteLab from './DiscreteLab';
+import MatrixLab from './MatrixLab';
+import OdeLab from './OdeLab';
+import GillespieLab from './GillespieLab';
+import IbmLab from './IbmLab';
+interface Props {
+  id: 'discrete' | 'matrix' | 'ode' | 'gillespie' | 'ibm';
+  /** Optional initial tab or preset of the laboratory. */
+  preset?: string;
+}
+const { id, preset } = Astro.props;
+---
+<div class="lab-embed" id={`lab-${id}`}>
+  {id === 'discrete' && <DiscreteLab client:visible preset={preset} />}
+  {id === 'matrix' && <MatrixLab client:visible preset={preset} />}
+  {id === 'ode' && <OdeLab client:visible preset={preset} />}
+  {id === 'gillespie' && <GillespieLab client:visible preset={preset} />}
+  {id === 'ibm' && <IbmLab client:visible preset={preset} />}
+</div>

@@ -1,0 +1,5 @@
+---
+interface Props { v: 'c++17' | 'c++20' | 'c++23' }
+const { v } = Astro.props;
+---
+<span class:list={['std-badge', { 'is-new': v !== 'c++17' }]} title={v === 'c++17' ? 'Works with any C++17 compiler' : `Needs ${v.toUpperCase()} support (GCC 13+, Clang 17+, MSVC 19.3x+ for most features)`}>{v.toUpperCase()}</span>

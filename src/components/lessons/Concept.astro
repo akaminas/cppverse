@@ -1,0 +1,17 @@
+---
+// Inline link to an atlas concept's lesson section; fails the build for unknown ids.
+import { conceptById } from '../../data/concepts';
+import { atlasUrl, capstoneUrl, lessonUrl, modelUrl } from '../../lib/url';
+interface Props { id: string; atlas?: boolean }
+const { id, atlas = false } = Astro.props;
+const c = conceptById[id];
+if (!c) throw new Error(`<Concept id="${id}"> refers to an unknown concept`);
+const href = atlas
+  ? atlasUrl(id)
+  : c.kind === 'landmark'
+    ? modelUrl(c.domain)
+    : c.kind === 'capstone'
+      ? capstoneUrl(c.id)
+      : lessonUrl(c.lesson!, c.anchor);
+---
+<a class="concept-link" href={href}><slot>{c.title}</slot></a>

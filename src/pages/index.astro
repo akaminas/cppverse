@@ -1,0 +1,63 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Topography from '../components/landing/Topography.astro';
+import Attribution from '../components/site/Attribution.astro';
+import { url } from '../lib/url';
+---
+<BaseLayout title="C++ Atlas" bare>
+  <section class="landing">
+    <Topography />
+    <div class="landing-in">
+      <p class="eyebrow">Programming and modelling for biologists</p>
+      <h1>C++ Atlas</h1>
+      <p class="subtitle">Programming and Modelling for Biologists</p>
+      <p class="phrase">Learn the language. Build the model. Understand the system.</p>
+      <div class="cta-row">
+        <a class="btn-solid" id="enter" href={url('/start/')} data-atlas={url('/atlas/')}>Enter the atlas</a>
+        <a class="btn-outline" href={url('/curriculum/')}>Curriculum outline</a>
+      </div>
+      <p class="returning" id="returning" hidden>
+        Welcome back. <a href={url('/start/')}>Change your level or goals</a>
+      </p>
+    </div>
+    <div class="landing-foot">
+      <Attribution />
+      <a href={url('/about/')}>Independent project · About</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { load } from '../lib/persistence/store';
+  const state = load();
+  if (state.profile) {
+    const enter = document.getElementById('enter') as HTMLAnchorElement | null;
+    if (enter?.dataset.atlas) enter.href = enter.dataset.atlas;
+    document.getElementById('returning')?.removeAttribute('hidden');
+  }
+</script>
+
+<style>
+  .landing {
+    position: relative; isolation: isolate; overflow: hidden;
+    min-height: calc(100svh - var(--header-h)); display: grid; place-items: center; padding: 48px var(--gutter) 96px;
+  }
+  :global(body:has(.landing) .site-header) { position: absolute; left: 0; right: 0; }
+  .landing { min-height: 100svh; }
+  .landing-in { position: relative; text-align: center; max-width: 760px; }
+  .landing-in::before {
+    content: ''; position: absolute; inset: -12% -18%; z-index: -1;
+    background: radial-gradient(closest-side, var(--bg) 55%, color-mix(in srgb, var(--bg) 0%, transparent));
+  }
+  h1 { font-size: clamp(3.4rem, 2rem + 6vw, 6.4rem); letter-spacing: -0.02em; margin: 10px 0 6px; }
+  .subtitle { font-family: var(--v-font-title); font-size: clamp(1.25rem, 1rem + 1vw, 1.7rem); color: var(--v-secondary); margin: 0 0 22px; }
+  .phrase { font-size: 1.06rem; color: var(--v-secondary); margin: 0 auto 34px; letter-spacing: 0.01em; }
+  .cta-row { justify-content: center; }
+  .returning { margin-top: 18px; font-size: 0.9rem; color: var(--v-muted); }
+  .landing-foot {
+    position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap;
+    padding: 18px var(--gutter); font-size: 0.74rem; color: var(--v-muted);
+  }
+  .landing-foot :global(p) { margin: 0; max-width: 70ch; }
+  .landing-foot a { color: var(--v-muted); }
+</style>

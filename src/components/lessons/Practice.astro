@@ -1,0 +1,9 @@
+---
+// Original practice tasks. Hints and worked answers sit behind <details>.
+interface Props { title?: string }
+const { title = 'Original exercises' } = Astro.props;
+---
+<section class="practice">
+  <p class="practice-label">{title}</p>
+  <slot />
+</section>

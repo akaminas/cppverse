@@ -1,0 +1,38 @@
+---
+// "You are here": the whole landscape in miniature with this lesson's
+// concepts marked, linking back to the atlas at the same place.
+interface Props {
+  mini: {
+    bounds: { x: number; y: number; w: number; h: number };
+    domains: { id: string; x: number; y: number; w: number; h: number; family?: string; current: boolean }[];
+    points: { x: number; y: number }[];
+  };
+  href: string;
+  label: string;
+}
+const { mini, href, label } = Astro.props;
+const pad = 60;
+const vb = `${mini.bounds.x - pad} ${mini.bounds.y - pad} ${mini.bounds.w + 2 * pad} ${mini.bounds.h + 2 * pad}`;
+---
+<a class="minimap" href={href} aria-label={`Show ${label} in the atlas`}>
+  <svg viewBox={vb} role="img" aria-hidden="true">
+    {mini.domains.map((d) => (
+      <rect
+        x={d.x}
+        y={d.y}
+        width={d.w}
+        height={d.h}
+        rx="30"
+        class:list={['mm-domain', { 'is-current': d.current }]}
+        style={d.family ? `fill: var(--v-${d.family}-tint)` : undefined}
+      />
+    ))}
+    {mini.points.map((p) => (
+      <g>
+        <circle cx={p.x} cy={p.y} r="70" class="mm-halo" />
+        <circle cx={p.x} cy={p.y} r="32" class="mm-point" />
+      </g>
+    ))}
+  </svg>
+  <span>Show in the atlas →</span>
+</a>

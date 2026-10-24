@@ -1,0 +1,20 @@
+---
+import MathCodeIsland from './MathCodeIsland';
+import { mathcodes } from '../../data/mathcode/index';
+import { getExample } from '../../lib/examples';
+import { highlight } from '../../lib/highlight';
+import { tex } from '../../lib/tex';
+interface Props { id: string }
+const m = mathcodes[Astro.props.id];
+if (!m) throw new Error(`Unknown mathcode "${Astro.props.id}"`);
+const full = m.file ? getExample(m.file).code : m.code!;
+const all = full.replace(/\s+$/, '').split('\n');
+const [from, to] = m.show ?? [1, all.length];
+for (const t of m.terms) for (const l of t.lines) {
+  if (l < from || l > to || l > all.length) throw new Error(`mathcode ${Astro.props.id}: term ${t.id} refers to line ${l} outside the shown range`);
+}
+for (const t of m.terms) if (!m.tex.includes(`mc-${t.id}`)) throw new Error(`mathcode ${Astro.props.id}: term ${t.id} is not marked in the TeX`);
+const codeHtml = await highlight(all.slice(from - 1, to).join('\n'), { startLine: from });
+const name = m.file ? m.file.split('/').pop()! : 'code';
+---
+<MathCodeIsland client:visible title={m.title} mathHtml={tex(m.tex)} codeHtml={codeHtml} terms={m.terms} name={name} />

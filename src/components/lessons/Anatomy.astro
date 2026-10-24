@@ -1,0 +1,8 @@
+---
+import AnatomyIsland from './AnatomyIsland';
+import { anatomies } from '../../data/anatomy/index';
+interface Props { id: string }
+const anatomy = anatomies[Astro.props.id];
+if (!anatomy) throw new Error(`Unknown anatomy "${Astro.props.id}"`);
+---
+<AnatomyIsland client:visible anatomy={anatomy} />

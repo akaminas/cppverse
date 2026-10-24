@@ -1,0 +1,6 @@
+---
+// A stable anchor for an atlas concept inside a lesson (validated at build time).
+interface Props { id: string }
+const { id } = Astro.props;
+---
+<span id={id} class="concept-anchor" aria-hidden="true"></span>

@@ -1,0 +1,19 @@
+# dependencies and build output
+node_modules/
+dist/
+.astro/
+cpp-build/
+test-results/
+playwright-report/
+coverage/
+
+# copyrighted source PDFs: kept locally for authoring, never published
+sources/
+
+# editor / OS
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log

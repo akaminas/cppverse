@@ -1,0 +1,12 @@
+---
+// A static Vellum figure computed at build time. Rendered at two widths so
+// text stays legible on phones; no JavaScript is shipped.
+import Chart from '../charts/Chart';
+import { figureSpec } from '../../lib/figures/index';
+interface Props { id: string }
+const spec = figureSpec(Astro.props.id);
+---
+<div class="figure-static">
+  <div class="fig-wide"><Chart {...spec} width={680} height={360} /></div>
+  <div class="fig-narrow"><Chart {...spec} width={360} height={300} /></div>
+</div>

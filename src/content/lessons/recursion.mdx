@@ -1,0 +1,180 @@
+---
+title: Recursion
+summary: A function that calls itself, a base case that stops it, the call stack that holds every pending call, and when a loop is the better choice.
+level: intermediate
+module: 6
+manual: ["M6.adv-rec"]
+minutes: 30
+optional: true
+objectives:
+  - Write a recursive function with a base case that every call is guaranteed to reach
+  - Trace how recursive calls build up on the call stack and unwind as they return
+  - Compare a recursive function with an equivalent loop in clarity and cost
+  - Use recursion to visit every node of a nested structure such as a tree of clades
+references:
+  - "cppreference.com: Function definition (recursive calls)"
+---
+
+## What it is
+
+A function is *recursive* when it calls itself. That sounds circular, but it works when each call hands a smaller version of the problem to the next one, and when there is a smallest version, the **base case**, that is answered directly without a further call.
+
+Many biological quantities have exactly this structure. The descendants of a founder over $n$ generations are its offspring, plus the descendants of each offspring over the remaining $n - 1$ generations. The species in a clade are the species in each of its subclades, added up. The definition refers to itself, and so can the code.
+
+## Why it matters
+
+For some problems a recursive function is the most direct transcription of the definition, and therefore the easiest to check. This is especially true of nested, tree-shaped data: phylogenies, genealogies, nested sampling designs, spatial subdivisions. For other problems, a loop does the same job more cheaply. Knowing how recursion works, what it costs and how it fails lets you choose.
+
+## How it works in C++
+
+### Base case and recursive case
+
+Let $D(n)$ be the number of descendants of one founder over $n$ generations when every individual has $k$ offspring. The founder has $k$ offspring, and each of them contributes itself plus its own descendants over $n - 1$ generations:
+
+$$
+D(n) = k\,\bigl(1 + D(n - 1)\bigr), \qquad D(0) = 0 .
+$$
+
+The C++ function follows the two lines of the definition:
+
+<Example file="foundations/recursion_descendants.cpp" mark="10-14" />
+
+- **Base case** (lines 10–12): with no generations there are no descendants. The function returns at once, without calling itself.
+- **Recursive case** (lines 13–14): the function calls itself with `generations - 1`, a strictly smaller problem, and builds its own answer from the result.
+
+Every recursive function needs both parts, and every chain of calls must reach a base case. Here each call reduces `generations` by one, so starting from any non-negative value the chain ends at 0.
+
+### The call stack
+
+Each call of a function gets its own *frame*: its own copies of the parameters and its own local variables. The frames of the calls that have started but not finished are kept on the *call stack*. When `main` calls `descendants(3, 2)`, that call calls `descendants(2, 2)`, which calls `descendants(1, 2)`, which calls `descendants(0, 2)`. At that moment there are four frames of `descendants` on the stack, each with its own value of `generations`, and three of them are suspended halfway through line 13, waiting for an answer.
+
+`descendants(0, 2)` is the base case and returns 0. Then the stack **unwinds**: `descendants(1, 2)` resumes, computes 2 and returns; `descendants(2, 2)` resumes, computes 6 and returns; finally `descendants(3, 2)` computes 14. That is why the program prints the innermost result first:
+
+```
+descendants(1) = 2
+descendants(2) = 6
+descendants(3) = 14
+Total after 3 generations: 14
+```
+
+The trace in [Explore it](#explore-it) shows the stack growing and shrinking step by step.
+
+### Recursion and iteration
+
+Anything computed by recursion can also be computed with a loop, and for a simple chain like this one, the loop is the more natural choice:
+
+<Example file="foundations/recursion_vs_loop.cpp" mark="9-24" />
+
+Both functions give the same counts. The loop follows the generations forwards, adding the $k^g$ individuals born in each; the recursion follows the definition backwards. For this problem there is even a closed form, $D(n) = k\,(k^n - 1)/(k - 1)$ for $k \ne 1$, which is the best way of all to compute it and a useful check on both.
+
+The cost of recursion:
+
+- **Overhead per call.** Each call creates a frame, copies its parameters and returns. For a cheap computation this overhead can dominate, so a recursive version is usually somewhat slower than a loop.
+- **Limited depth.** The call stack has a fixed size, typically a few megabytes. A recursion a few thousand levels deep is fine; one that is a million levels deep, such as a recursive projection of a population over a million time steps, can exhaust it and crash the program with a *stack overflow*. C++ does not guarantee that the compiler will turn recursion into a loop.
+
+Use recursion where the problem has a branching, nested structure. Use a loop where it is a simple sequence of steps, such as the generations of a simulation.
+
+### Where recursion shines: trees
+
+A phylogeny is naturally recursive: a clade is either a leaf (here, a genus with a known number of species) or a group of smaller clades. Counting the species in a clade is then a recursive function with the leaf as its base case:
+
+<Example file="foundations/recursion_clade_tree.cpp" mark="17-26" />
+
+The recursive case makes one call per subclade, not just one, and the function neither knows nor cares how deep the tree is. Written with loops alone, the same count needs a hand-managed list of clades still to visit. The tree is stored as a `struct` whose member is a vector of further clades (see <Concept id="structs" /> and <Concept id="std-vector" />), and it is passed by const reference so that no part of it is copied (see <Concept id="const-reference" />).
+
+<Callout kind="pitfall" title="Infinite recursion">
+If a chain of calls never reaches a base case, each call adds another frame until the stack is exhausted and the program crashes. This happens when the base case is missing, when the recursive call does not shrink the problem, or when an argument can jump past the base case. `descendants(-1, 2)` is an example: `generations` goes −1, −2, −3, … and never equals 0. Writing the base case as `if (generations <= 0)` closes that gap. Check every recursive function by asking: does every call get closer to a base case, and can it ever skip over it?
+</Callout>
+
+## Explore it
+
+<Trace id="recursion-descendants" />
+
+<Check
+  id="value"
+  kind="predict"
+  question="Using the definition D(n) = k (1 + D(n − 1)), D(0) = 0, what does descendants(2, 3) return?"
+  options={["6", "9", "12", "13"]}
+  answer={2}
+  feedback={[
+    "That is 2 × 3, but the founder's offspring are not the only descendants after two generations.",
+    "That is the number born in the second generation alone, 3². The first generation must be added.",
+    "D(1) = 3 × (1 + 0) = 3, and D(2) = 3 × (1 + 3) = 12: three offspring and nine grand-offspring.",
+    "That would include the founder itself, who is not one of its own descendants.",
+  ]}
+/>
+
+<Check
+  id="no-progress"
+  kind="debug"
+  question="A student writes this version. The program runs for a moment and then crashes. Why?"
+  code={`int descendants(int generations, int offspring) {
+    if (generations == 0) {
+        return 0;
+    }
+    return offspring * (1 + descendants(generations, offspring));
+}`}
+  options={[
+    "Integer overflow in the multiplication",
+    "The recursive call passes the same value of generations, so the base case is never reached and the stack overflows",
+    "A function may not call itself inside a return statement",
+    "offspring must be passed by reference",
+  ]}
+  answer={1}
+  feedback={[
+    "The multiplication is never reached: no call ever returns.",
+    "Each call makes an identical call, which makes another, until the call stack is exhausted. The argument must be generations - 1.",
+    "A call is an expression and may appear anywhere a value is needed, including after return.",
+    "Each call may have its own copy of offspring; that is not the problem.",
+  ]}
+/>
+
+<Check
+  id="order"
+  kind="read"
+  question="In recursion_clade_tree.cpp, count_species(tree) is called once from main. How many times does count_species run in total?"
+  options={["1", "6, once per genus", "10, once per clade or genus in the tree", "It depends on the number of species"]}
+  answer={2}
+  feedback={[
+    "The first call makes further calls, one for every subclade.",
+    "The leaves are only part of the tree; the internal clades are visited too.",
+    "Every node is visited exactly once: the root, clade A, A1, A2, genus B, clade C, C1, clade C2, C2a and C2b. The internal nodes add up what their subclades return.",
+    "The species numbers are only added; they do not cause calls.",
+  ]}
+/>
+
+## In biological modelling
+
+- **Trees.** Phylogenies, genealogies and cell lineages are trees. Counting tips, computing the total branch length, finding the depth or visiting every node in order are recursive functions with the leaf as the base case. Reading tree files in the Newick format, in which clades are nested in parentheses, is recursive as well.
+- **Branching processes.** Expected numbers of descendants, extinction probabilities over a fixed number of generations and the size distribution of a lineage satisfy recursions such as $D(n) = k\,(1 + D(n-1))$. Often the recursion is best used to *derive* a closed form or a loop, and the recursive code serves as a check.
+- **Divide and conquer.** Some algorithms split a problem into halves, solve each recursively and combine the results, for example to sort data or search a sorted table (see <Concept id="algorithm-design" />).
+- **Not for time steps.** A simulation's time loop should be a loop. Writing $N_t = \lambda N_{t-1}$ as a recursive function is correct, but costly, and over long runs it overflows the stack.
+
+## Common mistakes
+
+- **No base case, or one that can be skipped.** Use conditions such as `n <= 0` rather than `n == 0` when an argument might start below the base case.
+- **A recursive call that does not shrink the problem.** Every call must move closer to the base case.
+- **Recursion over a long sequence.** Thousands of time steps or individuals in a chain belong in a loop.
+- **Recomputing the same subproblem.** A recursion that calls itself twice on overlapping subproblems can take exponentially long. Store results that are needed again, or use a loop that builds them up in order.
+- **Passing a large structure by value.** Every frame would hold a copy. Pass trees and vectors by const reference.
+
+## Practice
+
+<Practice>
+
+1. Extend `recursion_clade_tree.cpp` with two recursive functions: `int count_leaves(const Clade& c)`, the number of genera, and `int depth(const Clade& c)`, the number of levels below the clade (0 for a leaf). Check them against the tree by hand.
+2. Write `void print_tree(const Clade& c, int level)` that prints every clade's name, indented by two spaces per level, followed by its species count. Which part of the function plays the role of the base case?
+3. Write a recursive function for the projection $N_t = \lambda N_{t-1}$ with $N_0$ given, and a loop that computes the same value. Then find out what happens on your machine when you ask the recursive version for $t = 10^7$.
+4. Change the base case of `descendants` to `generations <= 0` and add a test in `main` that calls it with −1. Then find, by trial, the largest number of generations for which the result still fits in an `int` with 3 offspring per individual, and confirm it with the closed form.
+
+<details>
+<summary>Hints and answers</summary>
+
+1. `count_leaves` returns 1 for a leaf and the sum over subclades otherwise: 6 for the example tree. `depth` returns 0 for a leaf and 1 plus the largest depth among the subclades otherwise: 3 for the whole tree, through clade C and clade C2.
+2. Print the current clade first, then call `print_tree(sub, level + 1)` for each subclade. A leaf has no subclades, so its loop does nothing: the empty loop is the base case.
+3. The loop is a few lines and runs instantly. The recursive version needs $10^7$ nested calls and will typically crash with a stack overflow (on Linux, often as a segmentation fault); an optimising compiler may sometimes rescue it, but C++ does not promise that.
+4. With $k = 3$, $D(n) = 3(3^n - 1)/2$. The largest `int` is usually $2^{31} - 1 \approx 2.1 \times 10^9$ (see <Concept id="numeric-limits" />), so $n = 19$ fits ($D = 1\,743\,392\,199$) and $n = 20$ does not. Signed overflow is undefined behaviour, so test the bound *before* computing, not afterwards.
+
+</details>
+
+</Practice>

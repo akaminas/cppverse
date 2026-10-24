@@ -1,0 +1,5 @@
+n = 0: recursive 0, loop 0
+n = 2: recursive 12, loop 12
+n = 4: recursive 120, loop 120
+n = 6: recursive 1092, loop 1092
+n = 8: recursive 9840, loop 9840

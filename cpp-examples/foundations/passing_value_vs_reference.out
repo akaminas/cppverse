@@ -1,0 +1,5 @@
+start:                  N = 40
+  inside grow_copy:     N = 60
+after grow_copy:        N = 40
+  inside grow_in_place: N = 60
+after grow_in_place:    N = 60

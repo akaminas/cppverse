@@ -1,0 +1,217 @@
+---
+title: Passing arguments by value and by reference
+summary: Parameters are copies unless declared as references. When to copy, when to alias, and when a const reference reads a large object safely.
+level: beginner
+module: 6
+manual: ["M6.3", "M6.4", "M7.4", "M11.3"]
+minutes: 35
+objectives:
+  - Predict whether a function call can change the caller's variables
+  - Use reference parameters to update a model state in place
+  - Pass large objects such as vectors by const reference to avoid copies
+  - Choose between passing by value, by reference, by const reference and returning a new value
+references:
+  - "cppreference.com: Reference declaration"
+  - "C++ Core Guidelines, F.15–F.21: parameter passing"
+---
+
+## What it is
+
+When a function is called, each parameter is initialised from the corresponding argument. By default the parameter is a **copy**: a new variable that starts with the argument's value but is otherwise unrelated to it. That is *pass by value*. A parameter can instead be declared as a **reference**, written with `&`, and then it is not a new variable at all but another name for the caller's variable: *pass by reference*. A **const reference** combines the two: no copy is made, but the function may only read through it.
+
+## Why it matters
+
+The choice decides what a function can do to the caller's data, and what it costs to call. Passing by value is safe: whatever the function does to its parameters, the caller's variables are untouched. But a function that should update the state of a model, say this year's juveniles and adults, needs to change the caller's variables, and a function that analyses a trajectory of a million values should not copy it on every call. Knowing which mechanism is in play is also essential for reading code: the call `step(juveniles, adults)` looks the same either way.
+
+## How it works in C++
+
+### Pass by value: the parameter is a copy
+
+<Example file="foundations/passing_value_vs_reference.cpp" mark="8-11,21-22" />
+
+`grow_copy` multiplies its parameter `N` by 1.5 and prints 60, yet back in `main`, `N` is still 40. The parameter `N` of `grow_copy` and the variable `N` of `main` share a name, but they are two separate variables in two separate places in memory. The call copies 40 into the parameter; the function changes its copy; the copy is destroyed when the function returns. Step through the [trace below](#explore-it) to watch this happen.
+
+This is C++'s default because it is safe: you can call a function without worrying about what it does to your variables. The consequence is that a function taking only value parameters can pass information back to the caller through one route only, its return value.
+
+<Anchor id="references" />
+
+### References: another name for the same variable
+
+A *reference* is an alias. Declared with `&` after the type, it must be bound to a variable when it is created, and from then on every use of the reference is a use of that variable:
+
+```cpp
+double N = 40.0;
+double& population = N;      // population is another name for N
+population = 1.5 * population;
+std::cout << N << '\n';      // prints 60
+```
+
+A reference cannot be re-bound to another variable later, and there is no such thing as a reference to nothing.
+
+As a parameter, a reference makes the function work directly on the caller's variable. In the program above, `grow_in_place` takes `double& N`; nothing is copied, and multiplying `N` inside the function changes `main`'s `N`.
+
+The `&` belongs to the type of the parameter and must appear in every declaration of the function as well as in its definition: the prototype is `void grow_in_place(double& N, double lambda);`. Whether you write `double& N` or `double &N` makes no difference to the compiler; this site attaches the `&` to the type.
+
+### Updating a model state in place
+
+Reference parameters let one function update several variables at once, something a single return value cannot do. Here a stage-structured population of juveniles and adults is advanced by one year:
+
+<Example file="foundations/passing_stage_update.cpp" mark="9-15,22" />
+
+Two details deserve attention.
+
+- **Compute first, then assign.** Both new values are computed from the *old* state into temporary variables before either reference is overwritten. Had the function written `juveniles = fecundity * adults;` first, the adult update on the next line would use the new number of juveniles, silently changing the model. See <Concept id="update-order" />.
+- **The call does not show it.** `step(juveniles, adults, 3.0, 0.25, 0.5)` looks exactly like a call by value. Only the declaration of `step` reveals that the first two arguments will be changed. Choose a function name that says so (`step`, `update`, `advance`), and do not use non-const references for parameters that are only read.
+
+A non-const reference must be bound to a variable that can be changed. Calling `grow_in_place(40.0, 1.5)` does not compile: there is no variable for the function to update.
+
+<Anchor id="const-references" />
+
+### const references: read without copying
+
+Copying a `double` costs nothing worth mentioning. Copying a `std::vector<double>` with a million elements means allocating 8 MB and copying every value, on every call. A function that only *reads* such an object should receive a reference to it, so that no copy is made. To keep the safety of pass by value, make it a reference to `const`:
+
+<Example file="foundations/passing_const_reference.cpp" mark="12,20,30" />
+
+`mean` and `count_above` read the sample through `const std::vector<double>&`: no copy is made, and any attempt to modify `values` is a compile error. `to_kilograms` is *meant* to modify the sample, so it takes a plain reference, and its declaration warns every reader of that fact.
+
+The compiler enforces the promise made by `const`. This version of `mean` tries to convert the values in place and is rejected:
+
+<Example file="foundations/passing_const_violation.cpp" mark="14" />
+
+A const reference, unlike a plain reference, can also bind to a temporary value, so `mean({2.0, 4.0, 6.0})` works.
+
+### Choosing how to pass
+
+| What the function does with the argument | Pass it as | Example |
+|---|---|---|
+| reads a cheap value (`int`, `double`, `bool`, `char`) | value | `double next_generation(double N, double lambda)` |
+| reads a large object (vector, string, parameter set) | `const&` | `double mean(const std::vector<double>& values)` |
+| changes the caller's variable | `&` | `void step(double& juveniles, double& adults, …)` |
+| needs a private copy to modify | value | `std::vector<double> sorted_copy(std::vector<double> v)` |
+| produces one new result | return it | `double next_generation(…)` rather than an output parameter |
+
+Two remarks on the table. First, returning a value is usually clearer than writing into a reference parameter, even for large objects: returning a `std::vector` from a function does not copy its elements. Use reference parameters when a function must update existing state, or must report several results. Second, passing `int` or `double` by `const&` gains nothing: the reference itself is as large as the value, and reading through it can be slower. Pass cheap types by value.
+
+Finally, keep the order of parameters predictable: the state or main input first, then the parameters that only steer the computation, with any defaulted parameters last (see <Concept id="overloading-defaults" />).
+
+<Callout kind="manual" title="const references for every parameter">
+The manual's style guidelines make pass by const reference the default for every parameter, including numbers, and its examples pass `double` and `int` as `const double&` and `const int&`. Modern guidance, followed on this site, passes cheap built-in types by value and reserves `const&` for objects that are expensive to copy. Both are correct C++; the difference is efficiency and readability.
+</Callout>
+
+## Explore it
+
+Step through the program and watch the two variables called `N`. The variable list shows which belongs to which function, and what the reference refers to.
+
+<Trace id="passing-arguments-value-reference" />
+
+<Check
+  id="harvest-copy"
+  kind="predict"
+  question="What does this print?"
+  code={`void harvest(double stock, double fraction) {
+    stock = stock * (1.0 - fraction);
+}
+
+int main() {
+    double stock = 100.0;
+    harvest(stock, 0.2);
+    std::cout << stock << '\\n';
+}`}
+  options={["100", "80", "20", "It does not compile"]}
+  answer={0}
+  feedback={[
+    "The parameter stock is a copy. The function changes the copy, which is destroyed when it returns; main's stock is untouched.",
+    "That would be the result with void harvest(double& stock, double fraction), or if harvest returned the new stock and main assigned it.",
+    "The function computes the remaining stock, not the catch, and in any case does not change main's variable.",
+    "It compiles: a function may assign to its value parameters. Compilers may warn that the assigned value is never used.",
+  ]}
+/>
+
+<Check
+  id="alias"
+  kind="predict"
+  question="What does this print?"
+  code={`double adults = 12.0;
+double& a = adults;
+a = a + 3.0;
+adults = adults * 2.0;
+std::cout << a << ' ' << adults << '\\n';`}
+  options={["15 24", "30 30", "15 30", "30 24"]}
+  answer={1}
+  feedback={[
+    "a is not a copy taken at some moment: it is the same variable as adults, so it always shows the current value.",
+    "a and adults are two names for one variable: 12 + 3 = 15, then 15 × 2 = 30. Both names print 30.",
+    "After the doubling, a also refers to the doubled value.",
+    "Both names refer to the same variable, so they must print the same value.",
+  ]}
+/>
+
+<Check
+  id="update-order"
+  kind="model"
+  question="This update was meant to implement J' = f A and A' = s_J J + s_A A, all on the right-hand side using this year's values. What is wrong?"
+  code={`void step(double& J, double& A, double f, double sJ, double sA) {
+    J = f * A;
+    A = sJ * J + sA * A;
+}`}
+  options={[
+    "Nothing; the order of the two lines does not matter",
+    "J and A must be passed by value",
+    "The second line uses next year's J, because J was overwritten on the first line",
+    "References cannot appear on the left of an assignment",
+  ]}
+  answer={2}
+  feedback={[
+    "It matters: the two statements run in order, and the first changes a value the second reads.",
+    "Then the function could not update the caller's state at all.",
+    "After J = f * A, J already holds next year's juveniles, so the adults are computed from the wrong value. Compute both new values into local variables first, then assign them.",
+    "Assigning through a non-const reference is exactly what references are for.",
+  ]}
+/>
+
+## In biological modelling
+
+- **States updated in place.** A function that advances the state of a model by one step often takes the state by reference: `void step(State& s, const Parameters& p)`. The alternative, `State next(const State& s, const Parameters& p)`, returns a new state and leaves the old one intact, which makes it easy to keep both and is often clearer. Both styles are common; be consistent within a program. See <Concept id="euler" /> for a stepper written in the first style.
+- **Parameter sets and data by const reference.** Parameter sets, observed data and stored trajectories are read by many functions and changed by none: pass them as `const&`. Once parameters are grouped into a struct (see <Concept id="structs" />) this becomes the normal way to hand them around.
+- **Random-number engines by reference.** A random-number engine has an internal state that each draw advances. Passed by value, the function would draw from a copy, and the next call would repeat the same "random" numbers. Engines are therefore always passed by reference (see <Concept id="random-library" />).
+- **Five `double` parameters in a row are a hazard.** In `step(juveniles, adults, 3.0, 0.25, 0.5)` it is easy to swap two survival probabilities without any error from the compiler. Grouping parameters into a named struct removes the risk.
+
+## Common mistakes
+
+- **Expecting a value parameter to change the caller's variable.** It changes a copy. Return the new value, or use a reference.
+- **Forgetting the `&` in the prototype or the definition.** The declaration and the definition then describe two different functions, and the linker reports one of them as undefined.
+- **Passing large objects by value.** `double mean(std::vector<double> v)` copies the entire vector on every call. Use `const std::vector<double>&`.
+- **Non-const references for parameters that are only read.** They mislead the reader and refuse temporaries. Add `const`.
+- **Overwriting part of a state before computing the rest.** Compute all new values, then assign.
+- **Returning a reference to a local variable.** The local variable is destroyed when the function returns, and the reference refers to nothing; compilers warn about it. Return by value.
+
+## Practice
+
+<Practice>
+
+1. Write `void apply_harvest(double& stock, double fraction, double& catch_taken)` that removes a fraction of the stock and reports the catch through the third parameter. Then write a second version, `double harvest_catch(double stock, double fraction)`, that only returns the catch and leaves updating the stock to the caller. Which version would you rather read in a simulation loop, and why?
+2. Write `double maximum(const std::vector<double>& values)` and `void normalise(std::vector<double>& values)`, which divides every element by the maximum. Use them to rescale a vector of nest counts so that the largest is 1. What should `maximum` do for an empty vector?
+3. Predict the output, then check:
+
+   ```cpp
+   void f(int a, int& b) { a = a + 1; b = b + a; }
+   int main() {
+       int x = 1;
+       int y = 10;
+       f(x, y);
+       f(x, y);
+       std::cout << x << ' ' << y << '\n';
+   }
+   ```
+
+<details>
+<summary>Hints and answers</summary>
+
+1. The second version keeps one job per function and makes every change visible in the caller: `const double c = harvest_catch(stock, 0.2); stock -= c;`. The first version is reasonable when a function must report several results at once.
+2. `maximum` cannot return a meaningful value for an empty vector. Decide on a rule (for example, check `values.empty()` before calling it) and document it. In `normalise`, compute the maximum once, before the loop, not inside it.
+3. `1 14`. `x` is passed by value and never changes; each call adds 2 to `y`.
+
+</details>
+
+</Practice>

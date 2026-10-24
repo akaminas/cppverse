@@ -78,10 +78,12 @@ export function validateCurriculum(
     if (deps.length === 0 && !ROOT_IDS.has(n.id)) errors.push(`node "${n.id}" has no dependencies but is not a designated root`);
   }
   if (!cycle) {
+    // Extensions beyond a landmark (e.g. adaptive step size) already sit past a destination.
+    const beyond = new Set(nodes.filter((n) => n.kind === 'landmark').flatMap((n) => [...dependentClosure(g, n.id)]));
     for (const n of nodes) {
-      if (n.kind === 'capstone' || n.kind === 'landmark') continue;
+      if (n.kind === 'capstone' || n.kind === 'landmark' || beyond.has(n.id)) continue;
       const forward = dependentClosure(g, n.id);
-      const reachesLandmark = [...forward].some((id) => g.byId.get(id)!.kind === 'landmark');
+      const reachesLandmark = [...forward].some((id) => ['landmark', 'capstone'].includes(g.byId.get(id)!.kind));
       if (!reachesLandmark) errors.push(`node "${n.id}" does not lead to any modelling destination`);
     }
     for (const root of ROOT_IDS) {

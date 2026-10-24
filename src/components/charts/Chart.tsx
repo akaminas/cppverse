@@ -128,11 +128,11 @@ export default function Chart({
     const pts = s.points.filter(([px, py]) => Number.isFinite(px) && Number.isFinite(py) && (ys.type !== 'log' || py > 0) && (xs.type !== 'log' || px > 0));
     if (!pts.length) return '';
     if (s.kind === 'step' || s.step) {
-      let d = `M${xs(pts[0][0])},${clampY(pts[0][1])}`;
-      for (let i = 1; i < pts.length; i++) d += `H${xs(pts[i][0])}V${clampY(pts[i][1])}`;
+      let d = `M${xs(pts[0][0]).toFixed(1)},${clampY(pts[0][1]).toFixed(1)}`;
+      for (let i = 1; i < pts.length; i++) d += `H${xs(pts[i][0]).toFixed(1)}V${clampY(pts[i][1]).toFixed(1)}`;
       return d;
     }
-    return 'M' + pts.map(([px, py]) => `${xs(px).toFixed(2)},${clampY(py).toFixed(2)}`).join('L');
+    return 'M' + pts.map(([px, py]) => `${xs(px).toFixed(1)},${clampY(py).toFixed(1)}`).join('L');
   };
 
   const bandPath = (b: Band) => {

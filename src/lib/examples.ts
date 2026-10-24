@@ -50,7 +50,12 @@ export function getExample(file: string): Example {
     expected: companions[`${base}.out`],
     stdin: companions[`${base}.in`],
     args: companions[`${base}.args`]?.trim(),
-    siblings: includes.map((inc) => `${dir}${inc}`.replace('/cpp-examples/', '')).filter((p) => sources[`/cpp-examples/${p}`] !== undefined),
+    // Local headers, plus the source file that implements each header (x.hpp → x.cpp), as CI compiles them.
+    siblings: includes
+      .flatMap((inc) => [inc, inc.replace(/\.hpp$/, '.cpp')])
+      .filter((inc, i, arr) => arr.indexOf(inc) === i)
+      .map((inc) => `${dir}${inc}`.replace('/cpp-examples/', ''))
+      .filter((p) => sources[`/cpp-examples/${p}`] !== undefined),
   };
 }
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Compiles and runs every C++ example in cpp-examples/.
+#  (Programs marked "// Expect: compile-error" must fail even with -Werror
+#  enabled, so warnings can also be demonstrated.)
 #  - Programs are compiled with -Wall -Wextra -Wpedantic -Werror at the
 #    language standard named in their "// Standard:" header line.
 #  - Programs marked "// Expect: compile-error" must FAIL to compile.
@@ -31,7 +33,7 @@ while IFS= read -r -d '' src; do
   done
   count=$((count + 1))
   if grep -qiE '^// *Expect: *compile-error' "$src"; then
-    if $CXX -std="$std" -fsyntax-only "$src" > /dev/null 2>&1; then
+    if $CXX -std="$std" -fsyntax-only -Wall -Wextra -Wpedantic -Werror "$src" > /dev/null 2>&1; then
       echo "FAIL $rel compiled, but it is meant to demonstrate a compiler error"
       fail=1
     else

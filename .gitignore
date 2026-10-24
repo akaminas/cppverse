@@ -18,3 +18,10 @@ sources/
 Thumbs.db
 desktop.ini
 *.log
+
+# files written by example programs when CI runs them
+cpp-examples/**/vole_mass_summary.csv
+cpp-examples/**/bh_param_run.csv
+cpp-examples/**/kleiber_rates.csv
+cpp-examples/**/beverton_holt_output.csv
+cpp-examples/**/two_stage_output.csv

@@ -1,0 +1,249 @@
+---
+title: Assignment and literals
+summary: Assignment replaces a variable's value, which is how a model's state changes. Literals are values written in the code, and their notation decides their type.
+level: beginner
+module: 2
+manual: ["M2.2", "M2.3", "M11.1"]
+minutes: 30
+objectives:
+  - Distinguish initialisation from assignment
+  - Read x = x + dx as an action that updates a state, not as an equation
+  - Explain which expressions may stand on the left of an assignment
+  - Write integer and floating-point literals of the intended type
+  - Choose between const and constexpr for fixed values
+references:
+  - "cppreference.com: Integer literal"
+  - "cppreference.com: Floating-point literal"
+  - "cppreference.com: constexpr specifier"
+---
+
+## What it is
+
+An *assignment* gives an existing variable a new value:
+
+```cpp
+reserves = reserves + 0.75;
+```
+
+C++ first evaluates the expression on the right, using the current values of any variables in it, and then stores the result in the variable on the left. The old value is gone. The `=` sign is an instruction, "replace the value of the left side by the value of the right side", and not a statement that two things are equal.
+
+A *literal* is a value written directly in the code, such as `0.75`, `120` or `'A'`. Every literal has a type, and how you write it decides which.
+
+## Why it matters
+
+A simulation is a sequence of state updates. Read as mathematics, $N = N + \Delta t \, r N$ would imply $\Delta t \, r N = 0$. Read as C++, `N = N + dt * r * N;` is one step of a numerical method: take the current population, add the change over one time step, and make that the new population. Every model on this site advances its state with assignments like this.
+
+Literals matter because the type of a literal decides what the arithmetic does. `1 / 2` is 0 and `1.0 / 2` is 0.5, because the first divides two integers (see <Concept id="integer-division" />). A leading zero, as in `017`, silently changes the value of a number.
+
+## How it works in C++
+
+### Initialisation and assignment
+
+Both use `=`, but they are different operations.
+
+```cpp
+double reserves = 2.0;        // initialisation: creates reserves with the value 2.0
+reserves = 2.75;              // assignment: changes the value of an existing variable
+
+const double cost = 1.25;     // a const variable is initialised once...
+cost = 1.5;                   // ...and can never be assigned: compile error
+```
+
+A declaration begins with a type name; that is how you recognise initialisation. It happens exactly once, when the variable is created. An assignment can happen any number of times, to any variable that is not `const`. Trying to assign to a `const` variable is a compile error:
+
+<Example file="foundations/assignment_const_error.cpp" mark="11" />
+
+GCC reports `assignment of read-only variable 'hatchingProbability'`, Clang `cannot assign to variable 'hatchingProbability' with const-qualified type`.
+
+### Assignment copies a value
+
+After `laid = eggs;`, the variable `laid` holds a copy of the value that `eggs` had at that moment. The two variables are independent: changing `eggs` afterwards does not change `laid`. This is why the order of assignments matters. Exchanging the values of two variables needs a third one to hold a value temporarily:
+
+```cpp
+const double previous = adults;   // remember the old value of adults
+adults = juveniles;
+juveniles = previous;
+```
+
+Writing `adults = juveniles; juveniles = adults;` would leave both variables with the value of `juveniles`. (The standard library also offers `std::swap(adults, juveniles)` in `<utility>`.)
+
+To test whether two values are equal, C++ uses a different operator, `==` (see <Concept id="boolean-logic" />). Confusing the two is a classic error.
+
+### What may stand on the left
+
+The left side of an assignment must refer to a place in memory that can hold a value and that still exists after the statement: in C++ terms, an *lvalue*. A variable's name is an lvalue. The result of a calculation is not: it is a temporary value (an *rvalue*) with no lasting location of its own.
+
+```cpp
+N = M + 1;      // fine: N is a variable
+N + 1 = M;      // error: N + 1 is a temporary value, not a variable
+5 = N;          // error: a literal cannot be assigned to
+```
+
+GCC reports the last two as `lvalue required as left operand of assignment`.
+
+### An assignment has a value
+
+An assignment is itself an expression, whose value is the new value of the variable. This allows chains such as `adults = juveniles = 0;`, which is evaluated from right to left: first `juveniles = 0`, then `adults` receives the result, 0. Use chains sparingly; one assignment per statement is easier to read. <Concept id="operators" /> covers this and the compound forms such as `+=`.
+
+### Updating the state of a model
+
+The typical assignment in a model computes a new value from the old one:
+
+```cpp
+N = N + dt * r * N * (1.0 - N / K);    // one Euler step of logistic growth
+```
+
+When two state variables depend on each other, compute both new values from the *old* state before assigning either:
+
+```cpp
+const double newPrey = prey + dt * (r * prey - a * prey * predators);
+const double newPredators = predators + dt * (b * prey * predators - m * predators);
+prey = newPrey;
+predators = newPredators;
+```
+
+Assigning `prey` first and then using its new value to update `predators` would implement a different model. <Concept id="update-order" /> shows how large the difference can be.
+
+<Anchor id="literals" />
+
+### Literals and their types
+
+| Written as | Type | Value |
+|---|---|---|
+| `120`, `-3` | `int` | decimal integers |
+| `0x3F` | `int` | hexadecimal (base 16): 63 |
+| `0b1010` | `int` | binary (base 2, C++14): 10 |
+| `017` | `int` | **octal** (base 8): 15 |
+| `1'000'000` | `int` | digit separators (C++14) are ignored: one million |
+| `12.5`, `5.`, `.5` | `double` | a decimal point makes a floating-point literal |
+| `1e3`, `6.022e23`, `1.2e-8` | `double` | scientific notation: 1.2e-8 is 1.2 × 10⁻⁸ |
+| `2.5f` | `float` | suffix `f` |
+| `2.5L` | `long double` | suffix `L` |
+| `10u`, `10L`, `10LL`, `10ULL` | `unsigned`, `long`, `long long`, `unsigned long long` | integer suffixes |
+| `'A'`, `'\n'` | `char` | one character, in single quotes |
+| `"seed bank"` | string literal | text, in double quotes (see <Concept id="strings" />) |
+| `true`, `false` | `bool` | the two truth values |
+
+A few rules are worth memorising:
+
+- **A leading zero means octal.** `017` is fifteen, not seventeen, and `09` does not compile at all, because 9 is not an octal digit. Never pad integer literals with zeros, for example to align plot numbers.
+- **A floating-point literal needs a decimal point or an exponent.** `1e3` is the `double` 1000.0, while `1000` is an `int`.
+- **Match the literal to the variable.** Write `double total = 0.0;` rather than `= 0`, and `1.0 / 3.0` when you mean a fraction. The value is then of the right type from the start and no conversion is needed.
+- **Use upper-case suffixes.** `10L` is clearer than `10l`, which looks like 101.
+- **Use digit separators** for large numbers, `3'100'000'000LL`, and scientific notation for very small or very large ones, `1.2e-8` rather than `0.000000012`.
+
+<Example file="foundations/literals_notation.cpp" />
+
+The product of a `long long` and a `double` is a `double`, 37.2. Default output shows small and large doubles in scientific notation: `1.2e-08`.
+
+### `const` and `constexpr`
+
+Both mark a value that does not change. They differ in *when* the value must be known.
+
+```cpp
+constexpr double gasConstant = 8.314;       // J per mol per K, known when compiling
+constexpr int replicates = 20;
+
+double temperature = 0.0;
+std::cin >> temperature;                    // known only when the program runs
+const double kelvin = temperature + 273.15; // fixed from here on: const is right
+constexpr double tooEarly = temperature + 273.15;  // error: not known when compiling
+```
+
+`constexpr` requires a value that the compiler can compute, and the compiler then computes it. Use it for true constants of the program: physical constants, conversion factors, the number of loci in a model. Use `const` for values that are fixed during a run but only known once it starts, such as parameters read from a file. Older code often uses `#define GAS_CONSTANT 8.314` for this; a `constexpr` variable has a type and obeys the rules of scope, so prefer it.
+
+<Callout kind="manual" title="Literals and constants in the manual">
+The manual states that floating-point literals always contain a decimal point; `1e3` is a counterexample. It does not cover binary literals, digit separators, `constexpr` or most suffixes, which all belong to modern C++ and are used throughout this site.
+</Callout>
+
+## Explore it
+
+Step through a program that updates one state variable with a series of assignments.
+
+<Trace id="assignment-and-literals-reserves" />
+
+<Check
+  id="copy"
+  kind="predict"
+  question="What is the value of laid after these three lines?"
+  code={`int eggs = 5;
+int laid = eggs;
+eggs = eggs + 2;`}
+  options={["5", "7", "2", "It depends on the compiler"]}
+  answer={0}
+  feedback={[
+    "laid received a copy of the value of eggs, 5, when it was initialised. Changing eggs afterwards does not affect it.",
+    "7 is the new value of eggs. An assignment copies a value; it does not link two variables.",
+    "2 is only the increment; nothing assigns it to laid.",
+    "The behaviour is fully defined: laid is 5 on every compiler.",
+  ]}
+/>
+
+<Check
+  id="lvalue"
+  kind="debug"
+  question="Which statement does not compile? (N and M are double variables.)"
+  options={["N = N * 1.2;", "N + 1 = M;", "N = M = 0.0;", "M = N - 1;"]}
+  answer={1}
+  feedback={[
+    "A normal state update: the right side uses the old N, and the result replaces it.",
+    "N + 1 is a temporary value, not a variable, so nothing can be stored in it. The compiler reports that an lvalue is required on the left.",
+    "A chained assignment: M becomes 0.0, then N receives the value of that assignment, 0.0.",
+    "Fine: M receives the value of N minus one.",
+  ]}
+/>
+
+<Check
+  id="octal"
+  kind="predict"
+  question="What does this statement print?"
+  code={`std::cout << 010 + 1 << '\\n';`}
+  options={["11", "9", "0101", "It does not compile"]}
+  answer={1}
+  feedback={[
+    "That would be true if 010 were ten. A leading zero makes it an octal literal.",
+    "010 is octal: 1 × 8 + 0 = 8. Adding 1 gives 9.",
+    "The expression is evaluated as arithmetic; nothing is joined as text.",
+    "010 is a valid octal literal, so the statement compiles. 09 would not.",
+  ]}
+/>
+
+## In biological modelling
+
+Assignment is how a model moves through time. Each step reads the current state, computes the next one, and stores it. Write updates so that each line can be compared with the model's equations, and when several state variables change together, compute all new values from the old state first.
+
+Write parameters as literals with the right type and a unit in a comment: `const double attackRate = 0.8;  // per day`. Use scientific notation for very small rates, `1.2e-8`, and digit separators for large counts, `400'000'000`. Mark true constants `constexpr`, and parameters that are fixed during a run `const`.
+
+## Common mistakes
+
+- **Reading `=` as equality.** `x = y` copies; it does not make `x` and `y` the same thing.
+- **Updating coupled variables one after another**, so that the second update uses the first one's new value.
+- **Integer literals in floating-point formulas.** `1 / 3 * mass` is 0 for any mass; write `mass / 3.0`.
+- **Leading zeros.** `0750` is 488.
+- **Assigning to `const`.** If a value must change, it is not a constant; if it must not, the compiler protects it for you.
+
+## Practice
+
+<Practice>
+
+1. Trace these lines by hand and give the final values of `a` and `b`. Then rewrite them so that the two values are exchanged.
+
+   ```cpp
+   double a = 3.0;
+   double b = 5.0;
+   a = b;
+   b = a;
+   ```
+
+2. A bat roost holds 230 bats at dusk. During the night 85 leave to forage, 12 bats from another roost arrive, and before dawn 80 of the foragers return. Write a program that keeps the count in one variable, updates it with an assignment for each event, and prints it after each event.
+3. Write a literal of a suitable type for each of the following: 2.5 million sequencing reads; a per-site mutation rate of 2.2 × 10⁻⁹; the bit pattern 1010 0101; a body mass of 31 g that will be used in floating-point arithmetic; the nucleotide thymine.
+
+<details>
+<summary>Answers</summary>
+
+1. After `a = b;` both are 5.0, and `b = a;` changes nothing: both end as 5.0. To exchange them: `const double previous = a; a = b; b = previous;`.
+2. Start with `int bats = 230;`, then `bats = bats - 85;` (145), `bats = bats + 12;` (157) and `bats = bats + 80;` (237), printing after each. The count is an `int` because bats are counted one by one.
+3. `2'500'000` (an `int` is large enough; `2'500'000LL` if it will be multiplied into larger numbers); `2.2e-9`; `0b1010'0101` (165; separators work in binary literals too); `31.0`; `'T'`.
+</details>
+
+</Practice>

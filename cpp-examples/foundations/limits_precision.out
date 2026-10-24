@@ -1,0 +1,8 @@
+float total:  20000000.0
+double total: 20000000.5
+sum of ten 0.1: 0.99999999999999989
+sum == 1.0: false
+within 1e-12 of 1.0: true
+likelihood: 0.0000
+it became exactly 0 after 162 observations
+log-likelihood: -1842.0681

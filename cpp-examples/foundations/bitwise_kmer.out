@@ -1,0 +1,8 @@
+GATC packed: 141
+as 8 bits:   10001101
+first base:  2
+last base:   1
+a & b = 2, a | b = 7, a ^ b = 5
+a & c = 0, yet a != 0 && c != 0 is true
+~a = -7
+a << 2 = 24, a >> 1 = 3

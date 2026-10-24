@@ -1,0 +1,196 @@
+---
+title: Blocks and scope
+summary: A name exists from its declaration to the end of the enclosing block. Blocks, local and global variables, shadowing and extern.
+level: beginner
+module: 3
+manual: ["M3.2", "M11.1"]
+minutes: 25
+objectives:
+  - Group statements into blocks and explain where a variable's scope begins and ends
+  - Distinguish the scope of a name from the lifetime of a variable
+  - Explain why global variables make models hard to check, and avoid them
+  - Recognise shadowing and the bugs it causes
+  - Share a global between files with extern
+references:
+  - "cppreference.com: Scope"
+  - "cppreference.com: Storage class specifiers"
+---
+
+## What it is
+
+A *block*, or *compound statement*, is a sequence of statements enclosed in braces `{ … }`. Wherever C++ expects one statement, a block can stand instead, and blocks can be nested inside each other. The body of `main` is a block, as is the body of every loop and branch you will write.
+
+Every name declared inside a block has a *scope*: the part of the program in which the name can be used. For a variable declared in a block, the scope runs from its declaration to the closing brace of that block. Outside that region, the name does not exist.
+
+## Why it matters
+
+The fewer places a variable can be seen, the fewer places can change it, and the easier it is to be sure what value it has. A temporary value needed for three lines should exist for three lines. A state variable used throughout a simulation should still be visible only where the simulation runs, and should reach other parts of the program as an argument, where the reader can see it pass.
+
+Scope also decides when a variable is created afresh. A variable declared inside the body of a replicate loop is a new variable, with its initial value, in every replicate. Declared outside the loop, it carries its value from one replicate into the next, which is rarely what a modeller intends.
+
+## How it works in C++
+
+### Scope and lifetime of local variables
+
+A variable declared inside a block is *local* to that block. It is created when its declaration is executed and destroyed when the program leaves the block. Its scope (where its *name* is visible) and its lifetime (when the *variable* exists) therefore coincide. Code in an inner block can see the names of the enclosing blocks; code in an outer block cannot see into an inner one, and no code can use a name before its declaration.
+
+<Example file="foundations/scope_nested_blocks.cpp" mark="14-18" />
+
+`germinated` exists only inside the first inner block. The change it makes to `seedlings` survives the block, because `seedlings` belongs to `main`. Trying to use `germinated` after its block has closed is a compile error:
+
+<Example file="foundations/scope_out_of_scope_error.cpp" mark="15" />
+
+GCC reports `'germinated' was not declared in this scope`, the same message as for a misspelt name: from the compiler's point of view, line 15 refers to a name that does not exist there.
+
+Declaring the same name twice in the same block is also an error (`redeclaration of 'int seedlings'`). In *different* blocks that do not overlap, the same name is fine: every loop in a program can have its own counter `i`. A variable declared in the header of a `for` loop belongs to the loop and disappears when the loop ends (see <Concept id="for-loop" />).
+
+### Global variables
+
+A variable declared outside every function, such as `temperature` in the program above, is *global*. Its scope runs from its declaration to the end of the file, and it lives for the whole run of the program. Unlike a local variable, a global without an initialiser is set to zero.
+
+Globals are convenient and costly. Any function can read and change them, so to know the value of a global at some point you must know everything the program did before. Functions that use globals have hidden inputs that do not appear in their parameter lists, cannot easily be tested on their own, and interfere with one another when a model is run several times in one program, for replicates or a parameter sweep. Declare variables as locally as possible, pass values to functions as arguments, and keep globals for constants: `constexpr int lociPerGenome = 10;` at the top of a file is harmless, because nothing can change it.
+
+<Callout kind="manual" title="Locals and speed">
+The manual's advice to avoid global variables and keep variables local is sound, but its claim that local variables can make a program up to 25% faster is not a reliable rule. The reasons to keep variables local are clarity and safety. (The manual also says that a local variable is "erased from memory" when its block ends; more precisely, its lifetime ends and its storage may be reused.)
+</Callout>
+
+### Shadowing
+
+A declaration in an inner block may reuse a name from an outer block or from the global scope. Inside the inner block, the name then refers to the new variable, which *shadows* (hides) the outer one until the block ends. The global remains reachable with the scope-resolution operator, `::temperature`, as the example shows.
+
+Shadowing is legal, and occasionally harmless, but deliberate reuse of a name in nested scopes makes a reader stop and work out which variable is meant. Accidental shadowing causes a classic bug:
+
+```cpp
+double totalEggs = 0.0;
+for (int nest = 0; nest < nests; ++nest) {
+    double totalEggs = 0.0;          // a new variable, not the one above
+    totalEggs += eggsInNest(nest);
+}
+// totalEggs is still 0.0 here
+```
+
+The programmer meant to accumulate into the outer `totalEggs`, but the declaration inside the loop creates a second variable that is born and destroyed in every iteration. The flag `-Wshadow`, which is not part of `-Wall` or `-Wextra`, makes GCC and Clang warn about every shadowing declaration.
+
+### `extern`: a global shared between files
+
+In a program of several source files (see <Concept id="multiple-files" />), a global defined in one file can be used in another by declaring it there with `extern`:
+
+```cpp
+// parameters.cpp
+double temperature = 12.0;      // definition: the variable is created here
+
+// model.cpp
+extern double temperature;      // declaration: "defined in another file"
+```
+
+A *definition* creates the variable; a *declaration* only announces its name and type. There must be exactly one definition in the whole program, and there may be any number of declarations, usually collected in a header file. Declaring with `extern` but never defining produces a linker error (`undefined reference to 'temperature'`), and defining in two files produces another (`multiple definition of 'temperature'`). For shared constants, C++17 offers a simpler route: `inline constexpr double gasConstant = 8.314;` in a header, included wherever it is needed. For shared variables, the advice above applies doubly.
+
+## Explore it
+
+Step through the example and watch which names exist after each line.
+
+<Trace id="blocks-and-scope-nested" />
+
+<Check
+  id="shadow"
+  kind="predict"
+  question="What does this fragment print?"
+  code={`int clutch = 5;
+{
+    int clutch = 2;
+    clutch = clutch + 1;
+}
+std::cout << clutch << '\\n';`}
+  options={["5", "3", "6", "It does not compile: clutch is declared twice"]}
+  answer={0}
+  feedback={[
+    "The inner block declares a second variable called clutch, which shadows the outer one. Only the inner variable becomes 3, and it is destroyed at the closing brace. The outer clutch is still 5.",
+    "3 is the value of the inner variable, which no longer exists when the output statement runs.",
+    "No statement changes the outer clutch.",
+    "Redeclaring a name is an error only within the same block. In a nested block it is legal and shadows the outer name.",
+  ]}
+/>
+
+<Check
+  id="replicates"
+  kind="model"
+  question="A program runs 20 replicates of a population simulation in a loop. Where should the variable that holds the population size be declared so that every replicate starts from the initial population?"
+  options={[
+    "As a global variable, initialised once",
+    "In main, before the replicate loop",
+    "Inside the body of the replicate loop, initialised to the initial population",
+    "It makes no difference",
+  ]}
+  answer={2}
+  feedback={[
+    "A global is initialised once, at the start of the program. The second replicate would start where the first one ended.",
+    "The same problem: the variable is created once and keeps its value between replicates, unless you remember to reset it.",
+    "A variable declared in the loop body is created afresh, with its initial value, at the start of every replicate, and destroyed at its end. No state can leak from one replicate into the next.",
+    "Where a variable is declared decides when it is created and initialised, and so whether replicates are independent.",
+  ]}
+/>
+
+<Check
+  id="out-of-scope"
+  kind="debug"
+  question="Which line in this fragment fails to compile?"
+  code={`int main() {                       // line 1
+    double total = 0.0;            // line 2
+    {                              // line 3
+        const double eggs = 4.0;   // line 4
+        total = total + eggs;      // line 5
+    }                              // line 6
+    total = total + eggs;          // line 7
+    return 0;                      // line 8
+}`}
+  options={["Line 4", "Line 5", "Line 7", "None: it compiles"]}
+  answer={2}
+  feedback={[
+    "Declaring a variable in an inner block is fine.",
+    "Inside the inner block, both eggs and the outer total are visible.",
+    "eggs went out of scope at the closing brace on line 6, so on line 7 the name does not exist.",
+    "The use of eggs on line 7 is outside its scope.",
+  ]}
+/>
+
+## In biological modelling
+
+Declare the state of a model inside the loop or function that runs one simulation, initialised from the parameters, so that each run starts clean. Keep parameters in local `const` variables or a parameter struct and pass them to the functions that need them; a reader can then see from each function's parameter list exactly what it depends on. Use small blocks, or better small functions, for temporary values in a calculation, so that they cannot be confused with the model's state later on.
+
+## Common mistakes
+
+- **Using a variable after its block has ended.** Declare it in the outer block if it is needed there.
+- **Redeclaring instead of assigning.** `double N = …;` inside a loop creates a new `N` and leaves the outer one unchanged; `N = …;` updates it.
+- **State in global variables**, which makes replicates and tests interfere with each other.
+- **Declaring all variables at the top of `main`**, long before they are used. Declare each where it is first needed.
+- **`extern` without a definition**, or a definition in two files: both are linker errors.
+
+## Practice
+
+<Practice>
+
+1. Find the two errors in this fragment and correct them.
+
+   ```cpp
+   int main() {
+       {
+           const int hatched = 7;
+       }
+       const int fledged = hatched - 2;
+       const int fledged = 4;
+       return 0;
+   }
+   ```
+
+2. A program declares `double carryingCapacity = 500.0;` as a global, and three functions use it. Describe how you would restructure the program without the global, and what you gain.
+3. Compile the shadowing example from this lesson (the `totalEggs` loop) with `-Wshadow`, after giving it the missing pieces. What does the warning say, and what single change fixes the bug?
+
+<details>
+<summary>Answers</summary>
+
+1. `hatched` is used outside its block: declare it in `main`'s block instead. `fledged` is declared twice in the same block: remove one declaration, or give the second variable a different name.
+2. Declare `const double carryingCapacity = 500.0;` in `main` (or read it from a file), and add a parameter for it to each of the three functions that need it. Each function now shows in its signature that it depends on the carrying capacity; it can be tested with any value; and two simulations with different capacities can run in the same program.
+3. The compiler warns that the declaration of `totalEggs` shadows a previous local. Delete the inner declaration altogether: the outer variable is already initialised before the loop. (Deleting only the type would leave `totalEggs = 0.0;`, which resets the total in every iteration: a different bug.)
+</details>
+
+</Practice>

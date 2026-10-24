@@ -1,0 +1,237 @@
+---
+title: Operators and expressions
+summary: Arithmetic, compound assignment and increment operators; how C++ groups an expression by precedence and associativity; and, optionally, the bitwise operators.
+level: beginner
+module: 3
+manual: ["M3.1", "M3.2"]
+minutes: 35
+optional: false
+objectives:
+  - Use the arithmetic operators, compound assignment and ++/-- idiomatically
+  - Predict the value of prefix and postfix increments inside an expression
+  - Distinguish expressions from statements
+  - Determine how an expression is grouped from precedence and associativity, and parenthesise an equation correctly
+  - Read code that uses the bitwise and shift operators (optional)
+references:
+  - "cppreference.com: C++ operator precedence"
+  - "cppreference.com: Order of evaluation"
+---
+
+## What it is
+
+An *operator* combines one or more values, its *operands*, into a new value. `+` in `adults + juveniles` is an operator with two operands; `-` in `-x` has one. A combination of operands and operators that has a value is an *expression*: `3`, `N`, `r * N` and `r * N * (1 - N / K)` are all expressions. A *statement* is a complete instruction, typically an expression followed by a semicolon.
+
+Operators with one operand are called *unary*, those with two *binary*. C++ has a single operator with three operands, the conditional operator `?:` (see <Concept id="conditional-operator" />).
+
+## Why it matters
+
+Every equation in a model becomes an expression, and every update of its state becomes a statement. The compound operators (`+=`, `*=`) and the increment operator (`++`) appear in nearly every loop. And how C++ groups operators decides whether an expression computes the equation you meant: `N / 2 * K` and `N / (2 * K)` differ by a factor of $K^2$.
+
+## How it works in C++
+
+### Arithmetic operators
+
+`+`, `-`, `*` and `/` work as in arithmetic, with the caveat that `/` between two integers discards the fraction (see <Concept id="integer-division" />). `%` gives the remainder of integer division. The unary `-` negates its operand, and unary `+` leaves it unchanged.
+
+C++ has **no power operator**. `x ^ 2` compiles, but `^` is the bitwise exclusive or described at the end of this lesson: for integers `3 ^ 2` is 1, and for a `double` it does not compile. Write `x * x` or `std::pow(x, 2.0)` (see <Concept id="cmath" />).
+
+### Compound assignment
+
+Updating a variable from its own value is so common that C++ has a shorthand for it:
+
+| Written | Means |
+|---|---|
+| `N += births;` | `N = N + births;` |
+| `N -= deaths;` | `N = N - deaths;` |
+| `N *= survival;` | `N = N * survival;` |
+| `N /= 2.0;` | `N = N / 2.0;` |
+| `day %= 7;` | `day = day % 7;` |
+
+The right-hand side is evaluated completely before the operation: `N *= 1.0 + r;` means `N = N * (1.0 + r);`, not `N = N * 1.0 + r;`. Compound assignment once produced faster code; today compilers generate the same instructions for both forms, and the short form is preferred because it names the variable once and states the intent, "change N by this much".
+
+### Increment and decrement
+
+`++` adds 1 to a variable and `--` subtracts 1. Each comes in two forms, which have the same effect on the variable but give a different value as an expression:
+
+- **prefix** `++i` increments `i` and then gives its *new* value;
+- **postfix** `i++` gives the *old* value and increments `i` afterwards.
+
+As a statement on its own, `++generation;` and `generation++;` do exactly the same. Prefer the prefix form: for plain integers there is no difference in speed, but for the iterators and class types you will meet later the postfix form must make a copy of the old value. (A further difference, rarely useful: `++i` refers to the variable itself and may be assigned to, while `i++` is a temporary value.)
+
+<Example file="foundations/operators_tadpole_cohort.cpp" mark="14-15,26-27" />
+
+Avoid using `++` inside larger expressions where its two forms behave differently, and never change a variable twice in one expression: `count++ + count++` is undefined behaviour. One increment per statement keeps the code obvious.
+
+### Expressions and statements
+
+Every expression has a type and a value. That includes an assignment: the value of `N = 5` is the new value of `N`, which is what makes the chain `adults = juveniles = 0` work. Assignments, and chains of them, group from right to left.
+
+Adding a semicolon turns an expression into an *expression statement*: the expression is evaluated, its value thrown away, and only its side effects remain, such as the change to a variable or the text printed. That is why `N = r * N;` is useful and `r * N;` is not: it computes a value and discards it (compilers warn: `statement has no effect`). A semicolon on its own is the *empty statement*, which does nothing. Several statements enclosed in braces form a *compound statement*, or block (see <Concept id="scope" />).
+
+<Anchor id="precedence" />
+
+### Precedence and associativity
+
+When an expression contains several operators, *precedence* decides which bind to their operands first, and *associativity* decides how a chain of operators with equal precedence is grouped. The operators met so far, from highest precedence to lowest:
+
+| Operators | Meaning | Grouping |
+|---|---|---|
+| `::` | scope resolution | |
+| `a++` `a--` `f()` `v[i]` `.` `static_cast<T>()` | postfix increment, call, subscript, member, cast | left to right |
+| `++a` `--a` `-a` `+a` `!` `~` `sizeof` | prefix and unary operators | right to left |
+| `*` `/` `%` | multiplication, division, remainder | left to right |
+| `+` `-` | addition, subtraction | left to right |
+| `<<` `>>` | shift, stream insertion and extraction | left to right |
+| `<` `<=` `>` `>=` | relational | left to right |
+| `==` `!=` | equality | left to right |
+| `&` | bitwise and | left to right |
+| `^` | bitwise exclusive or | left to right |
+| `\|` | bitwise or | left to right |
+| `&&` | logical and | left to right |
+| `\|\|` | logical or | left to right |
+| `?:` `=` `+=` `-=` `*=` `/=` `%=` and the others | conditional, assignment | right to left |
+| `,` | comma | left to right |
+
+The complete table, with every C++ operator, is on cppreference.com. Some consequences:
+
+<Example file="foundations/precedence_grouping.cpp" />
+
+- `*` binds more tightly than `-`, so `r * N * 1 - N / K` is $(rN) - (N/K)$, not the logistic term. The parentheses in `r * N * (1 - N / K)` are essential.
+- `*` and `/` have equal precedence and group from left to right, so `4 * 1 / 2` is `(4 * 1) / 2` = 2, while `1 / 2 * 4` is `(1 / 2) * 4` = 0 in integer arithmetic. In the same way, `N / 2 * K` means $\frac{N}{2} K$, never $\frac{N}{2K}$: a product in a denominator always needs parentheses.
+- `-` groups from the left: `20 - 5 - 3` is 12. Assignments group from the right: `a = b = 0` sets `b` first.
+- `<<` binds more tightly than comparisons, so `std::cout << a < b;` does not compile. Parenthesise expressions in output: `std::cout << (a < b);`.
+
+Precedence decides how an expression is *grouped*, not the *order* in which its operands are evaluated. In `f() + g()` the compiler may call either function first. This matters only when both have side effects, but in stochastic models they often do: in `draw(rng) * 10 + draw(rng)` the two random numbers may be drawn in either order, so two compilers can produce different results from the same seed. Draw random numbers in separate statements.
+
+When in doubt, add parentheses, or split a long expression into named intermediate values. C++ has more than fifty operators, and nobody remembers all their precedences; a reader should not have to.
+
+### The comma operator
+
+`a, b` evaluates `a`, discards its value, then evaluates `b`, which is the value of the whole expression. It has the lowest precedence of all, so `x = (2, 3);` assigns 3, whereas `x = 2, 3;` assigns 2 and then evaluates the useless `3`. Its one common legitimate use is the last part of a `for` header, where only a single expression is allowed: `for (int i = 0, j = n - 1; i < j; ++i, --j)`. (The comma in `int i = 0, j = n - 1` separates two declarations and is not the comma operator; neither are the commas between function arguments.) Elsewhere, write separate statements.
+
+<Anchor id="bitwise" />
+
+### Bitwise and shift operators
+
+*This subsection is optional on a first reading.* Integers are stored as patterns of bits, and these operators work directly on those bits.
+
+| Operator | Name | Each result bit is 1 if… | `6` (110) with `3` (011) |
+|---|---|---|---|
+| `a & b` | and | both bits are 1 | `2` (010) |
+| `a \| b` | or | at least one bit is 1 | `7` (111) |
+| `a ^ b` | exclusive or | exactly one bit is 1 | `5` (101) |
+| `~a` | complement | the bit of `a` is 0 | `~6` is `-7` |
+| `a << n` | left shift | (bits move *n* places left) | `6 << 2` is `24` |
+| `a >> n` | right shift | (bits move *n* places right) | `6 >> 1` is `3` |
+
+Shifting left by *n* places multiplies a non-negative integer by 2ⁿ, shifting right divides by 2ⁿ and discards the remainder. The same symbols `<<` and `>>` are the stream operators when the left operand is a stream; the type of the left operand decides.
+
+Signed integers are stored in *two's complement*: the leftmost bit carries the sign, −1 is the pattern with every bit set, and in general `~x == -x - 1`, which is why `~6` is −7. For bit manipulation, prefer unsigned types: shifting by as many places as the type has bits (or more) is undefined behaviour, and shifting negative values has caught out many programmers (left shifts of negative numbers were undefined before C++20).
+
+`&` and `&&` look alike but differ in kind. `&&` is the *logical* and of <Concept id="boolean-logic" />: it treats each operand as true or false, gives a `bool`, and skips the right operand when the left one is already false. `&` combines bit patterns and always evaluates both sides. `6 & 1` is 0, because the two numbers share no bit, while `6 != 0 && 1 != 0` is true. Watch the precedence: `flags & mask == 0` means `flags & (mask == 0)`. Write `(flags & mask) == 0`.
+
+A natural biological use is compact storage of DNA. Each of the four bases needs only two bits, so a short k-mer fits in one integer:
+
+<Example file="foundations/bitwise_kmer.cpp" mark="11-14,17-18" />
+
+Each step shifts the bases packed so far two places to the left and puts the next base's code into the two free bits with `|`. To read a base back, shift it to the rightmost position and keep only those two bits with `& 3u`. Programs that count k-mers in sequencing data use exactly this technique. Sets of yes/no flags, such as which of a small number of species occur at a site, can be stored the same way; <Concept id="array-bitset" /> introduces `std::bitset`, which does the bookkeeping for you.
+
+## Explore it
+
+<Trace id="operators-and-expressions-cohort" />
+
+<Check
+  id="compound"
+  kind="predict"
+  question="What is the value of N after these lines?"
+  code={`double N = 100.0;
+const double r = 0.1;
+N *= 1.0 + r;`}
+  options={["100.1", "110", "10", "It does not compile"]}
+  answer={1}
+  feedback={[
+    "That would be N = N * 1.0 + r. A compound assignment evaluates its whole right-hand side first.",
+    "N *= 1.0 + r means N = N * (1.0 + r) = 100 × 1.1 = 110.",
+    "10 would be N * r, the increase only.",
+    "Compound assignment accepts any expression on the right.",
+  ]}
+/>
+
+<Check
+  id="grouping"
+  kind="debug"
+  question="A model needs the quantity N / (2K). With N = 100.0 and K = 50.0, a student writes N / 2 * K. What does it evaluate to?"
+  options={["1", "2500", "0", "It depends on the compiler"]}
+  answer={1}
+  feedback={[
+    "1 is the intended value, N / (2K) = 100 / 100.",
+    "/ and * have equal precedence and group from left to right: (100 / 2) × 50 = 2500. The product in the denominator needs parentheses: N / (2 * K).",
+    "The operands are doubles, so no integer division happens.",
+    "Precedence and associativity are fixed by the language.",
+  ]}
+/>
+
+<Check
+  id="postfix"
+  kind="predict"
+  question="What are the values of i and j?"
+  code={`int i = 4;
+const int j = i++ * 2;`}
+  options={["i = 5, j = 10", "i = 5, j = 8", "i = 4, j = 8", "i = 4, j = 10"]}
+  answer={1}
+  feedback={[
+    "That is the result of ++i * 2, where the new value is used.",
+    "i++ gives the old value, 4, to the multiplication, so j = 8; i itself becomes 5.",
+    "The increment does happen; only the value used in the expression is the old one.",
+    "j uses the old value of i, and i is incremented.",
+  ]}
+/>
+
+<Check
+  id="kmer"
+  kind="predict"
+  question="In the k-mer program, kmer is 141 (binary 10 00 11 01, for GATC). What is (kmer >> 2) & 3u?"
+  options={["1, the code of C", "3, the code of T", "0, the code of A", "35"]}
+  answer={1}
+  feedback={[
+    "1 is the last base, kmer & 3u, without a shift.",
+    "Shifting right by 2 drops the last base and leaves 10 00 11 (35); & 3u keeps the last two bits, 11, which is 3: the third base, T.",
+    "A is the second base, which needs a shift of 4.",
+    "35 is kmer >> 2 before the mask. The & 3u keeps only the lowest two bits.",
+  ]}
+/>
+
+## In biological modelling
+
+State updates are written with compound assignment: `N += births - deaths;`, `biomass *= 1.0 + growthRate * dt;`, `++generation;`. Each line says which variable changes and by how much.
+
+The commonest bugs in transcribed equations come from grouping: a missing pair of parentheses around a sum, or a product in a denominator written without them. After writing an expression, read it back the way C++ groups it, and check it against a value computed by hand (see <Concept id="equation-to-code" />).
+
+In stochastic models, keep each random draw in its own statement, so that the sequence of draws, and therefore the result for a given seed, does not depend on the compiler.
+
+## Common mistakes
+
+- **`^` as a power.** Use `x * x` or `std::pow`.
+- **Missing parentheses** around a sum that is multiplied, `r * N * 1 - N / K`, or around a product in a denominator, `a / b * c`.
+- **Several changes to one variable in one expression**, such as `n++ + n++`: undefined behaviour.
+- **`&` where `&&` was meant**, or the reverse.
+- **Statements without effect**, such as `N * r;` or `N == 0;`. Read the compiler's warning.
+- **The comma operator by accident**: `x = 2, 3;` assigns 2.
+
+## Practice
+
+<Practice>
+
+1. Rewrite each statement with a compound assignment or an increment: `biomass = biomass * 0.95;`, `age = age + 1;`, `count = count - deaths;`, `minutes = minutes % 60;`.
+2. Add parentheses to show how C++ groups each expression, then evaluate it for a = 8, b = 4, c = 2 (all `int`): `a + b * c - a / b`, `-a * b`, `a / b / c`, `a - b - c`, `a / b * c`.
+3. *(Bitwise, optional.)* The presence of five species at a site is stored in an `unsigned` called `present`, with bit *k* set if species *k* occurs (k = 0 to 4). Write expressions that (a) record that species 3 occurs, (b) test whether species 1 occurs, (c) record that species 0 no longer occurs.
+
+<details>
+<summary>Answers</summary>
+
+1. `biomass *= 0.95;`, `++age;`, `count -= deaths;`, `minutes %= 60;`.
+2. `(a + (b * c)) - (a / b)` = 8 + 8 − 2 = 14; `(-a) * b` = −32; `(a / b) / c` = 1; `(a - b) - c` = 2; `(a / b) * c` = 4.
+3. (a) `present |= 1u << 3;` (b) `(present & (1u << 1)) != 0` (c) `present &= ~(1u << 0);`, which clears bit 0 and keeps all others.
+</details>
+
+</Practice>

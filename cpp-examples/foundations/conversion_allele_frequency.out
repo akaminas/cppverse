@@ -1,0 +1,5 @@
+A alleles: 123 of 200
+with integer division: 0
+p = 0.615, q = 0.385
+expected heterozygosity 2pq = 0.474
+observed heterozygosity = 0.470

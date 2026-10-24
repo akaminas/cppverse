@@ -1,0 +1,246 @@
+---
+title: From source code to a running program
+summary: Preprocessing, compiling, linking and running a C++ program, from the command line or VS Code with CMake, and how to read what the compiler tells you.
+level: beginner
+module: 1
+manual: ["M1.2", "M1.3"]
+minutes: 35
+objectives:
+  - Name the stages that turn a source file into a running program
+  - Install a compiler and build a program from the command line and with CMake
+  - Explain why g++ must be used for C++ and what the common flags do
+  - Distinguish compiler errors, warnings, linker errors and run-time errors
+  - Find the cause of a compile error from its message
+references:
+  - "GCC manual: Options to Request or Suppress Warnings"
+  - "CMake documentation: cmake-buildsystem(7)"
+---
+
+## What it is
+
+A C++ program starts life as plain text. Before it can run, a chain of tools translates that text into machine code that the processor understands. The chain has the same stages on every system:
+
+1. **Editing.** You write source code in a text editor and save it in a *source file* (`.cpp`). Larger programs also have *header files* (`.hpp`) that declare functions and types defined elsewhere, so that several source files can use them.
+2. **Preprocessing.** Lines that start with `#` are handled first. `#include <iostream>` is replaced by the contents of that header, so the compiler learns what `std::cout` is.
+3. **Compiling.** The compiler checks the code against the rules of the language and translates it into machine code. The result is an *object file* (`.o`, or `.obj` on Windows): machine code with gaps where it refers to things defined elsewhere, such as the code that prints to the console.
+4. **Linking.** The linker joins your object files and the libraries they use, here the C++ standard library, fills in the gaps and writes an *executable*.
+5. **Executing.** The operating system loads the executable and runs it, starting at `main`.
+
+One command usually runs stages 2 to 4 for you, so it is easy to forget that they are separate. They are worth keeping apart, because each stage has its own kind of error.
+
+```bash
+g++ -std=c++17 -c growth.cpp -o growth.o     # preprocess and compile only
+g++ -std=c++17 -c output.cpp -o output.o     # another source file
+g++ growth.o output.o -o growth              # link the object files
+./growth                                     # execute
+```
+
+Compiling each file separately means that after a change only that file needs to be recompiled. <Concept id="multiple-files" /> returns to this when programs grow beyond one file.
+
+## Why it matters
+
+When something goes wrong, the stage that complains tells you where to look. A compiler error is about the text of one file. A linker error is about how the pieces fit together. A crash or a wrong number at run time is about what the program does, which no tool checks for you.
+
+Build settings also matter for science. The same source code can run several times faster with optimisation turned on, which decides whether a parameter sweep takes an afternoon or a week. And a result is only reproducible if someone else can build the same program: that means standard C++, a stated language version and recorded compiler settings.
+
+## How it works in C++
+
+### Installing a compiler
+
+You need a C++ compiler, and for projects with more than one file, CMake. The two free compilers used on this site are GCC (`g++`) and Clang (`clang++`); every example is tested with both.
+
+- **Linux.** Install the packages from your distribution, for example `sudo apt install g++ cmake` on Debian or Ubuntu.
+- **macOS.** Run `xcode-select --install` to get Apple's Command Line Tools, which include Clang. On a Mac, the command `g++` is another name for Clang. Install CMake from cmake.org or with Homebrew.
+- **Windows.** Either install [MSYS2](https://www.msys2.org) and, in its UCRT64 terminal, run `pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake`, then add `C:\msys64\ucrt64\bin` to your `PATH`; or install the Windows Subsystem for Linux (`wsl --install`) and follow the Linux instructions inside it. Microsoft's own compiler, part of Visual Studio, also works but uses different flags.
+
+Check the installation by opening a new terminal and typing `g++ --version` (or `clang++ --version`).
+
+### Building from the command line
+
+Here is a small program to build:
+
+<Example file="foundations/toolchain_degree_days.cpp" />
+
+Save it, open a terminal in the same folder, and type the two commands below. Select any part to see what it does.
+
+<Anatomy id="toolchain-command" />
+
+Three points deserve emphasis.
+
+**Use `g++`, not `gcc`.** Both commands run the same compiler, and `gcc` will even compile a `.cpp` file as C++. But `gcc` links only the C library, so the link step fails with a long list of `undefined reference` errors mentioning `std::cout` or `std::basic_ostream`. The same holds for `clang++` versus `clang`.
+
+**Ask for warnings.** `-Wall -Wextra -Wpedantic` costs nothing and catches real mistakes. Adding `-Werror` turns every warning into an error, so that nothing suspicious can slip through; this site's examples are all built that way.
+
+**Debug and Release builds.** While you develop, build without optimisation and with debugging information, `-O0 -g`. The machine code then follows the source closely, so a debugger can stop at any line and show every variable. For real runs, build with `-O2`: the compiler rearranges and simplifies the code, often making simulations several times faster. These two settings are called the *Debug* and *Release* configurations. Apart from the last digits of some floating-point results, a correct program gives the same output in both. If the results differ substantially, suspect a bug such as undefined behaviour (see <Concept id="numeric-limits" />).
+
+### Building with VS Code and CMake
+
+For anything beyond a single file, describe the build once in a file called `CMakeLists.txt` and let CMake run the compiler. A minimal project is a folder containing `main.cpp` and this file:
+
+```cmake
+cmake_minimum_required(VERSION 3.16)
+project(degree_days LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+add_executable(degree_days main.cpp)
+
+if(MSVC)
+  target_compile_options(degree_days PRIVATE /W4)
+else()
+  target_compile_options(degree_days PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+```
+
+In VS Code, install the *C/C++* and *CMake Tools* extensions, choose **File › Open Folder** on the project folder and confirm that you trust it. CMake Tools asks which compiler ("kit") to use and offers **Debug** and **Release** variants in the status bar; Debug is the default. The build button (or F7) compiles and links; the run button starts the program, and F5 starts it under the debugger. CMake writes everything it generates, including the executable, to a `build` folder, so your source folder stays clean. A convenient habit is to keep one such folder as a template and copy it for each new project.
+
+The same project builds from a terminal on any system:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release   # configure once
+cmake --build build                              # compile and link
+./build/degree_days                              # run
+```
+
+Other environments (CLion, Qt Creator, Visual Studio, Xcode, or Vim or Emacs with CMake) do the same job. Whatever you use, write portable, standard C++: avoid system-specific headers such as `<windows.h>` and tricks such as `system("pause")`, so that your model also builds on a colleague's laptop or a Linux computing cluster.
+
+<Anchor id="diagnostics" />
+
+### Reading compiler messages
+
+When the compiler rejects a program, it prints messages of the form
+
+```text
+toolchain_undeclared_name.cpp:11:18: error: 'meanTempreature' was not declared in this scope; did you mean 'meanTemperature'?
+```
+
+which reads: in this file, at line 11, column 18, an *error*, followed by a description. This program has a misspelt variable name:
+
+<Example file="foundations/toolchain_undeclared_name.cpp" mark="11" />
+
+GCC prints the message above; Clang says `use of undeclared identifier 'meanTempreature'; did you mean 'meanTemperature'?`. Both point at the right line and even suggest the fix. That is not always so. The position is where the compiler *noticed* the problem, which can be later than its cause: a missing semicolon at the end of one line is reported at the start of the next (see the example in <Concept id="program-anatomy" />), and a missing closing brace may be reported at the end of the file.
+
+Three habits make compiler output manageable:
+
+- **Fix the first error first.** One mistake can confuse the compiler into reporting many more. Correct the first, recompile, and see what remains.
+- **Read the whole first message**, including any `note:` lines under it. A missing `#include` produces `'cout' is not a member of 'std'`, followed by a note that `std::cout` is defined in header `<iostream>`.
+- **Recompile after every few changes.** Ten new lines contain far fewer places to look than two hundred.
+
+### Errors, warnings, linker errors and run-time errors
+
+| Kind | Reported by | What happens | Typical cause |
+|---|---|---|---|
+| Compile error | compiler | no executable is produced | syntax error, undeclared name, wrong type |
+| Warning | compiler | the program is built, but something looks wrong | unused variable, `=` in a condition, possible use of an uninitialised value |
+| Linker error | linker | object files exist, but no executable | a function declared but never defined, a source file left out of the build, `gcc` instead of `g++` |
+| Run-time error | nobody | the program runs, then crashes or prints wrong results | division of an integer by zero, reading past the end of a vector, a wrong formula |
+
+Warnings deserve the same attention as errors. This fragment compiles, but GCC warns `suggest parentheses around assignment used as truth value`:
+
+```cpp
+if (survivors = 0) {      // assigns 0 to survivors; the test is always false
+    std::cout << "extinct\n";
+}
+```
+
+The programmer meant `survivors == 0`. Without the warning, the population would silently be set to zero and the extinction message would never appear. Treat every warning as a defect to fix, not as noise.
+
+A linker error looks different because the linker does not know about lines of source code. If a program calls `double survival(double)` but no file defines it, GCC's linker reports `undefined reference to 'survival(double)'`, and on a Mac the message starts with `Undefined symbols for architecture`. The compiler was satisfied, because a declaration promised that the function exists somewhere; the linker could not find it.
+
+Run-time errors are the hardest, because no tool reports them. <Concept id="debugging" /> covers the tools that help, from printing intermediate values to sanitizers and debuggers.
+
+## Explore it
+
+<Check
+  id="which-stage"
+  kind="debug"
+  question="A program that uses two source files builds with `g++ -std=c++17 main.cpp -o model`. The output ends with `undefined reference to 'birthRate(double)'`. Which stage failed, and what is the most likely fix?"
+  options={[
+    "The preprocessor: an #include is missing",
+    "The compiler: birthRate is not declared",
+    "The linker: the file that defines birthRate was not part of the build",
+    "Execution: the program crashed while calling birthRate",
+  ]}
+  answer={2}
+  feedback={[
+    "A missing header produces a compile error about an undeclared name, not an undefined reference.",
+    "If birthRate were undeclared, the compiler would say so with a file and line number. ‘undefined reference’ means it was declared, so compilation succeeded.",
+    "The definition of birthRate lives in the second source file, which the command leaves out. Adding it (g++ -std=c++17 main.cpp rates.cpp -o model) lets the linker find it.",
+    "The program never ran: without a definition of birthRate, no executable was produced.",
+  ]}
+/>
+
+<Check
+  id="warning-meaning"
+  kind="interpret"
+  question="A simulation compiles with the warning `unused variable 'mortality'`. What is the most sensible response?"
+  options={[
+    "Ignore it: warnings do not stop the program",
+    "Delete the variable so that the warning goes away",
+    "Check where mortality should have been used: the update rule may be missing a term",
+    "Turn off -Wall",
+  ]}
+  answer={2}
+  feedback={[
+    "The program runs, but it may not compute what you intended. A warning is the compiler pointing at a likely defect.",
+    "If mortality is truly unnecessary, delete it. But in a model, a computed mortality rate that is never used usually means the death process was left out of the update.",
+    "A value that is computed and never used often means a forgotten term. Here the population may be growing without any deaths, a modelling error the compiler happened to notice.",
+    "That hides this warning and every future one, including those that point at real bugs.",
+  ]}
+/>
+
+<Check
+  id="release"
+  kind="interpret"
+  question="Your simulation takes 40 minutes per run. A colleague builds the same code and needs 9 minutes. Neither of you changed the source. What is the most likely difference?"
+  options={[
+    "The colleague's compiler is newer",
+    "You built with -O0 (a Debug configuration), the colleague with -O2 (Release)",
+    "The colleague used clang++ instead of g++",
+    "You compiled with -Wall -Wextra",
+  ]}
+  answer={1}
+  feedback={[
+    "Compiler versions differ a little in speed, but rarely by a factor of four.",
+    "Optimisation commonly makes numerical code several times faster. Use Debug while developing and Release for production runs.",
+    "GCC and Clang produce code of similar speed.",
+    "Warning flags only add checks at compile time. They do not change the machine code.",
+  ]}
+/>
+
+## In biological modelling
+
+Develop with a Debug build, with all warnings on, and run experiments with a Release build. Keep the build description (`CMakeLists.txt`) with the source code under version control, so that the program can be rebuilt exactly. With every set of results, record the compiler, its version (`g++ --version`) and the flags used; differences in these can change floating-point results in the last digits, and reviewers may ask. <Concept id="testing-reproducibility" /> builds on this.
+
+On a computing cluster, compile on the cluster itself. An executable built on a laptop may not run there, while standard C++ source code will build anywhere.
+
+## Common mistakes
+
+- **Running an old executable.** After editing the source, you must rebuild before running. If a fix "has no effect", check that the build succeeded and that you are running the new file.
+- **Fixing the last error first.** Later errors are often consequences of the first. Start at the top.
+- **Linking with `gcc`.** Use `g++` or `clang++` for C++ programs.
+- **Ignoring warnings.** Each one is a possible bug. Build with `-Wall -Wextra -Wpedantic`, and consider `-Werror`.
+- **Timing a Debug build.** Performance comparisons and long runs belong in a Release build.
+- **The compiler is "not found" on Windows.** The folder containing `g++.exe` must be on the `PATH`, and terminals opened before you changed it do not see the change.
+
+## Practice
+
+<Practice>
+
+1. Build `toolchain_degree_days.cpp` from the command line and run it. Then add the line `const double frostThreshold = 0.0;` inside `main`, rebuild with `-Wall -Wextra`, and read the warning. Rebuild once more with `-Werror` added. What changes?
+2. Compile the same program in two steps: `g++ -std=c++17 -c toolchain_degree_days.cpp` and then `g++ toolchain_degree_days.o -o degree_days`. Which file does each step produce? Now delete `#include <iostream>` and repeat the first step. Does the error come from the compiler or the linker?
+3. Make a CMake project from the `CMakeLists.txt` above with `toolchain_degree_days.cpp` as `main.cpp`. Build it as Debug and as Release, and find both executables in the build folder.
+4. In a working program, rename `main` to `mian` and build. Which stage complains, and why does the message not mention a line number?
+
+<details>
+<summary>Answers</summary>
+
+1. The program still builds, but the compiler warns about an unused variable `frostThreshold`. With `-Werror` the warning becomes an error and no executable is produced.
+2. The first step produces the object file `toolchain_degree_days.o`; the second produces the executable. Without `<iostream>`, the first step fails: the *compiler* does not know `std::cout`. Errors about undeclared names never come from the linker.
+3. With the command line, use two build folders, for example `cmake -S . -B build-debug -DCMAKE_BUILD_TYPE=Debug` and `cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release`. In VS Code, switch the variant in the status bar and rebuild.
+4. The compiler accepts a function called `mian`; nothing is wrong with the file on its own. The *linker* then cannot find `main`, where every program must start, and reports an undefined reference to `main` (with MinGW on Windows it may mention `WinMain`). The linker works on object files, not source lines, so it gives no line number.
+</details>
+
+</Practice>

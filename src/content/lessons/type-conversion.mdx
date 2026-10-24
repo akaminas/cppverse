@@ -1,0 +1,197 @@
+---
+title: Integer division and type conversion
+summary: Why 1 / 2 is 0 in C++, how % keeps cyclic indices in range, and how mixed expressions convert their operands one operation at a time.
+level: beginner
+module: 2
+manual: ["M2.4"]
+minutes: 30
+objectives:
+  - Predict the result of / and % with integer operands, including negative ones
+  - Use % to wrap days, seasons and positions on a ring
+  - Explain how C++ converts the operands of each operation in a mixed expression
+  - Compute a frequency or proportion from integer counts correctly with static_cast
+references:
+  - "cppreference.com: Arithmetic operators"
+  - "cppreference.com: Implicit conversions"
+---
+
+## What it is
+
+When both operands of `/` are integers, C++ performs **integer division**: the result is an integer and any fraction is discarded. `7 / 2` is 3, and `1 / 2` is 0. The companion operator `%` gives the **remainder** of that division: `7 % 2` is 1.
+
+When the operands have different types, as in `7 / 2.0`, C++ first **converts** one of them so that both have the same type, and then performs the operation in that type. Here the `int` 7 becomes the `double` 7.0, and the result is 3.5.
+
+## Why it matters
+
+In biological models, counts are integers but most derived quantities are not. An allele frequency is a count of alleles divided by a count of alleles; a germination rate is germinated seeds divided by seeds sown; a mean clutch size is eggs divided by nests. Written naively with integer variables, every one of these divisions discards its fraction and usually returns 0. The program compiles, runs and prints a plausible-looking number. This is the single most common transcription error in beginners' models.
+
+Integer division and the remainder are also genuinely useful. They convert a running count of days into weeks and days of the week, and keep an index on a ring of habitat patches within range.
+
+## How it works in C++
+
+### Integer division and the remainder
+
+For two integers `a` and `b`, `a / b` is the quotient with the fraction discarded, *rounded toward zero*: `7 / 2` is 3 and `-7 / 2` is −3, not −4. The remainder `a % b` is whatever is left over, so that `(a / b) * b + a % b == a` always holds. Its sign follows the dividend: `7 % 2` is 1 and `-7 % 2` is −1.
+
+<Example file="foundations/division_cycles.cpp" />
+
+Day 45 of an experiment that starts on day 0 is in week 45 / 7 = 6 (counting weeks from 0), and is weekday 45 % 7 = 3 of that week. The same idea gives a season from a month numbered 0 to 11, or the position within a repeating cycle of any length.
+
+For patches arranged in a ring, `(patch + 1) % patches` is the next patch, and it wraps from the last back to 0. For the previous patch, add `patches` before taking the remainder: `(patch + patches - 1) % patches`. Without the addition, the left neighbour of patch 0 would be `-1 % 6`, which is −1, not a valid patch number.
+
+`%` is defined only for integers. For floating-point numbers, `std::fmod` from `<cmath>` computes the remainder (see <Concept id="cmath" />).
+
+<Callout kind="pitfall" title="Division by zero">
+Integer division or remainder by zero is undefined behaviour; in practice the program usually stops at once (on Linux, with the confusing message "Floating point exception"). Floating-point division by zero does not stop the program: `1.0 / 0.0` is infinity and `0.0 / 0.0` is "not a number" (NaN), and both then spread silently through every later calculation. Whenever a denominator is a count that can be zero, such as the number of individuals in an empty sample, test it before dividing.
+</Callout>
+
+<Callout kind="manual" title="Negative operands">
+The manual advises against integer division with negative numbers because compilers used to disagree about the result. Since C++11 the standard fixes it: the quotient is rounded toward zero and the remainder takes the sign of the dividend, on every compiler.
+</Callout>
+
+<Anchor id="conversion" />
+
+### Conversions, one operation at a time
+
+The arithmetic operators work on two operands of the same type. When the types differ, C++ applies the *usual arithmetic conversions* to bring them together, and it does so separately for each operator, at the moment that operator is evaluated. An expression as a whole has no single type that applies throughout:
+
+```cpp
+7 / 2 * 2.0     // (7 / 2) * 2.0  =  3 * 2.0      =  6.0
+7 * 2.0 / 2     // (7 * 2.0) / 2  =  14.0 / 2     =  7.0
+1 / 2 + 0.5     // (1 / 2) + 0.5  =  0 + 0.5      =  0.5
+```
+
+`*` and `/` have the same precedence and are evaluated from left to right (see <Concept id="precedence" />), so in the first line the integer division happens before any `double` appears.
+
+The rules for each operation, in order:
+
+1. **Small integer types are promoted.** `bool`, `char` and `short` are converted to `int` before any arithmetic. `'A' + 1` is the `int` 66, and `true + true` is 2.
+2. **If either operand is floating-point, the other is converted to that type**, and if both are floating-point, to the wider of the two (`long double`, then `double`, then `float`). `int` + `double` is a `double`.
+3. **If both are integers, the narrower is converted to the wider** (`int` to `long long`, for example). If one is signed and the other unsigned of the same size, the signed one becomes unsigned, with surprising results: `-1 < 1u` is `false`, because −1 becomes a huge unsigned number. `-Wextra` warns about such comparisons.
+
+Converting an integer to a floating-point type keeps its value (exactly, for any `int`). Converting the other way does not.
+
+### Conversion on initialisation and assignment
+
+When a value is stored in a variable, it is converted to the variable's type. From a floating-point type to an integer type, the fraction is discarded, again **toward zero**:
+
+```cpp
+int a = 2.9;     // 2
+int b = -2.9;    // -2, not -3
+```
+
+This is truncation, not rounding. To round to the nearest integer, use `std::lround(2.9)`, which gives 3. (If the value is too large for the integer type, the behaviour is undefined.) Brace initialisation refuses such conversions at compile time: `int a{2.9};` is an error (see <Concept id="initialisation" />).
+
+### Explicit conversion with `static_cast`
+
+`static_cast<double>(n)` produces the value of `n` as a `double`. Applied to one operand of a division, it makes the division a floating-point one:
+
+<Example file="foundations/conversion_allele_frequency.cpp" mark="18-19" />
+
+There are three common ways to avoid integer division, in order of preference:
+
+1. **Give a continuous quantity a floating-point type from the start.** If a variable holds a mass, a rate or a mean, it should be a `double`, and no conversion is needed later.
+2. **Convert explicitly with `static_cast`** when integers really are the right type for the counts, as here. The cast is visible and says exactly what happens.
+3. **Make the first operation floating-point**, as in `1.0 * allelesA / allelesTotal`. This works because `*` and `/` are evaluated left to right, but it is fragile: `allelesA / allelesTotal * 1.0` is 0 again.
+
+The position of the cast matters. `static_cast<double>(allelesA / allelesTotal)` converts the result of the integer division, which is already 0, into 0.0.
+
+You may also see the older C-style cast `(double)allelesA`. It does the same here, but it can also perform far more dangerous conversions without any visible difference, so modern C++ code uses `static_cast`. Its long, slightly awkward name is deliberate: conversions should be rare and easy to find.
+
+## Explore it
+
+Step through the allele-frequency program; the type of each variable is shown next to its name.
+
+<Trace id="type-conversion-allele" />
+
+<Check
+  id="cast-position"
+  kind="predict"
+  question="What is the value of x?"
+  code={`const int germinated = 3;
+const int sown = 4;
+const double x = static_cast<double>(germinated / sown);`}
+  options={["0.75", "0.0", "1.0", "It does not compile"]}
+  answer={1}
+  feedback={[
+    "That needs a floating-point division, but here the cast is applied after the division.",
+    "germinated / sown is computed first, as integer division: 3 / 4 is 0. Only that result is then converted, giving 0.0. Cast an operand instead: static_cast<double>(germinated) / sown.",
+    "Integer division truncates toward zero; it does not round 0.75 up.",
+    "static_cast<double> of an int is always allowed. The code compiles; it just casts too late.",
+  ]}
+/>
+
+<Check
+  id="negative"
+  kind="predict"
+  question="What do -7 / 2 and -7 % 2 evaluate to?"
+  options={["-4 and 1", "-3 and -1", "-3 and 1", "-4 and -1"]}
+  answer={1}
+  feedback={[
+    "That is rounding down (floor division, as in Python). C++ rounds toward zero.",
+    "The quotient −3.5 is rounded toward zero, giving −3, and the remainder takes the sign of the dividend: (−3) × 2 + (−1) = −7.",
+    "The remainder must satisfy (a / b) * b + a % b == a: (−3) × 2 + 1 = −5, not −7.",
+    "These are Python's results for −7 // 2 combined with C++'s remainder; they do not belong together.",
+  ]}
+/>
+
+<Check
+  id="ring"
+  kind="debug"
+  question="Patches 0 to 5 form a ring. A program computes the left neighbour of patch p as (p - 1) % 6. For which patch does this fail, and what is a correct expression?"
+  options={[
+    "It never fails: % always gives a value from 0 to 5",
+    "For p = 5; use (p + 1) % 6",
+    "For p = 0, where it gives −1; use (p + 6 - 1) % 6",
+    "For p = 0, where it gives 5; use (p - 1) / 6",
+  ]}
+  answer={2}
+  feedback={[
+    "With a negative left operand, the remainder in C++ is negative or zero.",
+    "(5 − 1) % 6 is 4, which is correct. (p + 1) % 6 is the right neighbour.",
+    "(0 − 1) % 6 is −1, an invalid index. Adding the ring size first keeps the left operand non-negative, and (0 + 5) % 6 is 5.",
+    "C++ gives −1, not 5, and integer division by 6 does not compute a neighbour.",
+  ]}
+/>
+
+## In biological modelling
+
+Every time a model turns counts into rates, frequencies or means, check the types of the operands. Frequencies of alleles or genotypes, the proportion of infected hosts, the mean number of offspring and survival estimated from marked individuals all start from integer counts.
+
+Conversions in the other direction need as much care. A number of time steps computed from a duration and a step size is a typical case:
+
+```cpp
+const double tEnd = 0.3;
+const double dt = 0.1;
+const int steps = static_cast<int>(tEnd / dt);   // 2, not 3
+```
+
+0.3 / 0.1 is not exactly 3 in binary floating-point arithmetic but 2.9999999999999996 (see <Concept id="numeric-limits" />), and the conversion truncates it to 2. The simulation would silently stop one step early. `std::lround(tEnd / dt)` gives 3.
+
+## Common mistakes
+
+- **`int / int` for a proportion.** Convert one operand first.
+- **Casting the result** instead of an operand: `static_cast<double>(a / b)`.
+- **Relying on order of operations** to make a division floating-point. It works until someone reorders the expression.
+- **Negative remainders as indices.** Add the cycle length before taking `%`.
+- **Truncating when you mean to round.** Converting to `int` drops the fraction toward zero; use `std::lround`.
+- **Comparing signed with unsigned integers.** Heed the warning; the comparison may convert −1 into a very large number.
+- **Dividing by a count that can be zero.**
+
+## Practice
+
+<Practice>
+
+1. Without running them, give the value and type of: `9 / 4`, `9 % 4`, `9 / 4.0`, `-9 / 4`, `-9 % 4`, `2 * 9 / 4`, `9 / 4 * 2`, `static_cast<int>(-2.75)`.
+2. An animal moves on a circular arena divided into 12 sectors numbered 0 to 11. In each step it turns `k` sectors, where `k` can be anything from −11 to 11 (negative means anticlockwise). Write an expression for its new sector, given its current sector `s`, that is always between 0 and 11.
+3. A tracking tag records time as whole hours since release. Write a program that converts 100 hours into days since release and the hour of the day, and prints both.
+
+<details>
+<summary>Answers</summary>
+
+1. `2` (int), `1` (int), `2.25` (double), `-2` (int), `-1` (int), `4` (int: 18 / 4), `4` (int: 2 * 2), `-2` (int, truncated toward zero).
+2. `(s + k + 12) % 12`. Since `s` is at least 0 and `k` at least −11, `s + k + 12` is at least 1, so the remainder is never negative.
+3. With `const int hours = 100;`, the day is `hours / 24`, which is 4, and the hour of the day is `hours % 24`, which is 4. If the release took place at, say, 06:00, add 6 to `hours` before taking the remainder to get the clock time.
+</details>
+
+</Practice>

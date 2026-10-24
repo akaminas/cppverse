@@ -1,0 +1,11 @@
+species     mass (kg)    B (W)  B/M (W/kg)
+shrew        5.00e-03     0.06       12.79
+vole         3.00e-02     0.25        8.17
+hare         3.50e+00     8.70        2.49
+red deer     1.20e+02   123.27        1.03
+elephant     4.00e+03  1710.11        0.43
+B0 = 3.40
+B0 = 3.4
+0.1 + 0.2 = 0.3
+0.1 + 0.2 = 0.30000000000000004
+wrote kleiber_rates.csv

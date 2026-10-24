@@ -1,0 +1,191 @@
+---
+title: Command-line arguments and parameter files
+summary: Pass parameter values or the name of a parameter file to a program when it starts, so that new runs need no recompilation and every run is documented.
+level: intermediate
+module: 9
+manual: ["M9.2", "M11.5"]
+minutes: 35
+objectives:
+  - Read command-line arguments through int main(int argc, char* argv[])
+  - Convert arguments to numbers, keep defaults for missing ones and reject malformed ones
+  - Parse a key–value parameter file into a struct, treating unknown, duplicate and missing keys as errors
+  - Explain why parameters belong outside the source code
+references:
+  - "cppreference.com: main function; std::stoi, std::stod; std::boolalpha"
+---
+
+## What it is
+
+When you start a program from a terminal, everything you type after its name is handed to the program as a list of words, the *command-line arguments*:
+
+```bash
+./cli_args_bh 2.5 50 5 20
+```
+
+To receive them, `main` takes two parameters:
+
+```cpp
+int main(int argc, char* argv[])
+```
+
+`argc` (argument count) is the number of words *including the program name*, and `argv` (argument values) holds the words themselves as C-style strings: `argv[0]` is the program name, `argv[1]` to `argv[argc - 1]` are the arguments. Select the parts below to see what each one holds.
+
+<Anatomy id="command-line-argv" />
+
+## Why it matters
+
+A model whose parameters are written into the source code must be edited and recompiled for every new value. That is slow, and worse, it destroys the record: a week later nobody knows which values produced which output file.
+
+Reading parameters at start-up changes that:
+
+- **No recompilation.** The same executable runs every scenario. A script can call it a hundred times with different values.
+- **A record of what was run.** The command line, or the parameter file it names, documents the run. Copy it next to the output, or write the values into the output file's header (see <Concept id="trajectory-output" />).
+- **Separation of model and experiment.** The source code says what the model is; the arguments say which experiment you are doing with it.
+
+## How it works in C++
+
+### Converting arguments
+
+Every argument arrives as text. `"2.5"` is three characters, not a number, so the program must convert it, and decide what to do when that fails. The standard functions are `std::stoi` (to `int`) and `std::stod` (to `double`) from `<string>`. They throw an <Concept id="exceptions">exception</Concept> when they cannot convert: `std::invalid_argument` if the text does not start with a number, `std::out_of_range` if the number does not fit the type.
+
+They have one weakness: they stop at the first character that does not belong to a number and return what they have read so far. `std::stod("2.5x")` returns 2.5 without complaint. The optional second argument receives the number of characters used, which lets you insist that the *whole* argument was a number.
+
+<Example file="io/cli_args_bh.cpp" mark="21-26,42-49" />
+
+The program accepts zero to four arguments. Missing ones keep the defaults written in the `Parameters` struct, so `./cli_args_bh` alone reproduces the standard run and `./cli_args_bh 3.0` changes only R0. After conversion come the scientific checks: positive R0 and M, a non-negative N0. `std::isfinite` rejects `inf` and `nan`, which `std::stod` accepts as valid numbers. Every error goes to `std::cerr` and ends with `EXIT_FAILURE`, so a script that runs many scenarios can tell which ones failed.
+
+The usage message prints `argv[0]`, the program name as it was typed. Do not rely on it for anything else: its exact form depends on how the program was started.
+
+### Supplying arguments
+
+In a terminal, type them after the program name; quote any argument that contains spaces. In an IDE they are part of the run configuration: in Visual Studio under *Project Properties → Debugging → Command Arguments*, in Xcode under *Product → Scheme → Edit Scheme → Arguments Passed On Launch*, in CLion in the run configuration's *Program arguments*, and in VS Code in the `args` list of `launch.json`.
+
+Arguments make sweeps easy. This shell loop runs four scenarios with the same executable:
+
+```bash
+for R0 in 1.5 2.0 2.5 3.0; do
+    ./cli_args_bh "$R0" 40 5 50 > "bh_R0-$R0.txt"
+done
+```
+
+<Anchor id="parameter-files" />
+
+### Parameter files
+
+Positional arguments are fine for three or four values. A real model has more, and `./model 0.3 0.05 1200 2 0.8 …` is unreadable and easy to get wrong. The better design is a *parameter file* with one named value per line, and a single command-line argument that says which file to use:
+
+```text
+# Beverton-Holt run for the parameter-file lesson
+# key            value
+R0               2.5
+M                50
+N0               5      # initial population size
+generations      20
+write_trajectory true
+output_file      bh_param_run.csv
+```
+
+Reading it takes the stream tools from <Concept id="file-streams" />: read a key with `>>`, then read the value into the struct member that the key names. The essential part is what the reader refuses.
+
+<Example file="io/param_file_bh.cpp" mark="40-59" />
+
+- **Unknown keys are errors.** A typo such as `R_0` must not be ignored, or the run silently uses some other value of R0.
+- **Duplicate keys are errors.** Which of two values would be meant?
+- **Missing keys are errors.** Here every member must come from the file, so the file is a complete description of the run. (A model with many rarely changed parameters might allow defaults instead; then the program should print the values it actually used.)
+- **Bad values are errors.** If the value after a key cannot be read as the member's type, the stream fails and the reader reports which key was affected.
+- **`#` starts a comment**, so the file can explain itself.
+
+`std::boolalpha`, applied once to the input stream, makes `>>` read a `bool` as the words `true` and `false` rather than `1` and `0`; on output it prints the words. Like most manipulators it is *sticky*: it stays in force for the stream until changed (see <Concept id="output-formatting" />).
+
+`readParameters` reports problems by throwing `std::runtime_error`, and `main` catches it, prints the message with the file name and returns `EXIT_FAILURE`. Every exit path passes through `main`, so local objects are cleaned up properly. When no argument is given, the program falls back on `bh_params.txt`. The line written to `std::clog` is a progress message: it goes to standard error and does not mix with the results.
+
+<Callout kind="manual" title="Global parameters and exit">
+The course manual stores the parameters in global variables and leaves the program with `exit()` when a key is unknown. Grouping them in a struct that the reader returns makes the data flow visible and lets you hold two parameter sets at once; returning from `main` instead of calling `exit()` lets files close normally.
+</Callout>
+
+## Explore it
+
+<Check
+  id="argc"
+  kind="predict"
+  question={'The program is started with `./model 0.3 "site A.csv" 12`. What is argc, and what is argv[2]?'}
+  options={["argc is 3 and argv[2] is \"site\"", "argc is 4 and argv[2] is \"site A.csv\"", "argc is 5 and argv[2] is \"site\"", "argc is 3 and argv[2] is \"12\""]}
+  answer={1}
+  feedback={[
+    "The quotes keep site A.csv together as one word, and argc also counts the program name.",
+    "Four words: ./model, 0.3, site A.csv (one argument thanks to the quotes) and 12. argv[0] is the program name, so argv[2] is the file name.",
+    "Without the quotes there would indeed be five words, but the quotes keep the file name in one piece.",
+    "argc counts argv[0] as well, and argv[2] is the second argument after the program name.",
+  ]}
+/>
+
+<Check
+  id="stod-partial"
+  kind="predict"
+  question={'What does `std::stod("0.25mm")` do?'}
+  options={["Throws std::invalid_argument", "Returns 0.25", "Returns 0", "Throws std::out_of_range"]}
+  answer={1}
+  feedback={[
+    "It throws only when the text does not start with a number. Here it does.",
+    "It converts as much as it can and stops at the m. Pass a std::size_t* as the second argument and compare the count with the length of the text to reject such input.",
+    "std::stod does not return 0 on failure; std::atof does, which is one reason to avoid it.",
+    "0.25 fits comfortably in a double; out_of_range is for numbers such as 1e400.",
+  ]}
+/>
+
+<Check
+  id="unknown-key"
+  kind="model"
+  question="A colleague's parameter reader ignores keys it does not recognise, so that old files keep working. A parameter file contains the line `R_0 3.0`. What happens?"
+  options={[
+    "The reader reports an error and stops",
+    "The run uses R0 = 3.0",
+    "The run uses whatever R0 was before (a default or a zero), and nothing tells you",
+    "The compiler warns about the misspelt key",
+  ]}
+  answer={2}
+  feedback={[
+    "That is what the reader in this lesson does; a reader that ignores unknown keys does not.",
+    "R_0 is a different key from R0, so this value is never stored in the R0 member.",
+    "The misspelt line is skipped and the model runs with the wrong growth factor. Such errors can survive into published figures, which is why unknown keys should be errors.",
+    "The parameter file is read when the program runs, long after compilation; the compiler never sees it.",
+  ]}
+/>
+
+## In biological modelling
+
+A typical workflow combines both mechanisms: the command line names a parameter file, and the parameter file holds the values. Add a seed for a stochastic model and an output file name, and one line of a shell script fully specifies a run. Planning which runs to do is then a separate task, covered in <Concept id="experiment-design" />.
+
+Keep the parameter file with the results. Copying it into the output folder, or echoing every value into the metadata lines of the output file, means that any figure can be traced back to the exact values that produced it.
+
+For programs with many options, libraries such as CLI11 or cxxopts parse named options (`--R0 2.5 --generations 20`) with help messages and type checking. They are worth using once a program has more than a handful of settings.
+
+## Common mistakes
+
+- **Reading `argv[i]` without checking `argc`.** `argv[argc]` is a null pointer, and making a `std::string` from it is undefined behaviour. Test `argc` first.
+- **Comparing `argv[1] == "--help"`.** This compares two addresses and is false even when the text matches. Write `std::string{argv[1]} == "--help"`.
+- **Using `std::atoi` or `std::atof`.** They return 0 for text that is not a number, so a typo becomes a valid-looking parameter.
+- **Accepting partly numeric text.** `std::stod("2.5x")` is 2.5; check the position argument.
+- **Ignoring unknown keys** in a parameter file, as in the third check.
+- **Hard-coding the output file name** while parameters come from outside. Two scenarios then overwrite each other's results; make the output name part of the input.
+
+## Practice
+
+<Practice>
+
+1. Add an optional fifth argument to `cli_args_bh.cpp`: the name of a file to which the whole trajectory is written as CSV. Without it, the program behaves as before.
+2. Make `cli_args_bh.cpp` print a usage message to `std::cout` and return `EXIT_SUCCESS` when the only argument is `--help`.
+3. Add a key `report_every` to the parameter file: the program prints N to `std::clog` every `report_every` generations. It must be a positive integer, and old parameter files without it should be rejected with a clear message.
+4. Change `readParameters` so that, instead of stopping at the first missing key, it reports *all* missing keys in one message.
+
+<details>
+<summary>Hint for exercise 2</summary>
+Test `argc == 2 && std::string{argv[1]} == "--help"` before any conversion. Asking for help is not an error, so it gets the success status and goes to standard output.
+</details>
+
+<details>
+<summary>Hint for exercise 4</summary>
+Build the message in a `std::string` while looping over the required keys, appending each missing one. After the loop, throw if the message is not empty.
+</details>
+
+</Practice>

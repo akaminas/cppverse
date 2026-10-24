@@ -1,0 +1,209 @@
+---
+title: Writing simulation output
+summary: Write a model trajectory as a tidy CSV file, with a header, full precision and the metadata needed to reproduce it, ready for R or Python.
+level: beginner
+module: 9
+manual: ["M9.1"]
+minutes: 35
+objectives:
+  - Write a trajectory to a CSV file with a header row and one row per time step
+  - Record the model, parameters, seed, program version and date as comment lines
+  - Write values at full precision and choose a long (tidy) layout for several variables
+  - Read the file back in R or Python
+references:
+  - "Wickham, H. (2014). Tidy data. Journal of Statistical Software 59(10)."
+  - "Wilson, G. et al. (2017). Good enough practices in scientific computing. PLOS Computational Biology 13(6): e1005510."
+---
+
+## What it is
+
+A simulation produces a *trajectory*: the state of the model at every time step. In <Concept id="discrete-time" /> that trajectory was stored in a `std::vector` and printed. This lesson writes it to a file that other programs can read: a CSV (comma-separated values) file with
+
+- a few **metadata lines**, starting with `#`, that say what produced the numbers;
+- a **header row** that names the columns;
+- **one row per time step**, with every value at full precision.
+
+The file is the hand-over point between the simulation, written in C++, and the analysis, usually done in R or Python.
+
+## Why it matters
+
+A result is only as useful as the file it lives in. Three things go wrong surprisingly often:
+
+- **The file cannot be read without manual editing**: columns run together, the header is missing, or explanatory text is mixed into the data.
+- **The numbers are rounded**: printed with six digits, two runs that differ in the eighth digit look identical, and a population approaching its carrying capacity appears to reach it.
+- **Nobody knows which run it was**: the parameters are in a notebook, or in the source code as it was three versions ago.
+
+A well-written output file prevents all three. It is also the cheapest form of reproducibility: if every file says which program and which parameters produced it, any figure can be traced back to its origin.
+
+## How it works in C++
+
+The program below runs the Beverton–Holt model with the same update rule and defaults as in <Concept id="discrete-time" /> ($R_0 = 2.2$, $M = 40$, $N_0 = 5$, 30 generations) and writes `beverton_holt_output.csv` into the folder from which it is run. Read it from the bottom up: `main` opens the file, `writeTrajectory` fills it.
+
+<Example file="io/bh_trajectory_csv.cpp" mark="37-50" />
+
+### The parts of the program
+
+- **Simulation and output are separate functions.** `simulate` returns the whole trajectory; `writeTrajectory` only writes. You can change the file format without touching the model, and test the model without writing files.
+- **`std::ostream&`** is the type of any output stream, so `writeTrajectory` accepts the file stream `out` and would equally accept `std::cout`. Streams cannot be copied, so the parameter is a <Concept id="references">reference</Concept>.
+- **Metadata as `#` lines.** Each line is a `key: value` pair, easy to read for a person and for a script. `std::time` gives the current time and `std::put_time` (from `<iomanip>`) formats it, here as UTC in ISO 8601 form.
+- **Two precisions.** Parameters are written with `digits10` (15) significant digits, which reproduces any value a person typed, so `2.2` appears as `2.2`. Computed values are written with `max_digits10` (17), the number of digits needed to read back exactly the same `double`. Both constants come from `<limits>`; <Concept id="output-formatting" /> explains them in detail.
+- **Checking the result.** `out.close()` writes any remaining buffered data. If the disk is full or the file system fails, the stream records it, so the program checks `out.fail()` after closing and reports an error instead of claiming success.
+
+### The file it writes
+
+Select the parts of the file to see what each one is for:
+
+<Anatomy id="simulation-output-csv" />
+
+The same 31 rows as a figure: the population rises from 5 and approaches the carrying capacity $K = (R_0 - 1)M = 48$ without ever quite reaching it.
+
+<Figure id="simulation-output-trajectory" />
+
+### One observation per row
+
+A model with several state variables raises a layout question. For the two stages of a juvenile–adult model, the *wide* layout gives each variable a column; the *long* layout gives each value a row and adds a column saying which variable it is:
+
+```text
+wide                          long
+generation,juveniles,adults   generation,stage,count
+0,0,10                        0,juvenile,0
+1,41.67,5                     0,adult,10
+                              1,juvenile,41.67
+                              1,adult,5
+```
+
+Both are tidy as long as every row is one observation and every column one variable. The long layout scales better: adding a stage, a replicate or a parameter value adds rows, not columns, and plotting libraries such as ggplot2 and seaborn take it directly (`colour = stage`). The complete simulation in <Concept id="procedural-review" /> writes this layout. (The values in this illustration are rounded; the real file keeps all digits.)
+
+### One file per run
+
+Write each run to its own file, and give the file a name that says what is inside: `beverton_holt_R0-2.2.csv` rather than `output.csv`. Opening an existing file for writing erases it, so a fixed name silently replaces yesterday's results. <Concept id="string-streams" /> shows how to build such names from parameter values, replicate numbers and seeds.
+
+<Callout kind="biology" title="What a deterministic model still needs to record">
+The Beverton–Holt model has no randomness, so the same parameters always give the same trajectory, and the seed line says "none". For a stochastic model the seed is essential: without it, a single replicate can never be regenerated. See <Concept id="random-seeds" /> and <Concept id="seed-management" />.
+</Callout>
+
+## Reading the file in R or Python
+
+Both languages skip the metadata lines if told which character starts a comment.
+
+```r
+# R
+traj <- read.csv("beverton_holt_output.csv", comment.char = "#")
+str(traj)       # 31 obs. of 2 variables: generation (int), N (num)
+plot(N ~ generation, data = traj, type = "b", ylab = "Population size N")
+abline(h = (2.2 - 1) * 40, lty = 3)   # carrying capacity K
+
+# the metadata, as a named character vector
+meta <- grep("^# ", readLines("beverton_holt_output.csv"), value = TRUE)
+meta <- sub("^# [^:]+: ", "", setNames(meta, sub("^# ([^:]+):.*", "\\1", meta)))
+as.numeric(meta["R0"])   # 2.2
+```
+
+```python
+# Python with pandas
+import pandas as pd
+
+traj = pd.read_csv("beverton_holt_output.csv", comment="#")
+print(traj.tail(3))
+
+with open("beverton_holt_output.csv") as f:
+    meta = dict(line[2:].rstrip("\n").split(": ", 1) for line in f if line.startswith("# "))
+print(float(meta["R0"]))   # 2.2
+```
+
+From here on the analysis is the subject of <Concept id="output-analysis" />: summarising, comparing runs and making figures.
+
+## Explore it
+
+<Check
+  id="default-precision"
+  kind="predict"
+  question="If the program did not set any precision for the data rows, how would the last row (generation 30, N = 47.999999977967732…) appear in the file?"
+  options={["30,47.999999977967732", "30,48", "30,47.9999", "30,4.8e+01"]}
+  answer={1}
+  feedback={[
+    "This needs max_digits10. The default precision is six significant digits.",
+    "Six significant digits round the value to 48. The file would then suggest that the population reaches its carrying capacity exactly after 30 generations, which it never does.",
+    "The default notation keeps six significant digits and drops trailing zeros; 47.9999 has six digits but is not the correctly rounded value, which is 48.0000, written 48.",
+    "Scientific notation is only chosen when a number has more digits before the point than the precision allows; 48 has two.",
+  ]}
+/>
+
+<Check
+  id="metadata-where"
+  kind="interpret"
+  question="Why write the parameters as # lines inside the CSV file rather than only in a separate notes file?"
+  options={[
+    "C++ cannot write two files in one program",
+    "The metadata travel with the data: a copied or renamed file still says how it was made, and analysis code can read the values from the same file",
+    "R and Python cannot read CSV files without comment lines",
+    "Comment lines make the file smaller",
+  ]}
+  answer={1}
+  feedback={[
+    "A program can write as many files as it likes. The point is to keep information and data together.",
+    "Separate notes get lost, out of date or attached to the wrong file. Lines inside the file cannot be separated from it, and readers skip them with comment.char or comment.",
+    "Both read plain CSV without comments; the comment lines are an addition that they can be told to skip.",
+    "They add a few hundred bytes. The benefit is traceability, not size.",
+  ]}
+/>
+
+<Check
+  id="layout"
+  kind="model"
+  question="You will run a two-stage model for five values of the juvenile survival sj, with ten replicates each, and compare adult numbers across sj in ggplot2. Which output design is easiest to analyse?"
+  options={[
+    "One file per run with columns generation,stage,count, the run's sj and seed in the metadata and the file name",
+    "A single file with one column per run: adults_sj0.1_rep1, adults_sj0.1_rep2, …",
+    "One file per run with the counts rounded to whole individuals to save space",
+    "Print everything to the console and copy it into a spreadsheet",
+  ]}
+  answer={0}
+  feedback={[
+    "Each file is tidy and self-describing, nothing is ever overwritten, and the analysis script can read all fifty files, add sj and replicate as columns, and stack them into one long table.",
+    "Fifty columns whose names encode the experimental design: every analysis first has to take the names apart. Rows for observations, columns for variables.",
+    "Rounding throws information away before you know whether it matters; disk space is cheap.",
+    "Manual copying breaks reproducibility and invites errors.",
+  ]}
+/>
+
+## In biological modelling
+
+This lesson is the middle link of a chain that every modelling project follows: a model is simulated (<Concept id="discrete-time" />), its output is written to files (this lesson), and the files are analysed and interpreted (<Concept id="output-analysis" />, <Concept id="interpretation" />). The output file is the only part of the chain that outlives the run, so it deserves the most care.
+
+A checklist for every output file:
+
+1. A header row with short column names.
+2. One row per observation, including the initial state.
+3. Full precision for computed values.
+4. Metadata: model, every parameter, initial conditions, seed, program and version, date.
+5. A file name that identifies the run, and a new file for every run.
+
+## Common mistakes
+
+- **Writing to `std::cout` and copying from the terminal.** Use a file stream, or at least shell redirection, and keep messages on `std::cerr`.
+- **Leaving out generation 0.** The initial condition is part of the trajectory.
+- **Rounding on output.** Round in the figure, not in the data.
+- **Units or spaces in column names** (`N (individuals)`): they make every analysis script awkward. Put units in the metadata.
+- **Parameters only in the source code.** Write them into the file, or better, read them from a <Concept id="parameter-files">parameter file</Concept> and echo them into the metadata.
+- **Assuming the write worked.** Check the stream after closing it.
+
+## Practice
+
+<Practice>
+
+1. Add a third column, `N_exact`, with the closed-form solution of the Beverton–Holt model, $N_t = K N_0 / (N_0 + (K - N_0) R_0^{-t})$ with $K = (R_0 - 1)M$. Read the file in R or Python and compute the largest absolute difference between the two columns. What size do you expect?
+2. Change the program so that the file name contains the value of R0, for example `beverton_holt_R0-2.2.csv`, and run it for R0 = 1.5, 2.2 and 3.0 (edit the default, or combine with <Concept id="command-line" />).
+3. Read the three files from exercise 2 in R or Python, add a column `R0` taken from each file's metadata, stack them into one long table and plot N against generation with one line per R0.
+
+<details>
+<summary>Hint for exercise 1</summary>
+Compute the exact value inside the writing loop with `std::pow(p.R0, -static_cast<double>(t))`. Both columns are computed in double precision with different operations, so expect differences of a few units in the last digits: around $10^{-14}$ for values near 48, not exactly zero.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+In Python, loop over the file names, read each one with `pd.read_csv(..., comment="#")`, parse the metadata as shown above and assign `df["R0"] = float(meta["R0"])`, then use `pd.concat`. In R, `lapply` over the names, `transform(df, R0 = ...)`, and `do.call(rbind, ...)`.
+</details>
+
+</Practice>

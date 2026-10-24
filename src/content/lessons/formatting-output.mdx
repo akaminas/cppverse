@@ -1,0 +1,222 @@
+---
+title: Formatting output
+summary: Widths, notation and precision with <iomanip>; which settings stick; aligned tables for people and full-precision files for programs.
+level: intermediate
+module: 9
+manual: ["M9.adv-format"]
+minutes: 30
+optional: true
+objectives:
+  - Format numbers with setw, setprecision, fixed, scientific, left/right, setfill and showpos
+  - Predict which formatting settings persist on a stream and which apply to one value only
+  - Write console tables for reading and data files at round-trip precision
+  - Choose a CSV separator that survives regional settings
+references:
+  - "cppreference.com: Input/output manipulators; std::numeric_limits::max_digits10"
+  - "cppreference.com: std::format (C++20), std::print (C++23)"
+---
+
+## What it is
+
+A *manipulator* is something you insert into a stream chain that changes how the following values are written, rather than writing anything itself. You have met `std::fixed` and `std::setprecision` already:
+
+```cpp
+std::cout << std::fixed << std::setprecision(2) << 3.14159 << '\n';   // 3.14
+```
+
+Manipulators without arguments (`std::fixed`, `std::left`, `std::boolalpha`) come with `<iostream>`; those that take an argument (`std::setw(10)`, `std::setprecision(4)`, `std::setfill('0')`) need `<iomanip>`. Note that no parentheses follow the ones without arguments.
+
+## Why it matters
+
+Model output has two audiences with opposite needs.
+
+- **People** read logs and tables on the console. They need aligned columns, a sensible number of digits and units, and nothing more: `47.26` is easier to take in than `47.259363900103999`.
+- **Programs** (R, Python, the next stage of your pipeline) read data files. They need every digit, a plain separator and no padding. Rounding a trajectory to two decimals before analysis throws information away for good.
+
+A single program usually serves both, so you must control formatting deliberately, and know that some settings outlive the line on which you set them.
+
+## How it works in C++
+
+### The manipulators you need
+
+| Manipulator | Effect | Lasts |
+|---|---|---|
+| `std::setw(n)` | minimum width of the *next* field, padded with the fill character | one field |
+| `std::setprecision(n)` | number of digits (see below) | until changed |
+| `std::fixed` | fixed-point notation: `1710.11` | until changed |
+| `std::scientific` | scientific notation: `1.71e+03` | until changed |
+| `std::defaultfloat` | back to the default, whichever of the two is shorter | until changed |
+| `std::left`, `std::right` | where padding goes; `right` is the default | until changed |
+| `std::internal` | padding between sign and digits: `-   42` | until changed |
+| `std::setfill(c)` | the padding character, a space by default | until changed |
+| `std::showpos` / `std::noshowpos` | print `+` before positive numbers | until changed |
+| `std::showpoint` / `std::noshowpoint` | always print the decimal point | until changed |
+| `std::boolalpha` / `std::noboolalpha` | `true`/`false` instead of `1`/`0` | until changed |
+| `std::skipws` / `std::noskipws` | (input) skip leading whitespace before `>>` | until changed |
+| `std::flush`, `std::endl` | act immediately: flush; newline and flush | — |
+
+The single exception to stickiness is the one you would most like to stick: `setw` is reset after every field, so a table needs it before each value.
+
+<Callout kind="manual" title="What setprecision counts">
+The course manual describes `setprecision` as the number of digits after the decimal point. That is its meaning only in fixed and scientific notation; in the default notation it counts significant digits, as the next paragraph explains.
+</Callout>
+
+The meaning of `setprecision` depends on the notation. In default notation it is the number of *significant* digits; in fixed and scientific notation it is the number of digits *after the decimal point*. With the default precision of 6, `std::cout << 1234567.0` prints `1.23457e+06`: the default notation switches to scientific when a number has more digits before the point than the precision allows.
+
+### A table for people
+
+Kleiber's rule relates an animal's basal metabolic rate to its body mass: $B = B_0 M^{3/4}$, with $B$ in watts, $M$ in kilograms and $B_0 \approx 3.4\ \mathrm{W\,kg^{-3/4}}$ for mammals. The masses below are round, approximate values chosen for illustration.
+
+<Example file="io/format_kleiber_table.cpp" mark="25-31,35-36,41,45" />
+
+Step through the program to see the state of `std::cout` after each line. Watch the `precision` and `notation` entries persist from one statement to the next while `width` returns to 0:
+
+<Trace id="formatting-output-state" />
+
+Three design decisions are visible:
+
+- The masses span six orders of magnitude, so they are written in scientific notation. With `std::fixed` and two decimals the shrew would show as `0.01` and the vole as `0.03`, hiding a sixfold difference.
+- Names are left-aligned and numbers right-aligned, so that the decimal points line up within each column.
+- After the table, `std::defaultfloat` and `std::setprecision(6)` restore the default state, so that later output is not affected by settings meant for the table.
+
+When a function changes the formatting of a stream it did not create, it should restore what it found:
+
+```cpp
+void printSummary(std::ostream& out, double mean) {
+    const std::ios_base::fmtflags oldFlags = out.flags();      // notation, alignment, showpos…
+    const std::streamsize oldPrecision = out.precision();
+    out << std::fixed << std::setprecision(2) << "mean = " << mean << '\n';
+    out.flags(oldFlags);
+    out.precision(oldPrecision);
+}
+```
+
+### Signs, fill characters and booleans
+
+```cpp
+std::cout << std::showpos << 3.5 << ' ' << -1.25 << std::noshowpos << '\n';   // +3.5 -1.25
+std::cout << std::setw(6) << std::setfill('.') << 42 << '\n';                 // ....42
+std::cout << std::setfill(' ') << std::boolalpha << (48.0 > 40.0) << '\n';    // true
+```
+
+`std::showpos` makes signed quantities, such as changes in population size between two generations, easy to scan. Remember to switch it off again, and to reset the fill character: both stick.
+
+### A file for programs: full precision
+
+A `double` carries about 15 to 17 significant decimal digits. The default precision of 6 throws most of them away, and the line `0.1 + 0.2 = 0.3` in the output above shows how that can hide what is actually stored. Two constants from `<limits>` tell you how many digits you need:
+
+- `std::numeric_limits<double>::max_digits10` (17): enough digits that reading the text back gives *exactly* the same `double`. Use it for computed values written to data files.
+- `std::numeric_limits<double>::digits10` (15): any decimal number with at most this many significant digits survives the trip into a `double` and back. Parameters typed by a person, such as `2.2`, therefore print exactly as typed with this precision.
+
+The CSV file written by the example contains, for instance, `shrew,0.0050000000000000001,0.063930252582468691`. The extra digits of the mass are not noise added by the program: they show the binary value nearest to 0.005, which is what the model computed with.
+
+### Separators and regional settings
+
+Comma-separated values use a comma between fields and a point as decimal separator. Spreadsheet programs set to a language that writes decimals with a comma (Dutch, German, French and many others) expect a *semicolon* between fields instead, and may read a correct CSV file as one column. Two remedies:
+
+- keep the separator in one named constant, `constexpr char separator{','};`, so that it can be changed in one place, and write `out << a << separator << b;`;
+- or keep the standard comma, and import the file into the spreadsheet with explicit settings (or read it with R or Python, which do not depend on regional settings).
+
+C++ streams, unless you tell them otherwise, use the classic locale, which always writes a decimal point. Do not install a regional locale on a stream that writes data files: the decimal commas it produces break the file for other programs.
+
+<Callout kind="modern" title="std::format and std::print">
+C++20 <Std v="c++20" /> adds `std::format` in `<format>`, which formats with a pattern instead of stream state, so nothing can stick. C++23 <Std v="c++23" /> adds `std::print` and `std::println` in `<print>`, which write the formatted text directly:
+
+```cpp
+#include <format>
+#include <print>
+
+std::string row = std::format("{:<10}{:>11.2e}{:>9.2f}", "shrew", 0.005, 0.0639);
+std::println("{:<10}{:>11.2e}{:>9.2f}", "vole", 0.03, 0.2451);   // C++23
+std::println("{},{},{}", "hare", 3.5, 8.700214303937395);       // shortest round-trip form
+```
+
+`{:>9.2f}` reads "right-aligned, width 9, fixed with 2 decimals". An empty `{}` writes a `double` in the shortest form that reads back to the same value, which is ideal for data files. GCC 13, Clang 17 and recent Visual Studio support `std::format`; `std::print` needs GCC 14 or Clang 18 with a matching library. See <Concept id="modern-cpp" />.
+</Callout>
+
+## Explore it
+
+<Check
+  id="sticky"
+  kind="predict"
+  question="What does this print?"
+  code={`std::cout << std::fixed << std::setprecision(1) << 2.26 << '\\n';
+std::cout << std::setw(6) << 40.0 << '\\n';
+std::cout << 7.0 << '\\n';`}
+  options={["2.3, then \"  40.0\", then \"   7.0\"", "2.3, then \"  40.0\", then 7.0", "2.26, then 40, then 7", "2.3, then \"    40\", then 7"]}
+  answer={1}
+  feedback={[
+    "fixed and setprecision(1) persist, but setw(6) applied only to the 40.0. The 7.0 is printed at its natural width.",
+    "Precision and notation persist across statements, so 40.0 and 7.0 both get one decimal; the width was used up by 40.0, so 7.0 is not padded.",
+    "std::fixed with setprecision(1) always prints exactly one decimal, so 2.26 is rounded and 40.0 keeps its .0.",
+    "In fixed notation the precision counts decimals, so 40.0 keeps its .0; and setw does not carry over to the 7.0.",
+  ]}
+/>
+
+<Check
+  id="significant"
+  kind="predict"
+  question="std::cout << std::setprecision(3) << 1234.5678; prints what, with the default notation?"
+  options={["1234.568", "1234.57", "1.23e+03", "1230"]}
+  answer={2}
+  feedback={[
+    "That would be three digits after the point, the meaning in fixed notation. In default notation the precision counts significant digits.",
+    "Six significant digits would give this; the precision here is three.",
+    "Three significant digits cannot show 1234 in positional form, so the default notation switches to scientific: 1.23e+03.",
+    "The stream never pads with zeros in place of digits it rounds away; it switches to scientific notation instead.",
+  ]}
+/>
+
+<Check
+  id="precision-file"
+  kind="model"
+  question="A program writes a trajectory to CSV with the default precision. An analysis later finds that two runs, which should be identical, differ in the 7th significant digit after being read back. What is the most likely cause?"
+  options={[
+    "The two runs used different compilers, so the simulation differs",
+    "Six significant digits were written; the values were rounded on output, and the comparison is between rounded numbers",
+    "CSV cannot store floating-point numbers exactly",
+    "R and Python read numbers less precisely than C++ writes them"
+  ]}
+  answer={1}
+  feedback={[
+    "Possible in principle, but the written files cannot tell you: at six digits, values that differ beyond the sixth digit look identical and small differences are masked or distorted.",
+    "Default precision keeps six significant digits, so anything beyond is rounding. Write data with max_digits10 and compare what was actually computed.",
+    "Text can represent any double exactly; it takes up to 17 significant digits.",
+    "Both read a 17-digit decimal back to the identical double.",
+  ]}
+/>
+
+## In biological modelling
+
+- **Progress logs** on `std::clog` benefit from fixed widths: a column of generation numbers and population sizes that stays aligned is far easier to scan for a sudden jump or a `nan`.
+- **Data files** need `max_digits10`, a header and a plain separator. <Concept id="trajectory-output" /> builds a complete output file around this rule.
+- **Tables for a manuscript** are better produced from the data file by the analysis script than formatted by the simulation, so that rounding happens once, at the end.
+
+## Common mistakes
+
+- **Expecting `setw` to stick.** It applies to the next field only.
+- **Forgetting that everything else sticks.** A `std::scientific` set for one table changes every later number on that stream. Restore the state, or format into a separate `std::ostringstream` (see <Concept id="string-streams" />).
+- **Reading `setprecision` as decimals in default notation.** There it means significant digits.
+- **Rounding data files.** Precision for display does not belong in files meant for analysis.
+- **Padding data files with `setw`.** Leading spaces in CSV fields confuse some readers; separators alone are enough.
+- **Using `std::endl` in loops.** Each one flushes the buffer; use `'\n'`.
+
+## Practice
+
+<Practice>
+
+1. Print the Beverton–Holt trajectory with R0 = 2.2, M = 40 and N0 = 5 as a console table with three right-aligned columns: generation (width 4), N with three decimals (width 10), and the change from the previous generation with an explicit sign (width 10, `+` for growth).
+2. Write a function `printRow(std::ostream& out, const std::string& label, double value)` that prints `label` left-aligned in 12 characters and `value` in scientific notation with three decimals, and leaves the stream's settings as it found them. Test it by printing a number with default formatting before and after.
+3. Write the Kleiber table to a file with a semicolon separator chosen by a single constant. Open it in a spreadsheet with the regional settings of your computer and check that the columns are recognised.
+
+<details>
+<summary>Hint for exercise 1</summary>
+Keep the previous N in a variable. For the sign, set `std::showpos` before the change and `std::noshowpos` after it, so that the generation number on the next line is not printed as `+1`.
+</details>
+
+<details>
+<summary>Hint for exercise 2</summary>
+Save `out.flags()` and `out.precision()` at the start of the function and restore both before it returns. `std::setw` needs no restoring, and neither does the fill character if you never change it.
+</details>
+
+</Practice>

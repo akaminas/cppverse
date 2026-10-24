@@ -1,0 +1,308 @@
+---
+title: Reading and writing files
+summary: File streams read data and write results exactly as std::cin and std::cout do; the stream state tells you whether every read succeeded.
+level: beginner
+module: 9
+manual: ["M9.1", "M11.5"]
+minutes: 40
+objectives:
+  - Choose between std::cout, std::cerr and std::clog for results, errors and progress messages
+  - Open a file for reading or writing, check that it opened, and append to an existing file
+  - Read a data file with the loop while (in >> x) and explain why testing eof() first is fragile
+  - Detect a value that is not a number, skip it with clear() and ignore(), and report it
+references:
+  - "cppreference.com: std::basic_ifstream, std::basic_ofstream and std::basic_ios::rdstate"
+  - "cppreference.com: std::exit"
+---
+
+## What it is
+
+A *stream* is a sequence of characters flowing into or out of a program. You already use two: `std::cin` brings characters in from the keyboard and `std::cout` sends them out to the console. A *file stream* is the same idea attached to a file on disk:
+
+- `std::ofstream` (output file stream) writes to a file;
+- `std::ifstream` (input file stream) reads from one.
+
+Both live in the header `<fstream>`, and they work exactly like the streams you know: you write with `<<` and read with `>>`. Once a file is open, the code that writes a table to a file looks the same as the code that prints it to the screen.
+
+## Why it matters
+
+A simulation that only prints to the console leaves you with numbers scrolling past. Real work needs files in both directions:
+
+- **Data in.** Field measurements, initial conditions and parameter sets are prepared elsewhere and read by the program.
+- **Results out.** A trajectory written to a file can be plotted in R or Python, archived with a paper, and compared with the next version of the model.
+
+Reading data also brings the first situation where a program must expect things to go wrong: the file may be missing, or a value may be mistyped. A program that silently computes a mean from a corrupted file is worse than one that stops with a clear message.
+
+## How it works in C++
+
+### The standard streams
+
+Every program starts with four streams already open, declared in `<iostream>`:
+
+| Stream | Direction | Use it for |
+|---|---|---|
+| `std::cin` | in | input typed by the user, or a file redirected to the program |
+| `std::cout` | out | results |
+| `std::cerr` | out | error messages; unbuffered, so they appear immediately |
+| `std::clog` | out | progress and log messages; buffered |
+
+`std::cerr` and `std::clog` both go to the *standard error* channel, which is separate from standard output. The shell can send the two channels to different places, so the results stay clean even when warnings are printed:
+
+```bash
+./simulation > trajectory.csv 2> messages.txt
+```
+
+On a computing cluster the job scheduler does the same thing, writing each job's output and errors to separate files. Keep this separation in your own programs: results to `std::cout` (or a file), everything else to `std::cerr` or `std::clog`.
+
+### Writing a file
+
+Create an `std::ofstream` with the name of the file, check that it opened, and write to it as you would to `std::cout`:
+
+```cpp
+#include <fstream>
+
+std::ofstream out{"plot_counts.csv"};   // creates the file, or empties an existing one
+if (!out.is_open()) {
+    std::cerr << "error: cannot create plot_counts.csv\n";
+    return EXIT_FAILURE;
+}
+out << "plot,seedlings\n";
+out << 1 << ',' << 23 << '\n';
+```
+
+The file name is a relative path, so the file appears in the program's *working directory*: the folder from which you ran it, which is not necessarily the folder that contains the source code. Opening fails when the folder does not exist or you may not write there; that is why the check matters.
+
+You can also create the stream first and attach a file later with `open`, which is useful when the name is only known later, for instance after reading it from the <Concept id="command-line">command line</Concept>:
+
+```cpp
+std::ofstream out;
+out.open(fileName);   // fileName is a std::string
+```
+
+### Closing happens by itself
+
+A file stream closes its file when the stream object is destroyed, which happens at the end of the block in which it was created (see <Concept id="scope" />). You therefore rarely need to call `close()` yourself. Do call it when you want to reuse the same stream object for a second file, or when you want to check that the last data really reached the file (an example is in <Concept id="trajectory-output" />). This pattern of tying a resource to the lifetime of an object is called RAII (*resource acquisition is initialisation*), and the standard library uses it everywhere.
+
+### Appending instead of overwriting
+
+Opening an existing file with `std::ofstream` erases its contents. To add to the end instead, pass the *append* flag:
+
+```cpp
+std::ofstream runLog{"runs.log", std::ios::app};   // created if it does not exist yet
+runLog << "R0 = " << R0 << ", final N = " << N << '\n';
+```
+
+Appending suits a log that accumulates one line per run. For model output, prefer one new file per run: an appended trajectory silently mixes the results of different runs.
+
+### Reading a file
+
+An `std::ifstream` reads with `>>`, which skips any *whitespace* (spaces, tabs and newlines) before each value. A file with one value per line and a file with all values on one line separated by spaces are therefore read in exactly the same way. Here is a complete program that reads a file of body masses and summarises it.
+
+## A minimal example
+
+The data file `vole_masses.txt` sits next to the program and holds fourteen illustrative body masses in grams, one per line (`31.2`, `28.7`, `35.4`, …). They are invented for this example, not field data.
+
+<Example file="io/body_mass_summary.cpp" mark="14-18,23-30" />
+
+The program follows a pattern you will use again and again:
+
+1. **Open and check.** `is_open()` is false when the file is missing or unreadable. The program says so on `std::cerr` and returns `EXIT_FAILURE`, so a calling script can see that the run failed.
+2. **Read in a loop.** `while (in >> mass)` reads one value per pass and stops at the first read that fails; the next section explains why this form is the right one.
+3. **Check why the loop stopped.** After the loop, `in.eof()` is true only if the reading reached the end of the file. If it is false, something that is not a number stopped the loop early, and the program reports which entry it was.
+4. **Compute and write.** The mean comes from the sum; the standard deviation uses the stored values and the sample (n − 1) denominator. Each stream keeps its own formatting: `std::fixed` applies to `std::cout` only, so the summary file uses the default format of six significant digits.
+
+Both streams close themselves when `main` returns.
+
+<Callout kind="manual" title="Smaller differences">
+The course manual opens files with `fileName.c_str()`. Since C++11 the file streams accept a `std::string` directly, so `.c_str()` is unnecessary. The manual also stops a program from inside other functions with `exit()`; see the pitfall about `exit` below for why this site returns from `main` instead.
+</Callout>
+
+### Redirecting a stream into a file
+
+Occasionally you want everything sent to one of the standard streams to go to a file instead, for example all `std::clog` progress messages of a long run. Every stream writes through a *stream buffer*, and `rdbuf` swaps it:
+
+```cpp
+std::ofstream logFile{"simulation.log"};
+std::streambuf* const original = std::clog.rdbuf(logFile.rdbuf());  // clog now writes to the file
+std::clog << "generation 100 done\n";
+std::clog.rdbuf(original);  // restore before logFile is destroyed
+```
+
+Restoring the original buffer matters: if `logFile` is destroyed while `std::clog` still points at its buffer, the next message goes to an object that no longer exists. For most purposes, redirection by the shell (`2> messages.txt`) is simpler.
+
+<Anchor id="robust-input" />
+
+### Robust input: the stream state
+
+Every stream carries a small set of flags that record what has gone wrong. You query them with member functions:
+
+| Function | True when |
+|---|---|
+| `good()` | no flag is set: the last operation succeeded |
+| `eof()` | an operation tried to read past the end of the file |
+| `fail()` | an operation failed: no value could be read (also true when `bad()` is) |
+| `bad()` | the stream itself is broken, for example a read error from the device |
+
+`eof()` can even be true after a *successful* read: when the last number in a file is not followed by a newline, reading it reaches the end of the file. Neither `good()` nor `eof()` therefore tells you whether a value was read; `fail()` does.
+
+Once `fail()` is true, every further read on that stream does nothing until you reset the flags. A stream can also be used directly as a condition: `if (in)` and `while (in >> x)` test `!in.fail()`. Because `in >> x` returns the stream itself, the expression reads a value *and* reports whether that worked.
+
+#### Why `while (in >> x)` and not `while (!in.eof())`
+
+It is tempting to write "while not at the end of the file, read a value and use it". The trouble is that `eof()` only becomes true *after* a read has tried to go past the end. Step through both loops on a three-line file that ends, as most files do, with a newline:
+
+<Trace id="file-io-read-loop" />
+
+<Trace id="file-io-eof-loop" />
+
+The fragile loop runs once too often and adds the last mass twice, because the failed read leaves the variable unchanged. On a file without a final newline the same loop happens to work, which makes the bug hard to notice. The idiomatic loop has neither problem: it uses a value only after the read of that value has succeeded.
+
+<Callout kind="manual" title="The end-of-file test">
+The course manual reads a value, uses it and then tests `eof()`. This is fragile in the way the trace shows: a trailing newline, or a value that fails to parse, makes the loop process data that were never read. Use `while (in >> x)`, then check `eof()` afterwards to learn *why* the loop stopped.
+</Callout>
+
+#### Skipping entries that are not numbers
+
+Field data files contain surprises: a note typed into a column, a question mark for a missed measurement. When `>>` meets text it cannot convert, it sets `failbit` and stops. To carry on you must do two things, in this order:
+
+1. `in.clear()` resets the flags, so that the stream accepts operations again;
+2. `in.ignore(…, '\n')` discards the offending characters, here the rest of the line, so that the next read does not meet them again.
+
+The file `vole_masses_field.txt` contains two such lines, `escaped` and `?`:
+
+```text
+31.2
+28.7
+escaped
+35.4
+22.9
+40.1
+?
+33.8
+27.5
+30.8
+```
+
+<Example file="io/robust_mass_reader.cpp" mark="24-40" />
+
+The expected output above is what arrives on standard output. In a terminal you also see the two warnings, which travel separately on standard error:
+
+```text
+warning: line 3 is not a number; skipped
+warning: line 7 is not a number; skipped
+```
+
+The loop distinguishes the possible outcomes of each read: success, the end of the file, a broken stream (`bad()`), and a line that is not a number. Each skipped line is reported on `std::cerr` with its line number, so the summary on `std::cout` stays clean and you can still see what was left out. Never skip bad data silently: the number of rejected entries belongs in your notes, and possibly in your methods section.
+
+`std::numeric_limits<std::streamsize>::max()` (from `<limits>`) means "no limit on the number of characters": `ignore` stops at the first newline however long the line is.
+
+<Callout kind="pitfall" title="exit() skips the clean-up">
+`std::exit(EXIT_FAILURE)` from `<cstdlib>` ends the program on the spot, from anywhere. It does not unwind the function calls in progress, so the destructors of local objects never run: an `std::ofstream` in `main` is not closed properly, and output still waiting in its buffer can be lost. Prefer `return EXIT_FAILURE;` from `main`. Deep inside other functions, report the problem to the caller instead, for example with an <Concept id="exceptions">exception</Concept> that `main` catches.
+</Callout>
+
+## Explore it
+
+<Check
+  id="mixed-file"
+  kind="predict"
+  question="A file contains the text `12 15 x 20` on one line. What does this fragment print?"
+  code={`std::ifstream in{"seedlings.txt"};
+int count{0};
+int total{0};
+int n{0};
+while (in >> count) {
+    total += count;
+    ++n;
+}
+std::cout << n << ' ' << total << '\\n';`}
+  options={["4 47", "3 47", "2 27", "3 27"]}
+  answer={2}
+  feedback={[
+    "The x cannot be read as an int, so the loop never reaches the 20.",
+    "The read of x fails, and a failed stream refuses every later read, so 20 is never added.",
+    "12 and 15 are read; reading x fails, the condition is false and the loop ends. The program should now check eof(), which is false, to notice that it stopped early.",
+    "A failed read does not run the loop body, so nothing extra is counted.",
+  ]}
+/>
+
+<Check
+  id="append"
+  kind="debug"
+  question={'A program writes one summary line per run with `std::ofstream runLog{"runs.log"};`. After ten runs the file contains only the last line. Why?'}
+  options={[
+    "The stream was never closed, so only the last line was saved",
+    "Opening an ofstream truncates an existing file; it needs std::ios::app to append",
+    "Each run must call log.seekp to move to the end of the file",
+    "ofstream can only write a single line per file",
+  ]}
+  answer={1}
+  feedback={[
+    "The stream closes itself when it goes out of scope. Every run did save its line, and the next run erased it.",
+    "By default an output file stream empties the file when it opens it. std::ofstream runLog{\"runs.log\", std::ios::app}; opens it for appending instead.",
+    "Seeking is not needed: the append flag makes every write go to the end of the file.",
+    "A file stream can write as much as you like; the problem is that each run starts by emptying the file.",
+  ]}
+/>
+
+<Check
+  id="clear-ignore"
+  kind="read"
+  question="In the robust reader, what would happen if in.clear() were removed but in.ignore(…) kept?"
+  options={[
+    "Nothing changes: ignore resets the error flags by itself",
+    "ignore skips the bad line and reading continues normally",
+    "ignore does nothing on a failed stream, and the next read fails again on the same line, forever",
+    "The program skips the bad line but reports it twice",
+  ]}
+  answer={2}
+  feedback={[
+    "ignore is an input operation like any other; it does not touch the flags.",
+    "A stream with failbit set refuses all input operations, including ignore.",
+    "The next read fails at once, the else branch runs again, and the loop never ends. Clear first, then discard.",
+    "Without clear() no further input happens at all, so the loop repeats indefinitely rather than reporting twice.",
+  ]}
+/>
+
+## In biological modelling
+
+The two directions of file input and output map onto the two ends of a modelling project:
+
+- **Input** carries everything the model is not: measured initial conditions, environmental time series, parameter sets. Reading them from files keeps the program general, and the robust reading loop keeps it honest about what it actually read.
+- **Output** carries the result: one file per run with the trajectory, written so that analysis software can read it without manual editing. <Concept id="trajectory-output" /> shows how to write such a file, including the metadata needed to reproduce it.
+
+A useful habit is to print a short summary of what was read (how many values, how many skipped, the range) to `std::clog` at the start of every run. Most data problems become obvious at that point, before they distort a result.
+
+## Common mistakes
+
+- **Not checking that a file opened.** A misspelt name or the wrong working directory gives an empty input stream; the loop then reads nothing and a mean of zero values appears as `nan` or a division by zero.
+- **Testing `eof()` before reading.** See the trace above: the last value is processed twice. Test the read itself.
+- **Forgetting `clear()` before `ignore()`.** A failed stream ignores everything, including `ignore`.
+- **Overwriting results.** Opening an output file truncates it. Use a new name per run, or `std::ios::app` for logs.
+- **Mixing messages into results.** Warnings printed to `std::cout` end up inside the data file when output is redirected. Send them to `std::cerr` or `std::clog`.
+- **Assuming the data file sits next to the source code.** Relative paths are resolved from the working directory of the running program.
+
+## Practice
+
+<Practice>
+
+1. A file lists the number of seedlings counted in each of a series of plots, one count per line. Write a program that reads it and prints how many plots there were and the proportion of plots with more than ten seedlings. Test it with a small file you create, including one that is empty.
+2. Extend `body_mass_summary.cpp` so that, in addition to the summary file, it appends one line per run to `runs.log`, containing the number of masses and the mean. Run it three times and inspect the log.
+3. A file has two columns: an individual's ring number (an integer) and its body mass, separated by spaces. Read both columns with one loop condition and print the ring number of the heaviest individual.
+4. Make `robust_mass_reader.cpp` stop with an error, instead of skipping, when more than a quarter of the lines are not numbers. Where in the program should that test go?
+
+<details>
+<summary>Hint for exercise 1</summary>
+Count all plots and the plots above the threshold in the same `while (in >> count)` loop. Before dividing, check that at least one plot was read, and convert one of the integers to `double` so that the proportion is not truncated by integer division.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+`in >> ring >> mass` reads two values and is true only if both succeeded, so `while (in >> ring >> mass)` reads one complete row per pass. Keep the largest mass seen so far and the ring number that goes with it.
+</details>
+
+<details>
+<summary>Worked answer for exercise 4</summary>
+The proportion is only known once all lines have been read, so the test belongs after the loop: if `4 * skipped > line`, report the counts on `std::cerr` and `return EXIT_FAILURE;`. Testing inside the loop would stop at the first bad line whenever it appears early in the file, even if the rest is clean.
+</details>
+
+</Practice>

@@ -1,0 +1,293 @@
+---
+title: Headers and source files
+summary: Split a model over several files, declarations in headers and definitions in source files, and build them with separate compilation, linking and CMake.
+level: intermediate
+module: 7
+manual: ["M7.5"]
+minutes: 35
+objectives:
+  - Distinguish declarations from definitions and decide which belongs in a header
+  - Write a header with an include guard and the source file that implements it
+  - Explain the one-definition rule and recognise the errors that break it
+  - Compile files separately, link them, and describe the build in a CMakeLists.txt
+references:
+  - "cppreference.com: Translation units, #include, the one-definition rule"
+  - "CMake documentation: add_executable, CMAKE_CXX_STANDARD"
+---
+
+## What it is
+
+Until now every program has been a single `.cpp` file. Larger programs are split into several files, in pairs:
+
+- a **header** (`growth.hpp`) contains *declarations*: the names, types and function signatures that other code needs in order to use a part of the program;
+- a **source file** (`growth.cpp`) contains the *definitions*: the function bodies that do the work.
+
+Any other file that needs the growth model writes `#include "growth.hpp"` and can then call its functions without seeing how they are implemented. Each `.cpp` file is compiled on its own; the *linker* then joins the compiled pieces into one executable (see <Concept id="compilation" />).
+
+## Why it matters
+
+A model program naturally falls into parts: the model equations, a numerical method, parameter input, output. Keeping each part in its own pair of files
+
+- makes each file short enough to check against the mathematics;
+- lets several programs share one implementation: a simulation, a test program and a parameter sweep can all include the same `model.hpp`;
+- separates *what* a part offers (the header, which rarely changes) from *how* it does it (the source, which you may optimise or fix);
+- speeds up rebuilding, because only the changed source files are recompiled.
+
+## How it works in C++
+
+### Declarations and definitions
+
+A *declaration* introduces a name and its type. A *definition* also provides what the name stands for: the body of a function, or the storage of a variable.
+
+```cpp
+double lengthAtAge(double age, const GrowthParameters& p);        // declaration
+double lengthAtAge(double age, const GrowthParameters& p) {       // definition
+    return p.Linf - (p.Linf - p.L0) * std::exp(-p.k * age);
+}
+```
+
+You met the declaration form as a *prototype* in <Concept id="prototypes" />: it lets a function be called before its body appears. A header is a collection of such declarations, plus the type definitions (structs and classes) that they mention.
+
+### A header, its source file and a program
+
+The example implements von Bertalanffy growth, a standard description of individual growth in fish and many other animals:
+
+$$
+L(t) = L_\infty - (L_\infty - L_0)\, e^{-k t}
+$$
+
+where $L(t)$ is the length (cm) at age $t$ (years), $L_\infty$ the asymptotic length, $L_0$ the length at age 0 and $k$ a growth coefficient (per year). The parameter values are illustrative. The folder `growth_model` holds three files. First the header:
+
+<Example file="architecture/growth_model/growth.hpp" bare editable={false} />
+
+Select the parts of the header to see what each line does:
+
+<Anatomy id="multiple-files-header" />
+
+The source file includes its own header, so that the compiler checks that the definitions match the declarations, and then defines the functions:
+
+<Example file="architecture/growth_model/growth.cpp" bare editable={false} />
+
+The program includes the header and calls the functions. It knows nothing about `std::exp` or `std::log`, which are used only inside `growth.cpp`:
+
+<Example file="architecture/growth_model/main.cpp" bare />
+
+Build it by naming *both* source files, never the header:
+
+```bash
+g++ -std=c++17 -Wall -Wextra -pedantic main.cpp growth.cpp -o growth
+./growth
+```
+
+```text
+age (years)  length (cm)
+          0         5.00
+          2        26.64
+          4        39.77
+          6        47.73
+          8        52.56
+         10        55.49
+age at 50 cm: 6.82 years
+```
+
+### Quotes or angle brackets
+
+With the common compilers, `#include "growth.hpp"` searches first in the folder of the file that contains the directive, then in the folders given with `-I`, then in the standard places. `#include <iostream>` searches only the compiler's system and library folders. Use quotes for your own headers and angle brackets for the standard library and installed libraries. Many projects list their own headers first and library headers after, so that a header that forgets one of its own includes is noticed.
+
+### Include guards
+
+`#include` pastes the header's text into the including file. If the same header arrives twice in one `.cpp` file, which easily happens when one header includes another, everything in it is seen twice, and a struct defined twice is an error. The program below includes `stage_counts.hpp` directly and again through `census.hpp`:
+
+```cpp
+// stage_counts.hpp: deliberately without an include guard
+struct StageCounts {
+    int juveniles = 0;
+    int adults = 0;
+};
+```
+
+```cpp
+// census.hpp
+#ifndef INCLUDE_GUARD_DEMO_CENSUS_HPP
+#define INCLUDE_GUARD_DEMO_CENSUS_HPP
+#include "stage_counts.hpp"
+int total(const StageCounts& counts);
+#endif
+```
+
+<Example file="architecture/include_guard_demo/double_include.cpp" mark="7-8" />
+
+The compiler stops with `redefinition of 'struct StageCounts'`. The cure is the *include guard* shown in `growth.hpp`: `#ifndef NAME`, `#define NAME`, the content, `#endif`. The first inclusion defines the macro; any later inclusion in the same translation unit finds it defined and skips the content. Give every header a guard, with a macro name that is unique in the project.
+
+Almost every compiler also accepts the shorter `#pragma once` as the first line of a header. It is not part of the C++ standard, but it is supported by GCC, Clang and Microsoft's compiler and is widely used. Either is fine; be consistent within a project.
+
+### What belongs in a header
+
+| In the header | In the source file |
+|---|---|
+| function declarations | function definitions |
+| struct and class definitions | definitions of member functions longer than a line or two |
+| constants: `inline constexpr double K = 48.0;` | variables that hold state, if you need any |
+| `inline` functions, templates, `constexpr` functions | |
+| default arguments, in the declaration | (not repeated in the definition) |
+
+The rule behind the table is the *one-definition rule* (ODR): a program may contain only one definition of each ordinary function and variable, while types, `inline` functions and templates may be defined in several translation units, provided the definitions are identical. Put an ordinary function definition into a header that two `.cpp` files include, and each object file gets its own copy: the linker reports `multiple definition of 'lengthAtAge(double, GrowthParameters const&)'`. Include guards do not help here, because they work within one translation unit, not across them. Marking the function `inline` tells the linker that the copies are the same function (see <Concept id="inline-static" />), which is why short functions can live in headers.
+
+A default argument, such as a default time step, is written once, in the declaration in the header, so that every caller sees it.
+
+<Callout kind="manual" title="Names in prototypes">
+The course manual lists only the parameter types in header prototypes. Parameter names are optional for the compiler but valuable for the reader (`double ageAtLength(double length, const GrowthParameters& p);` says what the first argument means), so this site keeps them.
+</Callout>
+
+### Separate compilation and linking
+
+The one-line build above does three steps at once. Doing them separately shows what each step needs:
+
+```bash
+g++ -std=c++17 -Wall -Wextra -pedantic -c growth.cpp   # compile: growth.o
+g++ -std=c++17 -Wall -Wextra -pedantic -c main.cpp     # compile: main.o (needs growth.hpp only)
+g++ main.o growth.o -o growth                          # link: one executable
+```
+
+Compiling `main.cpp` needs only the *declarations* in `growth.hpp`; the compiler leaves a note in `main.o` that `lengthAtAge` is still to be found. Linking resolves those notes against the definitions in `growth.o`. Forget `growth.o` (or `growth.cpp` in the one-line build) and the linker says `undefined reference to 'lengthAtAge(double, GrowthParameters const&)'`, an error that no amount of editing `main.cpp` will fix. After a change to `growth.cpp`, only that file needs recompiling before linking again; after a change to `growth.hpp`, every file that includes it does.
+
+### Building with CMake
+
+Typing compile commands does not scale, and tracking which files must be rebuilt is a job for a build tool. CMake is the most widely used one for C++. A `CMakeLists.txt` next to the sources describes the program:
+
+```cmake
+cmake_minimum_required(VERSION 3.20)
+project(growth_model LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+add_executable(growth main.cpp growth.cpp)
+
+if(MSVC)
+    target_compile_options(growth PRIVATE /W4)
+else()
+    target_compile_options(growth PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+```
+
+```bash
+cmake -S . -B build            # configure once: creates the build folder
+cmake --build build            # compile what changed and link
+./build/growth
+```
+
+Headers are not listed in `add_executable`: CMake finds out which sources include them. IDEs such as CLion, Visual Studio and VS Code (with its CMake extension) open a `CMakeLists.txt` directly.
+
+### Naming files
+
+Use lower-case file names with underscores (`growth_model.hpp`), give a header and its source file the same base name, and use one extension convention throughout (`.hpp`/`.cpp` on this site; `.h` and `.cc` are also common).
+
+<Callout kind="modern" title="Modules">
+C++20 <Std v="c++20" /> introduces *modules* (`export module growth;` and `import growth;`), which replace textual inclusion: no include guards, no ODR traps from headers, faster builds. Compiler and build-tool support is still maturing, so headers remain the norm in scientific code.
+</Callout>
+
+## Explore it
+
+<Check
+  id="undefined-reference"
+  kind="debug"
+  question="A student builds with g++ -std=c++17 main.cpp -o growth and gets: undefined reference to 'lengthAtAge(double, GrowthParameters const&)'. What is wrong?"
+  options={[
+    "main.cpp is missing #include \"growth.hpp\"",
+    "growth.cpp was not compiled and linked, so no definition of lengthAtAge exists in the program",
+    "The include guard in growth.hpp prevents the declaration from being seen",
+    "lengthAtAge must be declared inline",
+  ]}
+  answer={1}
+  feedback={[
+    "Then the compiler would complain that lengthAtAge was not declared. This message comes from the linker, after compilation succeeded.",
+    "The declaration in the header was enough to compile main.cpp, but the linker needs the definition. Add growth.cpp to the command, or to add_executable in CMake.",
+    "The guard only skips a second inclusion within the same file; the first inclusion is processed normally.",
+    "inline is for definitions placed in headers. Here the definition is simply missing from the build.",
+  ]}
+/>
+
+<Check
+  id="multiple-definition"
+  kind="debug"
+  question="To save a file, someone moves the body of ageAtLength into growth.hpp (not marked inline). Both main.cpp and a new test.cpp include the header and are linked together. What happens?"
+  options={[
+    "It works, because the include guard ensures the header is processed only once",
+    "The compiler reports a redefinition in each .cpp file",
+    "The linker reports a multiple definition of ageAtLength",
+    "The program runs, but uses one of the two copies at random",
+  ]}
+  answer={2}
+  feedback={[
+    "Include guards act within one translation unit. main.cpp and test.cpp are compiled separately, and each one includes the header once.",
+    "Each translation unit on its own contains one definition, which is legal; the problem only appears when they are combined.",
+    "Each object file contains a definition, and the one-definition rule allows only one in the program. Move the body back to growth.cpp, or mark the function inline.",
+    "The linker refuses to choose; the build fails.",
+  ]}
+/>
+
+<Check
+  id="what-where"
+  kind="read"
+  question="Which of these belongs in a header file?"
+  options={[
+    "double total = 0.0; a running total updated by several functions",
+    "The body of a 40-line function that integrates the model over one time step",
+    "struct Parameters with its members and their default values",
+    "using namespace std;",
+  ]}
+  answer={2}
+  feedback={[
+    "A non-const variable defined in a header is defined in every file that includes it, which breaks the one-definition rule. Avoid shared mutable state altogether if you can.",
+    "Ordinary function definitions go in the source file; the header holds the declaration.",
+    "Type definitions must be visible wherever the type is used, so they belong in the header, where their defaults also document the interface.",
+    "A using-directive in a header is forced on every file that includes it, with all the name clashes that brings.",
+  ]}
+/>
+
+## In biological modelling
+
+A modest model project might be organised like this:
+
+```text
+model/
+  CMakeLists.txt
+  parameters.hpp   parameters.cpp    # Parameters struct, reading and validating a parameter file
+  model.hpp        model.cpp         # state, update rule, simulate()
+  output.hpp       output.cpp        # CSV writing with metadata
+  main.cpp                           # reads the arguments, calls the three parts
+  test_model.cpp                     # checks the update rule against known values
+```
+
+The test program and the simulation share `model.cpp`, so the code you test is the code you run (see <Concept id="testing-reproducibility" />). The headers form a short table of contents of the whole model: reading `model.hpp` tells a colleague what the model offers without wading through its implementation.
+
+## Common mistakes
+
+- **Compiling a header** or listing it on the command line. Headers are included, not compiled; name only the `.cpp` files.
+- **Forgetting a source file** in the build: an "undefined reference" from the linker.
+- **Function bodies in headers** without `inline`: a "multiple definition" from the linker.
+- **Missing or duplicated include guards.** Two headers that use the same guard macro silently hide each other; derive the name from the path.
+- **A header that relies on its includer.** Each header should include what it uses itself (`<string>`, `<vector>`), so that it works wherever it is included.
+- **Repeating default arguments** in the definition: the compiler rejects a default given twice for the same parameter.
+
+## Practice
+
+<Practice>
+
+1. Split `cli_args_bh.cpp` from <Concept id="command-line" /> into `bh_model.hpp`/`bh_model.cpp` (the `Parameters` struct and the update rule) and `main.cpp` (argument handling and output). Build it with one command and then with separate `-c` steps.
+2. Add a pair `bh_output.hpp`/`bh_output.cpp` with a function that writes a trajectory to an `std::ostream&`, and write a `CMakeLists.txt` that builds the program.
+3. Define a small function in `bh_model.hpp` without `inline`, include the header in two source files, and build. Read the linker's message, then fix the build in two different ways.
+
+<details>
+<summary>Hint for exercise 1</summary>
+The header needs `#include <vector>` only if it declares a function that returns or takes a `std::vector`. `main.cpp` keeps `<iostream>`, `<string>` and the conversion helpers; `bh_model.cpp` needs nothing beyond its own header if the update rule only uses arithmetic.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+The two fixes are: move the body into `bh_model.cpp` and leave a declaration in the header; or keep the body in the header and mark it `inline`. Both satisfy the one-definition rule.
+</details>
+
+</Practice>

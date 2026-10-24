@@ -1,0 +1,8 @@
+# Beverton-Holt run for the parameter-file lesson
+# key            value
+R0               2.5
+M                50
+N0               5      # initial population size
+generations      20
+write_trajectory true
+output_file      bh_param_run.csv

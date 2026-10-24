@@ -1,0 +1,6 @@
+t = 0.000: prey 20.000, predators 5.000
+t = 2.000: prey 16.262, predators 19.390
+t = 4.000: prey 2.855, predators 14.452
+t = 6.000: prey 2.763, predators 6.811
+t = 8.000: prey 7.433, predators 3.933
+t = 10.000: prey 23.212, predators 6.057

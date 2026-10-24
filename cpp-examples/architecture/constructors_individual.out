@@ -1,0 +1,3 @@
+female: adult, age 3, 41.5 g, offspring 0
+newborn: juvenile, age 0, 2.8 g, offspring 0
+rejected: body mass must be positive

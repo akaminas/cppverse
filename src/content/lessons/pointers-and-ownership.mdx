@@ -1,0 +1,242 @@
+---
+title: Pointers and ownership
+summary: Read and write pointer code, understand who owns an object, and prefer values, indices and std::unique_ptr to raw new and delete.
+level: intermediate
+module: null
+manual: []
+minutes: 40
+objectives:
+  - Read declarations and expressions with *, &, -> and nullptr
+  - Explain the differences between pointers and references, and choose between them
+  - Describe RAII and use std::unique_ptr and std::make_unique for objects that need a single owner
+  - Recognise dangling pointers, including pointers into a vector that has grown
+  - Represent relations between individuals with indices into a container of values
+standard: c++17
+references:
+  - "cppreference.com: Pointer declaration; std::unique_ptr; std::shared_ptr"
+  - "C++ Core Guidelines: R.1–R.37 (resource management), F.7, F.60"
+---
+
+## What it is
+
+Every object in a running program occupies memory at some *address*. A **pointer** is a variable whose value is such an address: it says where another object is. Through the pointer you can read or change that object.
+
+**Ownership** is the question of who is responsible for destroying an object when it is no longer needed. For ordinary local variables and for elements of containers the answer is automatic. For objects created on the *heap* (more formally, the free store) it is not, and getting it wrong causes the most serious bugs C++ has: memory leaks, crashes and silent corruption.
+
+This lesson covers both: enough about pointers to read any C++ code, and the modern rules that make ownership simple.
+
+## Why it matters
+
+You will meet pointers in older model code, in C libraries such as GSL, in `main(int argc, char* argv[])` (see <Concept id="command-line" />), and behind the scenes of every container. You need to be able to read them.
+
+You rarely need to *write* them. Modern C++ hides addresses behind references, containers and smart pointers, and model code written that way has no ownership bugs at all. Knowing why lets you recognise the few situations in which a pointer really is the right tool, and the many in which a `std::vector` of values is better.
+
+## How it works in C++
+
+### Addresses and pointers
+
+| Syntax | Meaning |
+|---|---|
+| `double* p` | declares `p` as a pointer to `double` |
+| `&mass` | the address of `mass` |
+| `*p` | the object `p` points at (dereferencing) |
+| `p->areaHa` | a member of the object `p` points at; the same as `(*p).areaHa` |
+| `nullptr` | a pointer value that points at nothing |
+
+```cpp
+double mass = 12.5;
+double* p = &mass;   // p points at mass
+*p += 0.5;           // mass is now 13
+```
+
+The symbols do double duty, which is the main source of confusion. In a *declaration*, `*` means "pointer to" and `&` means "reference to"; in an *expression*, `*p` dereferences and `&x` takes an address.
+
+A pointer that points at nothing should hold `nullptr`, and code must check before dereferencing a pointer that may be null. Dereferencing a null pointer, or an uninitialised one, is undefined behaviour: usually a crash, sometimes silent nonsense. Always initialise pointers, to `nullptr` if there is nothing to point at yet.
+
+### Pointers and references
+
+A <Concept id="references">reference</Concept> is also a way of referring to another object, but with stricter rules:
+
+| | Reference `T&` | Pointer `T*` |
+|---|---|---|
+| Can be null | no | yes (`nullptr`) |
+| Can be re-pointed to another object | no | yes |
+| Must be initialised | yes | no (but should be) |
+| Syntax for use | like the object itself | `*p`, `p->member` |
+
+Prefer references. Use a pointer parameter only when "no object" is a meaningful argument, for example an optional habitat map. Even then, `std::optional` or an overload without the parameter is often clearer.
+
+### Automatic and dynamic lifetime
+
+Local variables have *automatic* lifetime: they are created when their definition runs and destroyed when the enclosing block ends (see <Concept id="scope" />). That covers almost everything in a model. Sometimes an object must outlive the function that creates it, or its type is only known at run time (see <Concept id="inheritance" />). Then it is created *dynamically*, on the heap.
+
+The low-level way to do that is `new`, paired with `delete`:
+
+```cpp
+// Do not write code like this: shown so you can recognise it.
+Habitat* h = new Habitat{40.0, 300.0};
+// ... if anything here returns early or throws, the delete never happens ...
+delete h;
+```
+
+Every `new` needs exactly one `delete`, on every path through the program, including early returns and exceptions. Forget it and memory leaks; do it twice and the program is corrupted; use the pointer afterwards and it *dangles*, pointing at memory that no longer holds the object. These rules are impossible to keep by hand in a large program, and you do not have to.
+
+### RAII: let destructors do the cleaning
+
+C++'s answer is *RAII*, "resource acquisition is initialisation": tie each resource to an object whose destructor releases it. Because destructors run automatically at the end of an object's lifetime, on every path, the resource cannot be forgotten. You already rely on RAII constantly:
+
+- `std::vector` and `std::string` free their memory in their destructors;
+- `std::ofstream` closes its file in its destructor;
+- `std::unique_ptr` deletes the object it owns in its destructor.
+
+### `std::unique_ptr`: one owner
+
+A `std::unique_ptr<T>` (from `<memory>`) owns one heap object. Create it with `std::make_unique`:
+
+```cpp
+auto habitat = std::make_unique<Habitat>(Habitat{40.0, 300.0});
+habitat->carryingCapacity;          // use it like a pointer
+```
+
+When the `unique_ptr` is destroyed, it deletes the object. It cannot be copied, since two owners would delete the object twice, but ownership can be *moved* to another `unique_ptr` with `std::move`, which leaves the source empty. A `unique_ptr` costs nothing compared with a raw pointer.
+
+Functions that only *use* the object should not take ownership. Pass the object by reference (`const Habitat&`), or, if it may be absent, as a plain pointer obtained with `.get()`. A raw pointer in modern code then always means "I am looking at this, someone else owns it".
+
+### `std::shared_ptr`: shared ownership, rarely needed
+
+A `std::shared_ptr<T>` lets several owners share one object; a reference count deletes it when the last owner disappears. It is the right tool when ownership is genuinely shared and no one can say who will finish last. In simulation code that is rare. `shared_ptr` costs a little on every copy (the count is updated, thread-safely), and two objects that hold `shared_ptr`s to each other keep each other alive for ever, a leak that `std::weak_ptr` exists to break. If you find yourself reaching for `shared_ptr`, first ask whether one object could simply own the thing and the others refer to it.
+
+<Callout kind="tip" title="The ownership rules in four lines">
+1. Store objects by value: local variables, members, elements of containers.
+2. If an object must live on the heap, own it with `std::unique_ptr`, created with `std::make_unique`.
+3. Pass objects to functions by reference; use a raw pointer only for an optional, non-owning argument.
+4. Never write `new` or `delete` in model code.
+</Callout>
+
+## A minimal example
+
+Step through the program to see pointers, a reference and a `unique_ptr` at work. The addresses themselves change from run to run, so the trace shows where each pointer points rather than a number.
+
+<Example file="architecture/pointers_basics.cpp" mark="24-25,28,33,36,40" />
+
+## Explore it
+
+<Trace id="pointers-basics" />
+
+<Check
+  id="repoint"
+  kind="predict"
+  question="What does this fragment print?"
+  code={`double mass = 20.0;
+double other = 5.0;
+double* p = &mass;
+p = &other;
+*p = 1.0;
+std::cout << mass << ' ' << other << '\\n';`}
+  options={["1 5", "20 1", "1 1", "20 5"]}
+  answer={1}
+  feedback={[
+    "p no longer points at mass when *p is assigned: it was re-pointed to other on the line before.",
+    "After p = &other, *p is other, so other becomes 1 and mass keeps its value.",
+    "A pointer refers to one object at a time. Only other changes.",
+    "*p = 1.0 does change an object: the one p points at, other.",
+  ]}
+/>
+
+<Check
+  id="dangling-element"
+  kind="debug"
+  question="This code sometimes prints nonsense or crashes. Why?"
+  code={`std::vector<Individual> pop = makeFounders();
+Individual& mother = pop[0];
+pop.push_back(Individual{2.8});      // a newborn
+std::cout << mother.massGrams() << '\\n';`}
+  options={[
+    "Individual{2.8} is not a valid newborn",
+    "push_back may move all elements to new memory, so mother refers to memory that no longer holds pop[0]",
+    "References to vector elements are not allowed",
+    "massGrams() must be called on pop[0] directly because mother is a copy",
+  ]}
+  answer={1}
+  feedback={[
+    "The newborn is fine. The problem is what happens to the existing elements.",
+    "When a vector runs out of capacity it reallocates and moves its elements. Every pointer, reference and iterator into it is invalidated, and using mother is undefined behaviour. Keep the index 0 instead, and look the element up after the push_back.",
+    "They are allowed and useful, as long as the vector does not reallocate or erase while you hold them.",
+    "Individual& is a reference, not a copy. That is exactly why it can dangle.",
+  ]}
+/>
+
+<Check
+  id="unique-copy"
+  kind="read"
+  question="grid is a std::unique_ptr<Grid>. Which line fails to compile?"
+  options={[
+    "auto other = std::move(grid);",
+    "auto other = grid;",
+    "Grid* view = grid.get();",
+    "if (grid) grid->clear();",
+  ]}
+  answer={1}
+  feedback={[
+    "Moving transfers ownership and leaves grid empty. That is how a unique_ptr changes hands.",
+    "A copy would create a second owner, and both would delete the grid. unique_ptr's copy constructor is deleted, so this does not compile, which is the point.",
+    "get() returns a non-owning raw pointer. It compiles; the unique_ptr remains the owner.",
+    "A unique_ptr converts to bool (true if it owns something), and -> reaches the owned object.",
+  ]}
+/>
+
+## In biological modelling
+
+### Prefer values in containers
+
+The default representation of a population is a `std::vector<Individual>`: the individuals are stored by value, contiguously, and the vector owns them. Copying the population, saving it, sorting it or destroying it all work without any thought about ownership. Removing dead individuals is a single `erase`–`remove_if` (see <Concept id="standard-algorithms" />). Most models never need anything else.
+
+### Relations between individuals: indices, not pointers
+
+Models often need relations: a parent, a mate, a territory owner, the patch an individual occupies. The tempting representation is a pointer to the other object. In a growing vector it is also a broken one, because every reallocation moves the elements and leaves all pointers into them dangling, as in the second check above.
+
+An **index** into the vector does not have this problem: element 7 is still element 7 after the vector has grown. The program below stores a pedigree that way. Founders have no recorded parents, which is marked with a sentinel value.
+
+<Example file="architecture/pointers_pedigree.cpp" mark="17-21,32-33,39,44" />
+
+Indices have their own rule: they stay valid as long as no element *before* them is removed. A pedigree is naturally append-only, so that holds. For a population in which individuals die and are removed, give each individual a permanent identifier instead, and look it up when needed (in a `std::unordered_map` from identifier to index, or by binary search in a vector sorted by identifier; see <Concept id="lists-sets-maps" />). Alternatively, keep dead individuals in place with an `alive` flag and compact the vector at times when no one holds indices.
+
+### When a pointer or a `unique_ptr` is the right tool
+
+- **Objects of different types in one container**, the classic case for `std::vector<std::unique_ptr<Event>>` (see <Concept id="inheritance" />).
+- **A large component that may be absent**, such as an optional high-resolution habitat map, owned by a `unique_ptr` that is empty when the map is not used.
+- **Objects that must not move in memory**, for example because a library keeps their address.
+- **Tree structures**, such as a phylogeny in which each node owns its children: `std::vector<std::unique_ptr<Node>> children;`. A flat vector of nodes with child and parent indices works too, and is often simpler and faster.
+
+A non-owning pointer is fine where lifetimes are plainly nested: an individual's behaviour function may receive a `const Landscape*` to a landscape that outlives the whole simulation.
+
+## Common mistakes
+
+- **Uninitialised pointers.** `double* p;` points nowhere in particular; initialise to `nullptr` or to a real address.
+- **Dereferencing without checking** a pointer that may be null.
+- **Returning a pointer or reference to a local variable.** The local is destroyed when the function returns; the caller receives a dangling pointer. Return by value instead.
+- **Holding pointers, references or iterators into a vector across `push_back`, `insert` or `erase`.** Store indices, or look the element up again.
+- **`int* a, b;`** declares `a` as a pointer and `b` as a plain `int`. Declare one variable per line.
+- **`new` without `delete`, or `delete` twice.** Avoid both by not writing `new`; use containers and `std::make_unique`.
+- **`shared_ptr` by default.** It hides who owns what and adds overhead; reach for it only when ownership is genuinely shared.
+
+## Practice
+
+<Practice>
+
+1. Write two versions of a function that multiplies every body mass in a `std::vector<double>` by a factor: one taking a pointer to the vector and one taking a reference. Which checks does the pointer version need, and which version would you use?
+2. Using the pedigree program, write `bool isAncestor(const Pedigree& ped, std::size_t ancestor, std::size_t i)`, which follows both parents recursively. Use it to list the ancestors of D. Which founder appears on both sides of D's pedigree?
+3. Add to the pedigree program a function that counts, for each founder, how many descendants it has in the pedigree. Do you need pointers for this?
+4. The code `Individual* oldest = &pop[0]; for (auto& ind : pop) if (ind.age() > oldest->age()) oldest = &ind;` finds the oldest individual. When is it safe to use `oldest` afterwards, and when not? Rewrite it to return an index.
+
+<details>
+<summary>Hints and worked answers</summary>
+
+1. The pointer version must check for `nullptr` before using the vector: `if (masses == nullptr) return;`, and then use `masses->size()` and `(*masses)[i]`. The reference version needs no check and reads naturally. Use the reference: there is no meaningful "no vector" case.
+2. `isAncestor` returns false for an unknown index, true if `ancestor` is the mother or the father, and otherwise recurses into both parents. D's ancestors are C, M2, A, B, F1, M1 and F2. M2 appears twice: as D's father, and as the father of B, who is the father of D's mother C. M2 is therefore both D's parent and D's great-grandparent, so D is inbred.
+3. No. For each individual `i`, and for each founder `f`, `isAncestor(ped, f, i)` decides whether to count it. Indices are all you need.
+4. It is safe as long as `pop` is not changed between finding `oldest` and using it: no `push_back`, `insert`, `erase` or sort. Returning the index, `std::size_t oldest = 0; for (std::size_t i = 1; i < pop.size(); ++i) if (pop[i].age() > pop[oldest].age()) oldest = i;`, works across changes that append to the vector (but, like any index, not across removals of earlier elements). `std::max_element` with a comparison does the same job.
+
+</details>
+
+</Practice>

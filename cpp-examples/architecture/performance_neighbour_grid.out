@@ -1,0 +1,3 @@
+points: 20000, radius: 0.005, seed: 42
+close pairs, all-pairs scan: 15458
+close pairs, grid search:    15458

@@ -1,0 +1,239 @@
+---
+title: Inheritance and polymorphism
+summary: Base and derived classes, virtual functions and polymorphic containers, and when std::variant, templates or plain composition are the better design.
+level: seasoned
+module: null
+manual: []
+minutes: 40
+optional: true
+objectives:
+  - Derive classes from a base class and override virtual functions with override and final
+  - Write an abstract base class with a virtual destructor and store derived objects in a vector of std::unique_ptr
+  - Express the same design with std::variant and std::visit, and with a template parameter
+  - Decide between inheritance, variants, templates and composition for a given model
+standard: c++17
+references:
+  - "cppreference.com: Derived classes; virtual function specifier; abstract class"
+  - "cppreference.com: std::variant; std::visit"
+  - "C++ Core Guidelines: C.120–C.139 (class hierarchies)"
+---
+
+## What it is
+
+**Inheritance** defines a new class, the *derived* class, in terms of an existing one, the *base* class. The derived class has all the members of the base and adds or changes some. `class Breeding : public Event` reads "a `Breeding` is an `Event`".
+
+**Polymorphism** is what makes this useful: code written for the base class can work with any derived class without knowing which one it has. A *virtual function* declared in the base is looked up at run time, so `event.apply(pop)` runs `Breeding::apply` for a breeding event and `Harvest::apply` for a harvest, through the same line of code.
+
+This lesson is optional. Many good models never use inheritance, and the second half of the lesson is about the alternatives.
+
+## Why it matters
+
+Models often contain *several kinds of the same thing*: event types in a seasonal schedule, movement rules, environmental drivers, types of individuals or patches. Without some form of polymorphism, every loop over such things grows a `switch` statement on the kind, and adding a kind means finding and editing every one of those switches.
+
+Inheritance is also how many libraries are organised, so you need to be able to read it. But it is easy to overuse. A model of three plant functional types that differ only in their growth rates needs one `Plant` class with a parameter, not a class hierarchy. Knowing the alternatives lets you choose the simplest design that fits.
+
+## How it works in C++
+
+### Base and derived classes
+
+```cpp
+class Event {
+public:
+    virtual ~Event() = default;
+    virtual std::string name() const = 0;
+    virtual void apply(Population& pop) const = 0;
+};
+
+class Harvest final : public Event {
+public:
+    explicit Harvest(int quota) : quota_(quota) {}
+    std::string name() const override { return "harvest"; }
+    void apply(Population& pop) const override { pop.adults -= std::min(pop.adults, quota_); }
+private:
+    int quota_;
+};
+```
+
+- **`public` inheritance** (`: public Event`) is the "is-a" relation: a `Harvest` can be used wherever an `Event&` or `Event*` is expected. Other kinds of inheritance exist but are rarely what you want.
+- **`virtual`** in the base makes a function overridable: a call through a base reference or pointer runs the version of the object's actual type.
+- **`= 0`** makes the function *pure virtual*: the base provides no implementation, and the class becomes **abstract**. You cannot create a plain `Event`, only objects of derived classes that override every pure virtual function.
+- **`override`** in the derived class states the intent to override. If the signature does not match the base exactly (a missing `const`, a different parameter type), the compiler reports an error instead of silently creating a new, unrelated function. Always write it.
+- **`final`** on a class forbids further derivation; on a function, further overriding. It documents that the hierarchy ends here.
+- A derived class's constructor initialises its base first, by calling a base constructor in its initialiser list (`: Event()` is implicit here), and then its own members.
+- `protected` members are accessible to derived classes but not to outside code. Prefer keeping data private, even from derived classes, and giving the base a protected or public interface.
+
+### The virtual destructor
+
+If derived objects are ever deleted through a pointer to the base, which is exactly what a `std::unique_ptr<Event>` does, the base's destructor must be virtual. Otherwise only the base part is destroyed, which is undefined behaviour. The rule is simple: **a class with virtual functions gets a virtual destructor**, usually `virtual ~Event() = default;`.
+
+### Polymorphic containers
+
+A `std::vector<Event>` cannot hold a `Harvest`: the vector's elements are exactly `Event`-sized, and copying a `Harvest` into one would *slice* it, keeping only the base part (and an abstract `Event` cannot be created at all). Store pointers instead, and let smart pointers own the objects (see <Concept id="pointers-ownership" />):
+
+```cpp
+std::vector<std::unique_ptr<Event>> schedule;
+schedule.push_back(std::make_unique<Harvest>(8));
+for (const auto& event : schedule) event->apply(pop);   // virtual call
+```
+
+### What it costs
+
+A virtual call goes through a hidden table of function addresses, which costs at most a few nanoseconds but usually prevents inlining. Each object lives separately on the heap, which costs an allocation and scatters the objects in memory. For a seasonal schedule of a handful of events this is irrelevant. For millions of individuals updated every time step it can dominate the run time (see <Concept id="performance" />).
+
+## A minimal example
+
+A population of juveniles and adults goes through a yearly schedule of four events. Each kind of event is a class derived from `Event`; the schedule is a vector of `std::unique_ptr<Event>`, and one loop runs them all.
+
+<Example file="architecture/inheritance_events.cpp" mark="18-23,25-29,65-69,74" />
+
+## Explore it
+
+<Trace id="inheritance-events" />
+
+<Check
+  id="missing-override"
+  kind="debug"
+  question="In a new derived class, a student writes void apply(Population& pop) override { ... } (without const). What happens?"
+  options={[
+    "It overrides Event::apply as intended",
+    "Compile error: the function does not override anything, because the base version is const",
+    "It compiles, but calls through an Event pointer still run the base version",
+    "It compiles and overrides both versions",
+  ]}
+  answer={1}
+  feedback={[
+    "A const and a non-const member function are different functions. This one does not match the base signature.",
+    "override asks the compiler to check that a base function with this exact signature exists. It does not (the base's is const), so the compiler stops with an error. Without override, the class would quietly declare a new function, and in this case would still be abstract.",
+    "That is what would happen without override if the base function were not pure virtual: a silent bug. override turns it into a compile error.",
+    "A function overrides at most one base function, and only one with a matching signature.",
+  ]}
+/>
+
+<Check
+  id="slicing"
+  kind="predict"
+  question="Organism has a virtual function describe(); Seedling derives from it and overrides describe(). What does the last line call?"
+  code={`Seedling s;
+Organism copy = s;
+copy.describe();`}
+  options={[
+    "Seedling::describe(), because the object was created as a Seedling",
+    "Organism::describe(), because copy is an Organism: the Seedling part was sliced off",
+    "It does not compile",
+    "It depends on whether describe() is marked override",
+  ]}
+  answer={1}
+  feedback={[
+    "Virtual dispatch works through references and pointers. copy is a new object of type Organism, built from the Organism part of s.",
+    "Copying into a base-class object keeps only the base part. copy is an Organism and behaves like one. Use a reference (Organism& r = s;) or a pointer to keep the dynamic type.",
+    "If Organism is not abstract, the copy compiles, which is what makes slicing dangerous.",
+    "override checks signatures at compile time; it does not change what a sliced copy is.",
+  ]}
+/>
+
+<Check
+  id="choose-design"
+  kind="model"
+  question="A forest model has three plant functional types that differ only in maximum height, growth rate and shade tolerance. How should they be represented?"
+  options={[
+    "An abstract base Plant with three derived classes",
+    "A std::variant of three structs",
+    "One Plant class (or struct) with a functional-type parameter set",
+    "Three unrelated classes and three separate loops",
+  ]}
+  answer={2}
+  feedback={[
+    "Inheritance is for different behaviour. Here the behaviour is the same and only the numbers differ, so three classes would triplicate one rule.",
+    "A variant is for different types with different data or behaviour; it is still more machinery than three parameter values need.",
+    "Types that differ only in parameter values are data, not types. Give each plant a reference or index to its functional type's parameters, and one growth rule serves all three. Adding a fourth type is then a new row in a parameter file.",
+    "Separate loops duplicate the same logic three times and make it easy for the copies to drift apart.",
+  ]}
+/>
+
+## Alternatives to inheritance
+
+### `std::variant` and `std::visit`
+
+When the set of kinds is fixed and known when you write the model, a `std::variant` (C++17, `<variant>`) is often simpler. A variant holds exactly one value of one of a list of types. The event types become plain structs with no base class, and `std::visit` calls a function with whichever alternative the variant currently holds:
+
+<Example file="architecture/inheritance_variant_events.cpp" mark="17-21,43,46,51-57" />
+
+The output is identical to that of the class-hierarchy version. The differences lie elsewhere:
+
+- The events are stored **by value** in the vector: no heap allocation per event, no pointers, and the schedule can be copied like any vector.
+- The generic lambda `[&pop, year](const auto& e) { ... }` is compiled once for each alternative. If one of them lacks `apply` or `name`, the program does not compile, so a missing case cannot slip through.
+- Adding a new *kind* means adding it to the variant's type list; adding a new *operation* is just another visit, without touching the structs. With virtual functions it is the other way round: new kinds are easy, new operations mean editing every class.
+
+### Templates
+
+When the kind is fixed for a whole run, for example the movement rule of an individual-based model chosen once from a parameter file, a template parameter selects it at compile time (see <Concept id="templates" />):
+
+```cpp
+template <typename Movement>
+void simulate(Population& pop, const Movement& moveRule, int years) {
+    for (int t = 0; t < years; ++t)
+        for (auto& ind : pop.individuals) moveRule(ind);   // resolved at compile time, can be inlined
+}
+```
+
+Any type with a suitable call operator, a struct or a lambda, can be passed. There is no run-time dispatch at all, which matters in inner loops. The price: each movement rule produces its own compiled copy of `simulate`, and the choice cannot change during a run.
+
+### Composition
+
+Often the cleanest solution is not a family of types at all. An individual *has* a movement rule, a diet and a life-history schedule; it does not need to *be* a `MovingFeedingAgeingThing`. Composition, building an object from parts, keeps each part small and replaceable:
+
+```cpp
+struct Forager {
+    Position position;
+    EnergyBudget energy;
+    double searchRadius;       // differs between foragers: data, not a subclass
+};
+```
+
+### Choosing
+
+| Situation | Prefer |
+|---|---|
+| The kinds differ only in parameter values | one class, with parameters as data |
+| A small, fixed set of kinds known when you write the model | `std::variant` and `std::visit` |
+| Kinds that users or other modules add without changing core code | a base class with virtual functions |
+| One kind for a whole run, in a performance-critical loop | a template parameter |
+| An entity with several independent aspects | composition |
+
+## In biological modelling
+
+- **Discrete-event and scheduled models.** Events of different kinds in one timeline (births, deaths, migrations, management actions) are the textbook case for polymorphism. A variant usually suffices; a hierarchy pays off if the set of events must stay open, for example in a framework used by several projects.
+- **Different kinds of agents.** Plants and herbivores in the same model have different state and different rules. Rather than a common `Agent` base with a virtual `step()`, keep a separate container per kind (`std::vector<Plant>`, `std::vector<Herbivore>`) and update each with its own loop. The interactions between kinds are then explicit, and each container is compact and fast to scan (see <Concept id="ibm-logic" />).
+- **Strategies in evolutionary games.** As in <Concept id="object-design" />, a strategy is usually data (a reply table, a probability), not a subclass.
+- **Environmental drivers.** A temperature signal that is constant, seasonal or read from a file is a good fit for a small interface with a virtual `value(t)`, or for a `std::function<double(double)>`, because the choice is made once and calls are few.
+
+## Common mistakes
+
+- **No virtual destructor** in a base class that is used through pointers.
+- **Leaving out `override`.** A mismatched signature then silently declares a new function.
+- **Slicing.** Copying a derived object into a base-class object, including by storing it in a `std::vector<Base>`, loses the derived part.
+- **Calling virtual functions in constructors or destructors.** During the base's constructor the derived part does not exist yet, so the base version runs.
+- **Inheritance for code reuse only.** If "a D is a B" is not true, use composition or a free function.
+- **Deep hierarchies.** `Organism` → `Animal` → `Vertebrate` → `Mammal` → `Rodent` mirrors taxonomy, not the model; each level makes changes harder. Model hierarchies should rarely be more than one level deep.
+- **Subclasses for parameter values.** Types that differ only in numbers should be one type with different data.
+
+## Practice
+
+<Practice>
+
+1. Add an `Immigration` event, which adds a fixed number of adults, to both example programs, and put it at the start of the schedule. Compare what you had to change in each version.
+2. Add a second operation, `describe()`, that prints the event's parameters (for example "harvest, quota 8"). Which version makes this easier, and why?
+3. A drought in even years halves juvenile survival. The events currently receive only the population. Propose a design in which events can depend on the year without every event needing a new parameter.
+4. Rewrite the schedule loop as a function template `runYear(Population&, const Schedule&)` that works for both the vector of `unique_ptr`s and the vector of variants. What does each version of the call need from its elements?
+
+<details>
+<summary>Hints and worked answers</summary>
+
+1. Virtual version: a new class `Immigration final : public Event` with two overrides, and one `push_back`. Variant version: a new struct with `apply` and `name`, added to the variant's type list, and one element in the schedule. Both are small; the variant version also catches any visitor that cannot handle the new type at compile time.
+2. With the variant, write overloaded free functions `describe(const Breeding&)`, `describe(const Harvest&)` and so on, and call them through one more `std::visit`; the structs need not change at all. With the hierarchy, `describe` becomes a new pure virtual function in `Event` and needs an override in every derived class. Variants make new operations cheap; hierarchies make new kinds cheap.
+3. Pass a small context struct to `apply`, such as `struct Context { int year; double temperature; };`, so that `apply(Population&, const Context&)` can use whatever it needs, and new fields do not change the signature again. Alternatively, have the drought event change the survival event's parameter before the schedule runs in that year, but that couples events to each other.
+4. The template body loops over the schedule and must call `apply` and `name`. For the pointer version it calls `event->apply(pop)`; for the variant it calls `std::visit`. The two element types need different syntax, so either write two overloads of a small helper `applyEvent`, or let the template take the "apply one event" operation as a second parameter. This is a sign that the two designs are genuinely different, not two spellings of one idea.
+
+</details>
+
+</Practice>

@@ -1,0 +1,8 @@
+F1: depth 0, maternal line F1
+M1: depth 0, maternal line M1
+F2: depth 0, maternal line F2
+M2: depth 0, maternal line M2
+A: depth 1, maternal line A <- F1
+B: depth 1, maternal line B <- F2
+C: depth 2, maternal line C <- A <- F1
+D: depth 3, maternal line D <- C <- A <- F1

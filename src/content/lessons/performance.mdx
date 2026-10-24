@@ -1,0 +1,228 @@
+---
+title: Performance and profiling
+summary: "Make a verified model faster by measuring first: release builds, profilers, algorithmic complexity, memory layout and allocation-free inner loops."
+level: seasoned
+module: null
+manual: []
+minutes: 45
+objectives:
+  - Build and time a program correctly, with optimisation enabled and std::chrono
+  - Use a profiler to find where a simulation spends its time, and estimate the gain from an optimisation before making it
+  - Replace an O(N²) neighbour search with a spatial grid and verify that the results are unchanged
+  - Explain how memory layout and allocations in inner loops affect speed
+standard: c++17
+references:
+  - "cppreference.com: std::chrono::steady_clock"
+  - "Brendan Gregg: Linux perf examples (brendangregg.com/perf.html)"
+  - "Ulrich Drepper (2007) What every programmer should know about memory"
+---
+
+## What it is
+
+Performance work means making a program that already gives the right answers give them sooner, or with less memory. It has a fixed order: **verify, measure, change one thing, verify again, measure again.** Guessing where the time goes is the step to leave out. Programmers, experienced ones included, are notoriously bad at it.
+
+This lesson covers the tools of each step: building in release mode, timing with `<chrono>`, profilers, and the four changes that matter most in simulation code: better algorithms, better memory layout, fewer allocations and less output.
+
+## Why it matters
+
+A model is rarely run once. A sensitivity analysis of five parameters at five values each, with 100 replicates per combination, is 312,500 runs. Whether one run takes one second or ten decides whether the analysis takes about four days or about five weeks, and whether you try a second design at all.
+
+At the same time, speed is worth nothing if the answers are wrong. **Never optimise a model before it is verified** (see <Concept id="verification" />), and keep the slow, simple version: it is the reference that every faster version must reproduce.
+
+## How it works in C++
+
+### Step 0: protect correctness
+
+Before changing anything, record what the current program produces: for a fixed seed, save the output to a file (see <Concept id="testing-reproducibility" />). After each change, compare. If the change does not alter the order in which random numbers are drawn, the output should be identical. If it does alter the order, which happens easily (for example when individuals are visited in a different order), the output will differ in detail, and you must compare distributions over replicates instead: means, variances and extinction times should agree within sampling error.
+
+### Step 1: build for speed
+
+An unoptimised build is the default for most compilers, and it can be many times slower than an optimised one, especially for code that uses the standard library heavily. Timing an unoptimised build measures nothing useful.
+
+| Toolchain | Optimised build |
+|---|---|
+| GCC or Clang | `g++ -std=c++17 -O2 -DNDEBUG model.cpp -o model` (or `-O3`) |
+| CMake | `cmake -DCMAKE_BUILD_TYPE=Release ..` (or `RelWithDebInfo` for profiling) |
+| Visual Studio | the *Release* configuration (`/O2`) |
+| Xcode | the *Release* build configuration, or *Profile* |
+
+`-DNDEBUG` switches off `assert` (see <Concept id="debugging" />). Two further flags need care. `-march=native` lets the compiler use every instruction your processor has; the binary may then not run on another machine, such as a different cluster node. `-ffast-math` allows the compiler to reorder floating-point arithmetic and to assume that NaN and infinity never occur. It can change results and silently break checks such as `std::isnan`, so do not use it on model code unless you have tested the consequences.
+
+For profiling, add `-g` to an optimised build. It changes nothing about speed but lets the profiler name the source lines.
+
+### Step 2: measure
+
+The simplest measurement is a timer around the code in question, using `std::chrono::steady_clock`, which never jumps (unlike the wall clock, which can be adjusted while the program runs):
+
+```cpp
+#include <chrono>
+
+const auto start = std::chrono::steady_clock::now();
+const auto result = runModel(p);
+const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
+std::clog << "run took " << elapsed.count() << " s\n";
+```
+
+Run each measurement several times and use the median: the first run is often slower, and other programs on the machine add noise. Always *use* the result of the timed code, for example by printing it. An optimising compiler is allowed to delete a computation whose result is never used, and then you are timing nothing.
+
+### Step 3: profile
+
+A timer tells you how long something takes; a **profiler** tells you where the time goes, without you having to guess where to put timers. Sampling profilers interrupt the program thousands of times per second and record which function is running. The functions that appear in most samples are the *hot spots*.
+
+| Platform | Profiler | Typical use |
+|---|---|---|
+| Linux | `perf` | `perf record -g ./model` then `perf report` |
+| Linux, macOS | `gprof` | compile and link with `-pg`, run, then `gprof ./model gmon.out` |
+| Linux, macOS | Valgrind's `callgrind` with KCachegrind | exact call counts; the program runs much slower under it |
+| Windows | Visual Studio Performance Profiler | *Debug → Performance Profiler → CPU Usage* |
+| macOS | Instruments (with Xcode) | the *Time Profiler* template |
+
+In the report, look at *self time* (time spent in the function itself) and *total time* (including the functions it calls). Typical hot spots in models are neighbour searches, the inner loop of the update rule, the construction of random number distributions inside loops, removal of dead individuals, and output.
+
+The profile also tells you how much an optimisation can possibly gain. If a function takes a fraction $f$ of the run time and you make it $s$ times faster, the whole program becomes
+
+$$
+\text{speed-up} = \frac{1}{(1 - f) + f/s}
+$$
+
+times faster (Amdahl's law). Speeding up a function that takes 10 % of the time by any factor gains at most 11 %.
+
+### Step 4: change the algorithm first
+
+The largest gains come from doing less work, not from doing the same work faster. Complexity is the first thing to check. An operation that is $O(N)$ (proportional to the number of individuals) done once per individual is $O(N^2)$ per time step, which doubles in cost four times when $N$ doubles. Common culprits:
+
+- **all-pairs neighbour searches**, where every individual is compared with every other;
+- **linear searches** in a vector inside a loop, where a sorted vector, a map or an index would do (see <Concept id="container-choice" />);
+- **erasing individuals one at a time** from the middle of a vector, which shifts all later elements each time. Mark them, then remove them in one pass with the erase–remove idiom (or `std::erase_if` in C++20);
+- **recomputing totals** from scratch every step when they could be updated as individuals change.
+
+### Spatial hashing for neighbour search
+
+Local interactions, such as crowding, mating within a radius or predation within a distance $R$, need each individual's neighbours. Comparing all pairs examines $N(N-1)/2$ pairs. A *spatial grid* (a form of spatial hashing) divides the landscape into square cells at least $R$ wide and records which individuals are in each cell. Any neighbour within $R$ must then lie in the same cell or in one of the eight cells around it, so only those need to be searched.
+
+At constant density, the number of individuals per cell does not grow with $N$, so the work per individual is constant and the total is proportional to $N$:
+
+<Figure id="performance-pair-scaling" />
+
+The program below counts close pairs both ways, prints both counts, and checks that they agree. The counts go to standard output and are fully determined by the seed; the timings go to `std::clog` (standard error), so that the scientific output stays reproducible while the timings vary from machine to machine.
+
+<Example file="architecture/performance_neighbour_grid.cpp" mark="35-54,56-63" />
+
+On a typical laptop, the all-pairs scan of 20,000 points takes a few tenths of a second and the grid search a few milliseconds; try larger $N$ and watch the gap grow. The grid needs a rebuild whenever individuals move, which costs $O(N)$, the same order as one search. The same idea, with periodic boundaries, applies to the plant model of the <Concept id="scheduling" /> lesson.
+
+### Step 5: mind the memory
+
+A modern processor computes much faster than it can fetch data from main memory. It hides the difference with small, fast *caches* that hold recently used memory in blocks of 64 bytes, and with prefetching, which loads the next blocks when it sees data being read in order. Code is fast when it reads memory **contiguously**, and slow when it jumps around.
+
+- A `std::vector` of values is contiguous; a `std::list`, or a vector of `std::unique_ptr` to individually allocated objects, is not, because each element lives wherever the allocator put it.
+- **Array of structs versus struct of arrays.** A `std::vector<Individual>` with twenty fields per individual interleaves all twenty in memory. A loop that reads only positions still pulls every other field through the cache. Storing each attribute in its own vector (`struct Population { std::vector<double> x, y, mass; ... };`) lets such loops read only what they need. Whether this helps depends on the access pattern, so measure; for loops that use most of the fields, the array of structs can be just as fast. See <Concept id="object-design" /> for the design trade-off.
+- Smaller types mean more values per cache block: a `std::uint8_t` stage code instead of a `std::string` name, an index instead of a pointer.
+
+### Step 6: no allocations in inner loops
+
+Allocating memory (each `push_back` that grows a vector, each new `std::string`, each `std::make_unique`) costs far more than arithmetic. In a loop that runs millions of times:
+
+- `reserve` a vector's final size before filling it, when you know or can bound it;
+- **reuse buffers**: declare a work vector outside the loop and `clear()` it each iteration; `clear` keeps the capacity, so later iterations allocate nothing;
+- pass large objects by `const&` and return them by value (the compiler elides the copy), and move rather than copy when ownership changes (`std::move`);
+- construct random number distributions outside the loop when their parameters do not change (see <Concept id="random-library" />);
+- build output strings once per line, not once per value, and never flush per line (`'\n'`, not `std::endl`).
+
+### Output
+
+Writing to a file is slow compared with computation. A model that prints every individual every step can spend most of its time in output. Write what the analysis needs, at the resolution it needs: censuses every step, full individual snapshots occasionally (see <Concept id="trajectory-output" />).
+
+### Run replicates in parallel
+
+Independent replicates are *embarrassingly parallel*: run several processes at once, one per core, each with its own seed. That speeds up an analysis by the number of cores without changing a line of the model (see <Concept id="parallel-replicates" />).
+
+## Explore it
+
+<Check
+  id="amdahl"
+  kind="interpret"
+  question="A profile shows that a simulation spends 80 % of its time in countNeighbours and 20 % writing output. You make the output ten times faster. Roughly how much faster is the whole program?"
+  options={["About 10 times", "About 2 times", "About 1.2 times", "It cannot be estimated without running it"]}
+  answer={2}
+  feedback={[
+    "Only the 20 % spent on output becomes ten times faster; the 80 % in countNeighbours is unchanged.",
+    "Halving the run time would require removing half of it, but at most 20 % can disappear here.",
+    "The new run time is 0.8 + 0.2/10 = 0.82 of the old one, a speed-up of 1/0.82, about 1.22. Optimise the hot spot first.",
+    "Amdahl's law gives the answer from the profile: 1 / (0.8 + 0.2/10).",
+  ]}
+/>
+
+<Check
+  id="quadratic"
+  kind="predict"
+  question="countAllPairs takes 0.3 s for 20,000 points. About how long will it take for 40,000 points?"
+  options={["0.3 s", "0.6 s", "1.2 s", "2.4 s"]}
+  answer={2}
+  feedback={[
+    "The number of pairs grows with N, so the time cannot stay the same.",
+    "That would be linear growth. The number of pairs, N(N − 1)/2, grows with the square of N.",
+    "Doubling N multiplies the number of pairs by about four, so the time grows from 0.3 s to about 1.2 s. The grid search, in contrast, would roughly double.",
+    "That would be cubic growth. Comparing all pairs is quadratic.",
+  ]}
+/>
+
+<Check
+  id="optimised-output-differs"
+  kind="model"
+  question="After replacing an all-pairs search with a grid, a stochastic model gives different numbers for the same seed, although the count of neighbours per individual is identical. What should you conclude?"
+  options={[
+    "The grid is wrong and must be fixed",
+    "Nothing can be concluded, so keep the old version",
+    "Probably the order of random number draws changed. Check that the neighbour counts are identical, then compare the distributions of outcomes over many replicates",
+    "Random number generators behave differently in optimised code",
+  ]}
+  answer={2}
+  feedback={[
+    "Not necessarily. If the neighbour counts agree exactly, the grid finds the right neighbours; the difference lies elsewhere.",
+    "A faster model is worth keeping once it has been shown to be equivalent. The question is how to show that.",
+    "If individuals are now processed, or their neighbours visited, in a different order, the same random numbers go to different decisions. Each run is then a different, equally valid realisation, so equivalence must be checked statistically.",
+    "Engines are fully deterministic and do not depend on optimisation settings. Changes come from what the program does with the numbers.",
+  ]}
+/>
+
+## In biological modelling
+
+Most individual-based models spend their time in a few predictable places, so start your profiling there:
+
+- **Interactions between individuals.** Neighbour searches dominate spatial models; a grid or, for very uneven densities, a tree structure is the standard remedy.
+- **Births and deaths.** Appending newborns to a vector is cheap if capacity is reserved; removing the dead should happen once per step, not one by one.
+- **Random numbers.** Generating them is fast, but creating a new engine per draw (or, worse, seeding one from the clock) is both slow and statistically wrong. Use one engine per replicate, passed by reference (see <Concept id="random-seeds" />).
+- **Output and logging.** Profile before and after reducing output; it is often the cheapest large gain.
+
+Keep a record of each optimisation with its measured effect. A change that gains 2 % and makes the code harder to read is usually not worth keeping.
+
+## Common mistakes
+
+- **Optimising before verifying.** A fast wrong model is worthless, and optimised code is harder to debug.
+- **Timing an unoptimised build**, or timing once and trusting the number.
+- **Guessing instead of profiling.** The hot spot is rarely where you expect it.
+- **Micro-optimising the wrong thing.** Replacing `/ 2.0` by `* 0.5` in a function that takes 1 % of the run time changes nothing; the compiler often does it anyway.
+- **Using `-ffast-math`** on model code without checking its effect on results.
+- **Pointers into vectors to "avoid copies"**, which then dangle after a reallocation (see <Concept id="pointers-ownership" />). Indices are as fast.
+- **Forgetting that a faster algorithm can change the random stream.** Plan the statistical comparison.
+
+## Practice
+
+<Practice>
+
+1. Build the example program without optimisation (`-O0`) and with `-O2`, and run each three times. How large is the difference for the all-pairs scan and for the grid search?
+2. Change `N` in the example to 5,000, 10,000, 20,000 and 40,000 and record both timings. Plot them on log–log axes. What slopes do you expect, and what do you observe?
+3. The plant model `ibm/plants.cpp` counts neighbours with a straightforward scan of all plants. Profile it with the tool for your platform and confirm that `countNeighbours` is the hot spot. Then sketch how a grid would work on its torus, where neighbours can be found across the edges.
+4. A model removes dead individuals with `for (std::size_t i = 0; i < pop.size(); ) { if (!pop[i].alive()) pop.erase(pop.begin() + i); else ++i; }`. What is its complexity when many die? Rewrite it with the erase–remove idiom and measure the difference for 100,000 individuals with 30 % mortality.
+
+<details>
+<summary>Hints and worked answers</summary>
+
+1. Expect the unoptimised build to be several times slower for both searches; the exact factor depends on the compiler and machine. This is why debug-build timings are meaningless.
+2. All pairs: slope 2 (time ∝ N²). Grid: here the plot is a fixed unit square with a fixed radius, so density *grows* with N, and the number of points per cell grows too; the grid search is then also quadratic in principle, but with a constant smaller by a factor of about $1/(9R^2) \approx 4400$. Expect slopes near 1 at small N (where building the grid dominates) rising towards 2. To see linear scaling, keep density constant by growing the square with N.
+3. On a torus, cell indices wrap: the neighbour of cell `side - 1` is cell `0`. Compute neighbouring cells with `(c + side + d) % side` for `d` in −1, 0, 1, and measure distances with the shortest-distance function that the program already uses. With fewer than three cells per side, take care not to visit a cell twice.
+4. Each `erase` shifts all later elements, so removing $k$ individuals costs $O(kN)$, quadratic when $k$ is a fixed fraction of $N$. `pop.erase(std::remove_if(pop.begin(), pop.end(), [](const Individual& ind) { return !ind.alive(); }), pop.end());` moves each survivor at most once, $O(N)$.
+
+</details>
+
+</Practice>

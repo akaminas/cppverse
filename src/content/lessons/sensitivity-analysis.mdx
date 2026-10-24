@@ -1,0 +1,245 @@
+---
+title: Sensitivity analysis
+summary: How strongly a model's output depends on each parameter, from finite-difference elasticities to global screening and variance-based indices.
+level: seasoned
+module: null
+manual: []
+minutes: 45
+objectives:
+  - Estimate local sensitivities and elasticities by central finite differences, and choose the step size
+  - Compute and interpret the elasticities of the growth rate λ of a stage-structured model
+  - Recognise interactions between parameters and explain why local analysis can miss them
+  - Describe parameter sweeps, Morris screening and Sobol indices, and choose parameter ranges defensibly
+standard: c++17
+lab: matrix
+references:
+  - "Caswell, H. (2001). Matrix Population Models, 2nd ed. Sinauer. Chapter 9."
+  - "de Kroon, H., Plaisier, A., van Groenendael, J. & Caswell, H. (1986). Elasticity: the relative contribution of demographic parameters to population growth rate. Ecology 67: 1427–1431."
+  - "Crouse, D. T., Crowder, L. B. & Caswell, H. (1987). A stage-based population model for loggerhead sea turtles and implications for conservation. Ecology 68: 1412–1423."
+  - "Saltelli, A. et al. (2008). Global Sensitivity Analysis: The Primer. Wiley."
+  - "Morris, M. D. (1991). Factorial sampling plans for preliminary computational experiments. Technometrics 33: 161–174."
+---
+
+## What it is
+
+A *sensitivity analysis* asks how much a model's output changes when its inputs change. The inputs are usually parameters, sometimes initial conditions or structural choices; the output is a response variable such as a growth rate, an equilibrium or an extinction probability.
+
+There are two families of methods:
+
+- **Local** analysis perturbs one parameter at a time by a small amount around a chosen point, the *baseline*, and measures the derivative of the output. It is cheap and exact in its own terms, but it describes only the immediate neighbourhood of that point.
+- **Global** analysis varies all parameters together over ranges that represent what is plausible, and asks how much of the variation in the output each parameter accounts for. It costs many more runs and reveals nonlinearity and interactions that local analysis cannot see.
+
+The model here is the three-stage perennial plant of <Concept id="matrix-models" />, with stages seedling, vegetative rosette and flowering plant, and its asymptotic growth rate λ (<Concept id="power-iteration" />). With the symbols used below, the projection matrix is
+
+$$
+\mathbf{A} = \begin{pmatrix} 0 & 0 & f \\ g & s & r \\ 0 & \varphi & q \end{pmatrix},
+$$
+
+where $f$ is fecundity (seedlings per flowering plant per year), $g$ seedling survival to the rosette stage, $s$ rosette stasis (survive and stay vegetative), $\varphi$ rosette flowering (survive and flower), $r$ reversion of flowering plants to rosettes and $q$ reflowering. At the baseline $f = 4.5$, $g = 0.12$, $s = 0.5$, $\varphi = 0.25$, $r = 0.35$ and $q = 0.4$, the growth rate is $\lambda \approx 0.934$ per year: the population declines by about 7 % a year.
+
+## Why it matters
+
+Every parameter of a biological model is uncertain, and some are much harder to measure than others. Sensitivity analysis says which uncertainties matter. If λ barely responds to reversion, a rough estimate of reversion is good enough; if it responds strongly to stasis, stasis deserves the next field season.
+
+It also guides intervention. The classic case is the loggerhead sea turtle: a stage-based model showed that the growth rate was far more sensitive to the survival of large juveniles than to the survival of eggs on nesting beaches, which shifted conservation attention towards reducing deaths at sea (Crouse, Crowder & Caswell 1987). And it tests robustness: a conclusion that holds across the plausible range of every parameter is much stronger than one that holds at a single baseline.
+
+## How it works in C++
+
+### Local sensitivity by finite differences
+
+The *sensitivity* of an output $y$ to a parameter $p$ is the derivative $\partial y / \partial p$. When $y$ is computed by a program rather than by a formula, the derivative is estimated by rerunning the program with $p$ perturbed. The forward difference uses one extra run; the central difference uses two and is much more accurate:
+
+$$
+\frac{\partial y}{\partial p} \approx \frac{y(p + h) - y(p)}{h} \quad (\text{error} \propto h), \qquad
+\frac{\partial y}{\partial p} \approx \frac{y(p + h) - y(p - h)}{2h} \quad (\text{error} \propto h^2).
+$$
+
+The step $h$ cannot be made arbitrarily small. The truncation error shrinks with $h$, but any error $\varepsilon$ in computing $y$ itself is divided by $h$. That error includes rounding, both in $y$ and in the perturbed parameter $p \pm h$ (doubles carry about 16 significant digits), and the convergence tolerance of any iterative method, such as the power method. The total error is roughly $C h^2 + \varepsilon / h$, which is smallest at an intermediate step. For λ in this model, relative steps between $10^{-3}$ and $10^{-6}$ all give elasticities correct to six decimals or better.
+
+### Elasticities
+
+Sensitivities have units, so they cannot be compared across parameters measured on different scales: fecundity is in seedlings per plant, survival is a probability. An *elasticity* compares proportional changes instead:
+
+$$
+e_p = \frac{p}{\lambda}\,\frac{\partial \lambda}{\partial p} = \frac{\partial \ln \lambda}{\partial \ln p} .
+$$
+
+An elasticity of 0.25 means that a 1 % increase in $p$ raises λ by about 0.25 %. Perturbing $p$ by a relative step $\delta$, the factors of $p$ cancel and the central difference becomes
+
+$$
+e_p \approx \frac{\lambda\big(p(1+\delta)\big) - \lambda\big(p(1-\delta)\big)}{2\,\delta\,\lambda(p)} .
+$$
+
+The program below computes it for all six parameters:
+
+<Example file="inference/stage_elasticity.cpp" mark="54-64" />
+
+Each perturbation copies the baseline, changes one parameter, rebuilds the matrix and recomputes λ (lines 55–60); nothing else changes, which is the defining property of a local, one-at-a-time analysis. Step through the correspondence between the formula and the code:
+
+<MathCode id="sensitivity-analysis-elasticity" />
+
+The last line of the output is a built-in check. Multiplying every entry of a matrix by $c$ multiplies its dominant eigenvalue by $c$, and it follows (Euler's theorem on homogeneous functions) that the elasticities of λ to all matrix entries sum to exactly 1. Here each parameter occupies one entry, so the six elasticities must sum to 1; the program gets 1.0000. A sum of 0.9 would point to a bug in the perturbation code.
+
+<Callout kind="note" title="The analytical formula">
+For matrix models the sensitivity has a closed form: $\partial\lambda/\partial a_{ij} = v_i w_j / \langle \mathbf{v}, \mathbf{w} \rangle$, where $\mathbf{w}$ is the stable stage distribution (the right eigenvector), $\mathbf{v}$ the vector of reproductive values (the left eigenvector) and $\langle \mathbf{v}, \mathbf{w}\rangle = \sum_k v_k w_k$. Finite differences need no eigenvectors and work for any output, including ones with no formula, such as a time to extinction; the formula is a good test of the finite-difference code.
+</Callout>
+
+## Explore it
+
+### One parameter at a time
+
+The figure scales each parameter from half to one and a half times its baseline, with the others fixed. The slope of each curve where it crosses the baseline is the sensitivity; the elasticity is that slope rescaled to proportions.
+
+<Figure id="sensitivity-analysis-sweeps" />
+
+Two features matter. The curves are not straight lines, so the elasticity at the baseline describes small changes well and large ones only roughly. And only some curves cross λ = 1 within the range: raising stasis by about a quarter, or flowering or reflowering by more than a third, would on its own halt the decline, whereas no change within this range in fecundity, seedling survival or reversion would.
+
+Ranked, the elasticities at the baseline are:
+
+<Figure id="sensitivity-analysis-elasticities" />
+
+<Check
+  id="elasticity-meaning"
+  kind="interpret"
+  question="The elasticity of λ to rosette stasis is 0.255. Which statement does it support?"
+  options={[
+    "Increasing stasis by 0.1 raises λ by about 0.0255",
+    "Increasing stasis by 10 % raises λ by about 2.5 %",
+    "Stasis explains 25.5 % of the variation in λ among real populations",
+    "Increasing stasis by 10 % makes the population grow at 2.5 % a year",
+  ]}
+  answer={1}
+  feedback={[
+    "That treats the elasticity as a sensitivity. An elasticity relates proportional changes, not absolute ones: 0.1 is a 20 % change in a baseline stasis of 0.5.",
+    "Correct, for small changes: e = Δln λ / Δln p, so a 10 % increase gives about 0.255 × 10 % ≈ 2.5 % in λ. For large changes the curve in the figure, not the elasticity, is the answer.",
+    "Elasticities are local derivatives of the model at one point. They say nothing directly about variation among populations, which depends on how much each parameter actually varies.",
+    "λ would rise from 0.934 by about 2.5 %, to about 0.958: still a decline of about 4 % a year. The elasticity is about the change in λ, not λ itself.",
+  ]}
+/>
+
+<Check
+  id="equal-elasticities"
+  kind="model"
+  question="Fecundity f and seedling survival g have exactly the same elasticity (0.1377), although their values differ by a factor of almost 40. Why?"
+  options={[
+    "A coincidence of the chosen baseline values",
+    "Both are small numbers relative to the other entries",
+    "λ depends on f and g only through their product f g, so equal proportional changes in either have identical effects",
+    "Finite differences cannot resolve the difference at a step of 0.1 %",
+  ]}
+  answer={2}
+  feedback={[
+    "It holds at every baseline. Look at where f and g appear in the characteristic equation.",
+    "Fecundity, 4.5, is the largest entry of the matrix. Size is not the reason.",
+    "Correct. The characteristic equation is λ[(λ − s)(λ − q) − r φ] = f g φ: f and g enter only as a product, so ln λ depends on ln f + ln g, and the two elasticities must be equal. Both lie on the single loop seedling → rosette → flowering → seedling.",
+    "They agree to about nine digits; the equality is exact, not an artefact of resolution.",
+  ]}
+/>
+
+### Interactions between parameters
+
+Two parameters *interact* when the effect of one depends on the value of the other. Local analysis is blind to this, because it never changes two parameters at once. The characteristic equation already shows one interaction: since only $f g$ matters, the fecundity needed for growth is inversely proportional to seedling survival.
+
+<Figure id="sensitivity-analysis-interaction" />
+
+At the baseline seedling survival of 0.12, λ reaches 1 only at a fecundity of about 7; with seedling survival doubled, half that fecundity suffices. A field study that measured fecundity carefully but borrowed seedling survival from another site could misjudge the population's fate in either direction. Notice also that this interaction vanishes on a logarithmic scale, where the product becomes a sum; whether parameters "interact" can depend on the scale of the output.
+
+### Global approaches
+
+**Parameter sweeps.** The simplest global method evaluates the output on a grid over two or three parameters and plots it as a set of curves or a contour map, as in the figure above. A grid of $L$ levels in $k$ parameters costs $L^k$ runs, so sweeps suit a few parameters at a time.
+
+**Sampling.** For many parameters, draw parameter sets from their plausible ranges, typically by Latin hypercube sampling (<Concept id="experiment-design" />), run the model at each, and examine how the output varies. Here 200 samples vary all six parameters independently between 0.7 and 1.3 times their baselines:
+
+<Figure id="sensitivity-analysis-global" />
+
+The scatter around the trend is the influence of the other five parameters. For a response that is close to linear in its inputs, the squared correlation between a parameter and the output, given in the footer, approximates that parameter's share of the output's variance. The ranking agrees with the elasticities, and for a good reason: when every parameter varies over the same *relative* range and the response is nearly linear, the shares are close to $e_i^2 / \sum_j e_j^2$, which for these elasticities gives 0.35, 0.26, 0.15, 0.10, 0.10 and 0.04. With unequal ranges, or a strongly curved response, the two rankings can differ completely.
+
+**Morris screening.** When there are dozens of parameters, Morris's method identifies the few that matter at modest cost. It computes *elementary effects*, one-at-a-time differences
+
+$$
+\mathrm{EE}_i = \frac{y(x_1, \dots, x_i + \Delta, \dots, x_k) - y(x_1, \dots, x_k)}{\Delta},
+$$
+
+along $R$ random paths through the scaled parameter space, each path changing one parameter per step, for a total of $R(k+1)$ runs. Here $x_1, \dots, x_k$ are the $k$ parameters rescaled to $[0, 1]$ and $\Delta$ is a fixed step. The mean of the absolute effects, $\mu_i^*$, ranks overall influence; their standard deviation, $\sigma_i$, is large when the effect of parameter $i$ depends on where in the space it is measured, which signals nonlinearity or interactions.
+
+**Sobol indices.** Variance-based methods treat the parameters $X_1, \dots, X_k$ as independent random variables with distributions describing their uncertainty, and decompose the variance of the output $Y$. The *first-order index* of parameter $i$ is the fraction of $\mathrm{Var}(Y)$ that would disappear if $X_i$ alone were known exactly; the *total index* adds every interaction that involves $X_i$:
+
+$$
+S_i = \frac{\mathrm{Var}\big(\mathbb{E}[Y \mid X_i]\big)}{\mathrm{Var}(Y)}, \qquad
+S_{T,i} = \frac{\mathbb{E}\big[\mathrm{Var}(Y \mid X_{\sim i})\big]}{\mathrm{Var}(Y)},
+$$
+
+where $X_{\sim i}$ denotes all parameters except $X_i$. The first-order indices sum to at most 1, and the shortfall $1 - \sum_i S_i$ measures the importance of interactions. Standard estimators (Saltelli's scheme) need about $N(k+2)$ runs for $N$ base samples, typically $N$ in the thousands, so Sobol analysis suits fast models or is run on an emulator fitted to fewer runs. Established implementations exist (the R package `sensitivity`, the Python package `SALib`); use one rather than writing your own estimators.
+
+### Choosing ranges
+
+Global results depend entirely on the ranges, so the ranges must be defended:
+
+- **From data**: confidence intervals or the spread of estimates across sites and years.
+- **From biology**: probabilities lie in $[0, 1]$, and probabilities of mutually exclusive fates of the same individual must not sum to more than 1. Here $s + \varphi \le 1$ and $r + q \le 1$; the ±30 % ranges above respect both.
+- **Not by convention alone**: "±10 % for everything" is easy but implies that fecundity, perhaps known to ±50 %, is as well known as an adult survival estimated to ±3 %. If you use equal relative ranges, say so, and remember that the result is then close to a rescaled local analysis.
+
+<Check
+  id="step-size"
+  kind="predict"
+  question="What happens to the elasticities printed by stage_elasticity.cpp if you change the relative step δ from 10⁻³ to 10⁻¹⁴?"
+  options={[
+    "They become more accurate, because the truncation error vanishes",
+    "Nothing visible: four decimals cannot show the difference",
+    "They become noisy, wrong in the second decimal, because rounding errors are no longer small compared with the tiny change in λ",
+    "The program fails to compile, because 10⁻¹⁴ is below the precision of double",
+  ]}
+  answer={2}
+  feedback={[
+    "The truncation error does vanish, but the difference λ(+) − λ(−) is now of order 10⁻¹⁵, only a few multiples of the rounding error in λ itself. The estimate is dominated by rounding.",
+    "With δ = 10⁻¹⁴, 1 + δ is not even represented exactly (doubles near 1 are spaced about 2 × 10⁻¹⁶ apart), so the actual perturbation differs from δ by around 1 %, and λ(+) − λ(−) is only a few rounding units. The errors reach the second decimal.",
+    "Correct. The error behaves like C δ² + ε/δ, with ε near 10⁻¹⁶ from rounding: at δ = 10⁻¹⁴ the second term is about 10⁻². Running it gives, for example, 0.0951 instead of 0.0834 for reversion. Choose δ near the minimum of that curve, between 10⁻³ and 10⁻⁶ here.",
+    "1e-14 is an ordinary double value (doubles reach about 10⁻³⁰⁸). The problem is numerical, not a compile error.",
+  ]}
+/>
+
+<Lab id="matrix" />
+
+## In biological modelling
+
+Elasticity analysis is a standard tool in plant and animal demography, and its patterns are informative in themselves: long-lived species typically have high elasticities for adult survival and low ones for fecundity, while short-lived species show the reverse. Treat such rankings with two cautions. First, an elasticity measures the response to a *proportional* change; whether a 10 % change is equally achievable for fecundity and for adult survival is a biological and practical question the model cannot answer. Second, it is local: at a baseline far from where management would move the population, the ranking may change.
+
+For stochastic models, sensitivity analysis needs replicates at every parameter set, and finite differences of a noisy output are useless unless the noise is far smaller than the effect. Use common random numbers (the same seeds at $p - h$ and $p + h$; see <Concept id="seed-management" />), larger steps, or regression on a global sample instead of a derivative. For ODE models, check that the numerical step size is small enough that the sensitivities do not depend on it (<Concept id="numerical-error" />).
+
+## Common mistakes
+
+<Callout kind="pitfall" title="Treating a local ranking as global">
+"Stasis has the largest elasticity" is a statement about infinitesimal changes at one parameter set. It does not mean that stasis is the most important parameter over its plausible range, nor that changing stasis is the best management option. Name the baseline whenever you report elasticities.
+</Callout>
+
+- **Forward differences with a large step.** Their error is proportional to the step, and at a 10 % step it can change the ranking of close parameters. Use central differences.
+- **Perturbing a parameter out of its domain.** Raising stasis by 10 % when $s + \varphi = 0.98$ creates a matrix in which rosettes survive with probability above 1. Check constraints after every perturbation.
+- **Perturbing one entry when a parameter appears in several.** If adult survival multiplies two matrix entries, perturbing only one of them is not the elasticity of adult survival. Perturb the parameter and rebuild the whole matrix, as `stage_elasticity.cpp` does.
+- **Unreported ranges.** A global analysis without the ranges and distributions it used cannot be interpreted or repeated.
+
+## Practice
+
+<Practice>
+
+1. Run `stage_elasticity.cpp` with δ = 10⁻¹, 10⁻³, 10⁻⁶, 10⁻¹⁰ and 10⁻¹⁴, printing eight decimals. Explain how the elasticities and their sum change, in terms of truncation error and rounding error.
+2. Compute the left eigenvector $\mathbf{v}$ by running the power method on the transpose of $\mathbf{A}$, and from it the analytical sensitivities $v_i w_j / \langle \mathbf{v}, \mathbf{w}\rangle$ of the six non-zero entries. Convert them to elasticities and compare with the finite-difference values.
+3. For the Beverton–Holt model the equilibrium is $K = (R_0 - 1) M$. Derive the elasticities of $K$ with respect to $R_0$ and $M$, then check them numerically with a central difference. Why does the elasticity to $R_0$ become very large as $R_0$ approaches 1?
+4. Implement Morris screening for λ with $R = 10$ paths over the ±30 % ranges used above. Do $\mu^*$ and $\sigma$ rank the parameters as the elasticities do? Which parameter has the largest $\sigma$ relative to $\mu^*$, and why might that be?
+
+<details>
+<summary>Hint for exercise 1</summary>
+At δ = 10⁻¹ the curvature of λ(p) biases the estimates (truncation error of order δ²): they change in the fourth decimal and the sum is about 1.0007. At 10⁻³ and 10⁻⁶ the estimates agree to seven or eight decimals and the sum is 1 to that precision. At 10⁻¹⁰ the perturbation changes λ by only about 10⁻¹¹, and rounding makes the sixth decimal erratic; at 10⁻¹⁴ even the second decimal is wrong. The curve of error against δ has its minimum in between.
+
+</details>
+
+<details>
+<summary>Worked answer for exercise 3</summary>
+$\partial K / \partial M = R_0 - 1$, so $e_M = (M/K)(R_0 - 1) = 1$: doubling $M$ doubles $K$ whatever $R_0$ is. $\partial K / \partial R_0 = M$, so $e_{R_0} = R_0 M / K = R_0 / (R_0 - 1)$. At $R_0 = 2.2$ this is 1.83; at $R_0 = 1.1$ it is 11. Near $R_0 = 1$ the equilibrium is a small difference, $R_0 - 1$, and a small proportional change in $R_0$ is a large proportional change in that difference.
+</details>
+
+<details>
+<summary>Hint for exercise 4</summary>
+Scale each parameter to $x_i \in [0, 1]$ over its range. Start each path at a random point on a grid of four levels, choose $\Delta = 2/3$, and change the parameters one at a time in a random order (`std::shuffle`), moving up or down so that the point stays in $[0, 1]$. Record $\mathrm{EE}_i$ at each step. With $R = 10$ and $k = 6$ you need 70 evaluations of λ. Reflowering and flowering both appear in the loop between rosettes and flowering plants; their effects depend on each other.
+</details>
+
+</Practice>

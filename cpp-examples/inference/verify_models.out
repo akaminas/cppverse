@@ -1,0 +1,7 @@
+PASS  Beverton-Holt matches its closed form, R0 = 0.8
+PASS  Beverton-Holt matches its closed form, R0 = 2.2
+PASS  Beverton-Holt matches its closed form, R0 = 3
+PASS  K = (R0 - 1) M is a fixed point
+PASS  Euler converges at order 1 (observed 1.03)
+PASS  Heun converges at order 2 (observed 2.00)
+0 test(s) failed

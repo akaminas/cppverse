@@ -1,0 +1,244 @@
+---
+title: Interpreting simulation results
+summary: A structured way to turn simulation output into a biological conclusion that says what the model shows, and no more.
+level: beginner
+module: null
+manual: []
+minutes: 35
+objectives:
+  - Describe the pattern in simulation output precisely, with numbers
+  - Trace a pattern back to the model assumptions and parameter values that produce it
+  - Check whether numerical approximation, implementation choices or chance could explain a result
+  - Write a conclusion qualified by the model's assumptions, and say what cannot be inferred
+standard: c++17
+lab: discrete
+references:
+  - "Otto, S. P. & Day, T. (2007). A Biologist’s Guide to Mathematical Modeling in Ecology and Evolution. Princeton University Press."
+  - "Grimm, V. et al. (2014). Towards better modelling and decision support: documenting model development, testing, and analysis using TRACE. Ecological Modelling 280: 129–139."
+---
+
+## What it is
+
+A simulation gives you numbers: a population size in each generation, a table of replicates, a curve. *Interpreting* the output means deciding what those numbers tell you about biology. It is the step at which a model becomes science, and the step at which most mistakes in modelling papers are made.
+
+A good interpretation answers seven questions, in this order:
+
+1. **What pattern occurs?** Describe it precisely, with numbers.
+2. **Which assumptions generate it?** Name the parts of the model that produce the pattern.
+3. **How does it depend on the parameters?** Does it hold everywhere, or only for some values?
+4. **Could the numerical method or the code have produced it?** Rule out artefacts.
+5. **How variable is it?** For a stochastic model, how much do replicates differ?
+6. **What biological claim does it support?** State the claim with its conditions attached.
+7. **What cannot be inferred?** Say plainly what the result does *not* show.
+
+This lesson works through three examples from this site with these questions, and ends with a checklist you can reuse.
+
+## Why it matters
+
+A model is a precise statement of assumptions, and its output follows from them. That is its strength: if the assumptions are clear, so is what the result means. It is also a trap. A model can only produce what its structure allows, so a result can look like a discovery about nature when it is really a consequence of a choice made while writing the model.
+
+The difference between a useful conclusion and a misleading one is often a single clause: "*in this model*", "*for these parameter values*", "*in the absence of environmental variation*". Learning to write those clauses, and to know when each one is needed, is what this lesson is about.
+
+## How it works in C++
+
+Interpretation starts with measuring. Looking at a curve and saying "it levels off quickly" is a start, but "quickly" is not a number. Whenever a conclusion depends on a property of the output, make the program compute it.
+
+The Beverton–Holt model describes a population with one census per generation:
+
+$$
+N_{t+1} = \frac{R_0\,N_t}{1 + N_t / M},
+$$
+
+where $N_t$ is the number of individuals in generation $t$, $R_0$ is the number of offspring per individual that survive to the next generation when the population is small, and $M$ is the population size at which crowding halves that number (<Concept id="discrete-time" />). When $R_0$ is greater than 1 the population approaches the equilibrium $K = (R_0 - 1)\,M$, the size at which each individual exactly replaces itself.
+
+How fast does it approach? This program prints, for every generation, the gap between the population and $K$, and the ratio of each gap to the one before:
+
+<Example file="inference/bh_return_rate.cpp" mark="21-26" />
+
+The ratio column settles at 0.4545, which is $1/R_0$ for $R_0 = 2.2$. Near the equilibrium, each generation removes the same *fraction* of the remaining gap: about 55 % of it. That is a measured, quantitative statement, and it immediately says how the speed depends on a parameter: a larger $R_0$ means a smaller ratio and a faster return to equilibrium.
+
+## Explore it
+
+### Example 1: a population that settles
+
+The figure shows the Beverton–Holt model for three values of $R_0$, with $M = 40$ and a starting population of $N_0 = 5$.
+
+<Figure id="bh-trajectories" />
+
+Work through the questions.
+
+1. **Pattern.** With $R_0 = 3$ the population rises to 80 and stays there; with $R_0 = 1.8$ it rises to 32. Neither overshoots its equilibrium. With $R_0 = 0.8$ it declines steadily towards zero.
+2. **Assumptions.** The levelling off comes from the density-dependent term $1 + N_t/M$: the more crowded the population, the fewer offspring each individual leaves. The model also assumes discrete, non-overlapping generations, no age or stage structure, no immigration or emigration, and no randomness. The smooth approach without overshoot is built into the form of the equation: for this model, more parents always means more offspring in total, so the population can never jump past its equilibrium.
+3. **Parameters.** The equilibrium is $K = (R_0 - 1)M$. It grows in proportion to $M$, and with $R_0 - 1$, not with $R_0$ itself: raising $R_0$ from 1.8 to 3 multiplies $R_0$ by 1.67 but $K$ by 2.5. Below $R_0 = 1$ there is no positive equilibrium at all. The speed of approach depends on $R_0$, as the program above showed.
+4. **Numerical approximation.** None: the recurrence *is* the model, not an approximation to something else. The output can still be wrong if the code is wrong, so it was checked against the exact solution (<Concept id="verification" />):
+
+<Figure id="bh-verification" />
+
+5. **Variability.** The model is deterministic: the same parameters always give the same trajectory, so there is nothing to replicate.
+6. **Claim.** *In the Beverton–Holt model, a population with $R_0 \gt 1$ approaches the equilibrium $(R_0 - 1)M$ smoothly and without overshoot, closing a fixed fraction, $1 - 1/R_0$, of the remaining gap each generation once it is near $K$; with $R_0 \lt 1$ it declines to extinction.*
+7. **Not inferred.** That real populations are stable, or that they never cycle. This model *cannot* produce oscillations, so their absence here is an assumption, not a finding. Nor does the model say anything about which species have which $R_0$; that needs data.
+
+<Check
+  id="bh-claim"
+  kind="interpret"
+  question="Which conclusion does the Beverton–Holt figure support?"
+  options={[
+    "Populations of this species are regulated at 80 individuals",
+    "In the Beverton–Holt model with R₀ = 3 and M = 40, the population approaches 80 without overshooting",
+    "Density dependence prevents populations from oscillating",
+    "A population with R₀ = 0.8 is doomed to extinction",
+  ]}
+  answer={1}
+  feedback={[
+    "The figure is a model run with chosen parameter values, not a measurement of any species. Calling it “this species” turns an assumption into a claim about nature.",
+    "Correct. The claim names the model and the parameter values, and describes exactly what the output shows.",
+    "This model cannot oscillate whatever its parameters, because of the form of its equation. Other models of density dependence, and many real populations, do oscillate. The absence of cycles here is built in.",
+    "In this deterministic model it declines towards zero. A real population with low reproduction might be rescued by immigration or a change in conditions, none of which the model contains. Qualify it: “in this model, without immigration”.",
+  ]}
+/>
+
+<Check
+  id="bh-parameters"
+  kind="predict"
+  question="With M = 40 fixed, R₀ is raised from 1.8 to 3.6, double its value. What happens to the equilibrium K = (R₀ − 1) M?"
+  options={["It doubles, from 32 to 64", "It rises from 32 to 104, more than tripling", "It stays at 32, because M has not changed", "It halves, because the population grows faster"]}
+  answer={1}
+  feedback={[
+    "K depends on R₀ − 1, not on R₀. Doubling R₀ from 1.8 to 3.6 multiplies R₀ − 1 from 0.8 to 2.6.",
+    "Correct. K = 2.6 × 40 = 104, compared with 0.8 × 40 = 32: a factor of 3.25. Small changes in R₀ just above 1 have very large proportional effects on K, which is worth knowing before claiming that K is robust.",
+    "M sets the scale of crowding, but R₀ still matters: K = (R₀ − 1) M uses both.",
+    "Faster growth means the population reaches K sooner, and a larger R₀ raises K. Speed and level are different properties of the trajectory.",
+  ]}
+/>
+
+You can explore the parameter dependence yourself in the discrete-time laboratory. Before you move a slider, predict what will happen to the equilibrium and to the speed of approach, then check.
+
+<Lab id="discrete" />
+
+### Example 2: a result produced by the code
+
+The host–parasitoid model of <Concept id="update-order" /> tracks hosts $H$ and the parasitoids $P$ that lay eggs in them, one generation at a time. Both equations are meant to use the numbers of the *current* generation. The figure shows two runs with identical equations and parameters, differing only in whether the program updates both species at once, or updates the hosts first and then uses the *new* host numbers for the parasitoids.
+
+<Figure id="update-order" />
+
+The first run cycles persistently; the second settles to a steady state. If you had only the second run, question 1 would give a confident answer, "host and parasitoid coexist at a stable equilibrium", and it would be wrong about the model you intended. The equilibrium comes from question 4: an implementation choice that is not part of the model.
+
+The lesson is general. Before interpreting a pattern, ask whether something other than the biology could produce it: the update order, a time step that is too large (<Concept id="numerical-error" />), a bug, or a starting condition that has not yet worn off. A result that changes when an implementation detail changes is a result about the code.
+
+<Check
+  id="artefact"
+  kind="interpret"
+  question="A colleague’s host–parasitoid simulation settles to a stable equilibrium, and they want to conclude that parasitoids stabilise the host population. What should they do first?"
+  options={[
+    "Run the simulation for longer, to be sure the equilibrium persists",
+    "Check that the code updates hosts and parasitoids from the same generation, and test the code against known results",
+    "Try more parameter values until the equilibrium appears everywhere",
+    "Nothing: a stable equilibrium in a simulation is a clear result",
+  ]}
+  answer={1}
+  feedback={[
+    "A longer run of buggy code shows the same artefact for longer. The question is whether the equilibrium belongs to the model or to the implementation.",
+    "Correct. Sequential updating produces exactly this false equilibrium. Verifying the update order, and checking the code against cases with known answers, comes before any biological interpretation.",
+    "Searching for parameters that confirm the expected result is the opposite of testing it, and if the code is wrong every parameter value inherits the error.",
+    "A pattern in the output is only as trustworthy as the code that produced it. Stability is precisely the property that the update-order bug changes.",
+  ]}
+/>
+
+### Example 3: a population that may vanish
+
+The third example is stochastic. In the linear birth–death process (<Concept id="stochasticity" />), each individual gives birth at rate $b = 1$ and dies at rate $d = 0.8$ per year, and births and deaths happen at random moments. Each run with a different random seed is a *replicate*: one possible history of the same population.
+
+<Figure id="interpreting-results-replicates" />
+
+1. **Pattern.** The expected population size (dashed) grows from 5 to about 11 in four years. The replicates spread widely around it: some exceed 50, and several fall to zero, after which they stay there.
+2. **Assumptions.** Birth and death rates are the same for every individual and never change: no density dependence, no seasons, no good or bad years. All the variation comes from the chance timing of individual births and deaths, called *demographic stochasticity*.
+3. **Parameters.** Because $b \gt d$ the expected size grows; with $b \lt d$ it would decline. Extinction risk falls steeply as the starting population increases.
+4. **Approximation.** Gillespie's method (<Concept id="gillespie" />) simulates this process exactly,
+ and the extinction fraction has been checked against an exact formula (<Concept id="verification" />).
+5. **Variability.** This is the heart of the result. Five of these forty replicates went extinct by year 4. With forty replicates that fraction, 0.125, is itself uncertain: a rough 95 % range is 0.02 to 0.23 (<Concept id="uncertainty" />). For this model the exact probability is known, 0.154.
+6. **Claim.** *Under demographic stochasticity alone, a population of five with these birth and death rates has about a 15 % chance of dying out within four years, even though its expected size more than doubles.*
+7. **Not inferred.** The real extinction risk of any species, which also depends on environmental variation, density dependence and catastrophes, all absent here. Nor does the growing mean mean that a *typical* population grows steadily: the average hides the populations that vanished.
+
+<Check
+  id="stochastic-claim"
+  kind="interpret"
+  question="Five of 40 replicates went extinct by year 4. Which statement is best?"
+  options={[
+    "The population has a 12.5 % chance of extinction",
+    "The population will grow, because the mean increases",
+    "About one replicate in eight went extinct by year 4; with 40 replicates the probability is only roughly estimated, so more replicates are needed for a precise value",
+    "Extinction is rare, so it can be ignored",
+  ]}
+  answer={2}
+  feedback={[
+    "This reports 12.5 % as if it were exact. Forty replicates give a rough estimate: anything from about 2 % to 23 % is consistent with five extinctions in forty.",
+    "The mean grows, but individual populations do not all grow: some die out. A conclusion about the mean is not a conclusion about each population.",
+    "Correct. It says what happened, states the uncertainty, and points to the remedy. (Here the exact value, 0.154, is known; for most models it is not, and replicates are all you have.)",
+    "A 15 % risk of losing a reintroduced population within four years is not rare in any practical sense. Whether a risk is acceptable is a judgement the model can inform but not make.",
+  ]}
+/>
+
+## In biological modelling
+
+### A checklist for interpreting output
+
+Use this list every time you interpret a simulation, whether your own or one in a paper.
+
+1. **Pattern.** Have I described what happens with numbers, not adjectives?
+2. **Mechanism.** Which assumptions or processes produce it? Would it disappear if I removed one of them?
+3. **Parameters.** Over what range of parameter values does it hold? Did I vary them, or only use one set?
+4. **Artefacts.** Has the code been checked against known results? Does the pattern survive a smaller time step, a longer run, a different update order or a different starting state?
+5. **Variability.** For stochastic models: how many replicates, how much spread, and how precise is each estimate?
+6. **Claim.** Does my conclusion name the model and its key conditions?
+7. **Limits.** What does the result not show? Which processes left out of the model could change it?
+
+### Well and badly qualified conclusions
+
+| Badly qualified | Well qualified |
+|---|---|
+| Density dependence stabilises populations. | In the Beverton–Holt model, compensatory density dependence leads to a stable equilibrium for every $R_0 \gt 1$; models with stronger crowding effects can oscillate. |
+| Hosts and parasitoids coexist stably. | With simultaneous updating, the host–parasitoid model with these parameters shows persistent cycles; an equilibrium appeared only with an incorrect sequential update. |
+| Small populations have a 12.5 % extinction risk. | Under demographic stochasticity alone, with $b = 1$ and $d = 0.8$ per year, 5 of 40 simulated populations of five died out within four years (exact probability 0.154). |
+| Our model shows that the species is safe. | The model, with parameters from one site and no environmental variation, predicts growth; the prediction has not been tested against independent data. |
+
+The well-qualified versions are longer, but every extra clause carries information a reader needs. They are also more interesting: each qualification suggests the next experiment.
+
+## Common mistakes
+
+<Callout kind="pitfall" title="Discovering an assumption">
+If a model cannot produce a pattern, finding that pattern absent is not a result. A Beverton–Holt population never oscillates; a model without immigration never shows rescue effects; a deterministic model never shows extinction by chance. Before reporting "X does not happen", ask whether X *could* have happened in the model.
+</Callout>
+
+- **Reporting one run of a stochastic model.** A single replicate is an anecdote. Report summaries over many replicates and show their spread.
+- **Dropping the conditions.** "For these parameter values" disappears easily between results and abstract. Keep it, or show that the result holds over the plausible range.
+- **Interpreting the transient as the outcome.** Early generations depend on the starting state. Decide in advance whether the question is about the approach or the long-run behaviour, and run long enough.
+- **Confusing the model with the organism.** The model is a hypothesis about how the organism works. Its output shows what follows from that hypothesis, not what the organism does, until it is compared with data (<Concept id="validation" />).
+
+## Practice
+
+<Practice>
+
+1. Change $R_0$ in `bh_return_rate.cpp` to 1.2 and then to 5, keeping $M = 40$. What does the ratio column approach in each case? Write one sentence, with its conditions, about how the speed of return to equilibrium depends on $R_0$.
+2. Rewrite each conclusion so that it is properly qualified, inventing no new results: (a) "Populations always reach carrying capacity." (b) "Extinction is unlikely because the average population grows." (c) "Our simulation proves that parasitoids regulate hosts."
+3. The figure below shows the discrete logistic map, $x_{t+1} = r\,x_t\,(1 - x_t)$, where $x_t$ is the population density in generation $t$ scaled so that 1 is the largest possible value, and $r$ is the maximum growth factor. Apply the seven questions to the run with $r = 3.9$. What can you claim about the density 50 generations ahead, and what can you not?
+
+<Figure id="logistic-map-regimes" />
+4. A paper reports: "Our individual-based model shows that territorial behaviour reduces population fluctuations." List four questions you would ask the authors before accepting the claim, one each about assumptions, parameters, artefacts and variability.
+
+<details>
+<summary>Hint for exercise 1</summary>
+Near the equilibrium the ratio approaches $1/R_0$: 0.8333 for $R_0 = 1.2$ and 0.2 for $R_0 = 5$. With $R_0 = 5$ the ratio reaches 0.2000 within ten generations: the population closes 80 % of the gap each generation. With $R_0 = 1.2$ it is still 0.84 after twelve generations, so extend the loop to see it settle; the gap shrinks by only about a sixth each generation, and the population takes dozens of generations to approach $K$.
+ A qualified sentence starts "In the Beverton–Holt model, near equilibrium, …".
+</details>
+
+<details>
+<summary>Worked answer for exercise 2</summary>
+(a) "In the deterministic Beverton–Holt model with $R_0 \gt 1$, the population approaches the equilibrium $(R_0 - 1)M$ from any positive starting size." (b) "In the birth–death model with $b \gt d$ the expected size grows, but a substantial fraction of small populations still go extinct by chance; the extinction risk must be reported separately from the mean." (c) "In our model, as implemented with simultaneous updating, parasitoids [describe the pattern] for the parameter values tested; whether they regulate real host populations requires comparison with field data."
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+At $r = 3.9$ the logistic map is chaotic: the trajectory never settles, and two starting values that differ in the sixth decimal soon give completely different trajectories. You can claim that the scaled density stays between 0 and 1 and keeps fluctuating irregularly; you cannot predict its value 50 generations ahead from a starting value known only approximately, even though the model has no randomness at all.
+</details>
+
+</Practice>

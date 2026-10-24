@@ -1,0 +1,294 @@
+---
+title: Analysing simulation output
+summary: Use C++ as the simulation engine and R or Python to summarise replicates, quantify uncertainty and draw honest figures.
+level: intermediate
+module: null
+manual: []
+minutes: 40
+objectives:
+  - Write replicate output from C++ as a tidy, long-format table
+  - Read and summarise replicates by group in R (readr, dplyr) or Python (pandas)
+  - Distinguish standard deviation, standard error and quantile bands, and choose the one that answers the question
+  - Estimate how many replicates are needed for a given Monte Carlo error
+standard: c++17
+lab: gillespie
+references:
+  - "Wickham, H. (2014). Tidy data. Journal of Statistical Software 59(10): 1–23."
+  - "Wickham, H., Çetinkaya-Rundel, M. & Grolemund, G. (2023). R for Data Science, 2nd ed. O’Reilly."
+  - "McKinney, W. (2022). Python for Data Analysis, 3rd ed. O’Reilly."
+---
+
+## What it is
+
+A simulation study has two halves. The *engine* runs the model and writes raw output; the *analysis* reads that output, summarises it and turns it into figures and numbers. On this site the engine is C++, because it is fast and exact about what the model does. The analysis is usually better done in R or Python, which have mature tools for tables, statistics and plotting.
+
+This lesson is about the hand-over between the two: what the C++ program should write, how R or Python should read and summarise it, and how to report the variation among stochastic replicates honestly. It is not a course in R or Python; the snippets show the few operations that every simulation analysis needs.
+
+## Why it matters
+
+Keeping the halves apart pays off at once:
+
+- **Rerunning is expensive; replotting is not.** If the program writes raw replicate output, you can change a summary or a figure without simulating again.
+- **Summaries can be checked.** A script that reads the raw table and computes a mean is a record of how the number was obtained. A mean typed into a spreadsheet is not.
+- **Nothing is lost.** A program that writes only the mean of 1000 replicates has thrown away the variability, the extremes, the extinctions and any chance of noticing that something went wrong in one replicate.
+
+The second half of the lesson deals with the question every stochastic result raises: how much of what you see is the model, and how much is the luck of the draw?
+
+## How it works in C++
+
+The C++ side has one job: write output that the analysis can use without reshaping. The best layout is *tidy* (also called long format): one row per observation, one column per variable (<Concept id="trajectory-output" />). For replicate trajectories an observation is one replicate at one time, so the columns are the replicate, its seed, the time and the state:
+
+<Example file="inference/bd_trajectories_long.cpp" mark="39-49" />
+
+The program runs the linear birth–death process of <Concept id="gillespie" /> exactly, event by event, but *records* the state only on a regular grid of times (lines 41–49). The grid is a recording schedule, not a time step: between grid points the simulation still jumps from event to event. Recording on a common grid is what makes replicates comparable, because every replicate then has a value at $t = 0, 0.1, \dots, 4$.
+
+The output starts like this (the numbers depend on your standard library):
+
+```text
+# model: linear birth-death process, b = 1, d = 0.8, N0 = 5; base_seed: 7
+replicate,seed,time,N
+0,…,0,5
+0,…,0.1,5
+0,…,0.2,6
+```
+
+A wide layout, with one column per replicate or one column per time, looks tidier on screen but is harder to analyse: every summary then needs a reshape first. Write long, and let the analysis pivot if it ever needs to.
+
+## A minimal example
+
+Run the program with its output redirected, `bd_trajectories_long 7 200 > results/trajectories.csv`, then read and summarise the file. The summary needed for a trajectory figure is, at every time point, the number of replicates, the mean, the spread and a few quantiles.
+
+### In R
+
+```r
+library(readr)
+library(dplyr)
+library(ggplot2)
+
+runs <- read_csv("results/trajectories.csv", comment = "#")   # skip metadata lines
+
+by_time <- runs |>
+  group_by(time) |>
+  summarise(
+    n       = n(),
+    mean    = mean(N),
+    sd      = sd(N),
+    se      = sd / sqrt(n),
+    q05     = quantile(N, 0.05),
+    q25     = quantile(N, 0.25),
+    median  = median(N),
+    q75     = quantile(N, 0.75),
+    q95     = quantile(N, 0.95),
+    extinct = mean(N == 0)        # fraction of replicates with N = 0
+  )
+```
+
+### In Python
+
+```python
+import pandas as pd
+
+runs = pd.read_csv("results/trajectories.csv", comment="#")
+
+by_time = runs.groupby("time")["N"].agg(
+    n="size", mean="mean", sd="std", median="median",
+    q05=lambda x: x.quantile(0.05), q25=lambda x: x.quantile(0.25),
+    q75=lambda x: x.quantile(0.75), q95=lambda x: x.quantile(0.95),
+    extinct=lambda x: (x == 0).mean(),
+).reset_index()
+by_time["se"] = by_time["sd"] / by_time["n"] ** 0.5
+```
+
+For a factorial design (<Concept id="experiment-design" />) the only change is the grouping: `group_by(death_rate, initial_size)` in R, `groupby(["death_rate", "initial_size"])` in pandas. Group by the design factors, summarise over replicates.
+
+<Callout kind="note" title="Quantiles are not all defined alike">
+There are several conventions for a sample quantile. R's default (`type = 7`) and pandas' default both interpolate linearly between order statistics, as does the summary code behind this site's figures. With a few hundred replicates the conventions differ negligibly; with ten replicates they do not, which is one more reason to run more than ten.
+</Callout>
+
+### Plotting with Vellum conventions
+
+The figures on this site follow the Vellum conventions: the title states the finding as a sentence; a subtitle says what was computed; the quantity and unit sit on one line above the y axis; the grid is horizontal hairlines only; lines are labelled directly at their ends rather than in a legend; and bands are pale tints at 0.55 opacity. In R, the Vellum helper supplies `theme_vellum()`, `scale_colour_vellum()` and `label_ends_vellum()`:
+
+```r
+ggplot(by_time, aes(x = time)) +
+  geom_ribbon(aes(ymin = q05, ymax = q95), alpha = 0.55) +
+  geom_ribbon(aes(ymin = q25, ymax = q75), alpha = 0.55) +
+  geom_line(aes(y = mean, colour = "Mean of replicates")) +
+  scale_colour_vellum() +
+  label_ends_vellum() +
+  labs(
+    title    = "The mean grows smoothly, but replicate populations spread widely",
+    subtitle = "Birth-death process, b = 1, d = 0.8, N0 = 5; 200 replicates; bands: 5-95 % and 25-75 %",
+    x = "Time (years)", y = "Population size N (individuals)"
+  ) +
+  theme_vellum()
+```
+
+In Python, `V = vellum.use("light")` sets the style for matplotlib, and the remaining conventions are ordinary matplotlib calls:
+
+```python
+import matplotlib.pyplot as plt
+import vellum
+
+V = vellum.use("light")
+fig, ax = plt.subplots()
+t = by_time["time"]
+ax.fill_between(t, by_time["q05"], by_time["q95"], alpha=0.55, linewidth=0)
+ax.fill_between(t, by_time["q25"], by_time["q75"], alpha=0.55, linewidth=0)
+ax.plot(t, by_time["mean"])
+ax.annotate("Mean of replicates", (t.iloc[-1], by_time["mean"].iloc[-1]),
+            xytext=(6, 0), textcoords="offset points", va="center")   # direct label
+ax.yaxis.grid(True)
+ax.xaxis.grid(False)
+ax.set_title("The mean grows smoothly, but replicate populations spread widely", loc="left")
+ax.set_xlabel("Time (years)")
+ax.text(0, 1.02, "Population size N (individuals)", transform=ax.transAxes)  # unit line
+fig.savefig("analysis/trajectories.svg")
+```
+
+## Explore it
+
+Here is the result for 200 replicates, computed by this site's own Gillespie code with one fixed seed per replicate. The grey steps are three individual replicates; the dashed line is the exact mean, $N_0 e^{(b-d)t}$.
+
+<Figure id="analysing-output-bands" />
+
+Two things are visible that a plot of the mean alone would hide. The replicates spread out steadily, so that by year 4 a population started from five individuals may hold anywhere from none to several dozen. And the lower edge of the outer band reaches zero: a sizeable minority of populations go extinct while the mean rises.
+
+<Anchor id="uncertainty" />
+
+### Variability and uncertainty
+
+Three different summaries are often drawn as "error bars", and they answer three different questions. For $n$ replicate values $x_1, \dots, x_n$ of a response, with mean $\bar{x} = \frac{1}{n}\sum_{i} x_i$:
+
+- The **standard deviation**, $s = \sqrt{\tfrac{1}{n-1}\sum_{i}(x_i - \bar{x})^2}$, describes how much *replicate populations differ from one another*. It is a property of the model, and more replicates estimate it better without making it smaller.
+- The **standard error of the mean**, $\mathrm{SE} = s/\sqrt{n}$, describes how precisely *the mean* has been estimated from $n$ replicates. It shrinks as replicates are added.
+- **Quantile bands**, such as the range from the 5 % to the 95 % quantile, describe where *most replicate populations* lie, without assuming that the distribution is symmetric. For counts that cannot go below zero they are usually more honest than a mean ± 2 standard deviations, which can extend to impossible negative values.
+
+The figure below shows the difference directly, using 4000 replicates of the population size at year 4.
+
+<Figure id="analysing-output-se" />
+
+The standard deviation settles at about 11 individuals, the exact value, and stays there. The standard error falls along the dashed line $\sigma/\sqrt{n}$: on logarithmic axes, a straight line with slope $-\tfrac{1}{2}$. Ask which question you are answering before choosing the bar. "How large will the population be?" calls for quantiles or the standard deviation. "Has the simulation estimated the expected population size precisely?" calls for the standard error.
+
+### Monte Carlo error and how many replicates
+
+The standard error measures *Monte Carlo error*: the part of the uncertainty that comes only from running a finite number of replicates. It obeys the same law for every estimate that is an average, including a probability, which is the average of an indicator that is 1 for extinct replicates and 0 otherwise. For an estimated probability $\hat{p}$ from $n$ replicates,
+
+$$
+\mathrm{SE}(\hat{p}) = \sqrt{\frac{\hat{p}\,(1 - \hat{p})}{n}} .
+$$
+
+<Figure id="analysing-output-mc-error" />
+
+The band is the estimate ± 1.96 standard errors, an approximate 95 % interval. It narrows like $1/\sqrt{n}$, so halving the error costs four times the replicates. That gives a rule for planning: if a pilot run suggests $p \approx 0.15$ and you want a 95 % half-width of 0.01, you need
+
+$$
+n \approx \frac{1.96^2 \, p\,(1-p)}{0.01^2} = \frac{3.84 \times 0.1275}{0.0001} \approx 4900 \text{ replicates}.
+$$
+
+For a mean, replace $p(1-p)$ by the variance $s^2$ estimated in the pilot run.
+
+Monte Carlo error is the *only* uncertainty that more replicates remove. Uncertainty about the parameter values, and about whether the model's structure is right, remains however many runs you make. A probability estimated to three decimals from a model whose death rate is known only to within 20 % is precise, not accurate. <Concept id="sensitivity" /> deals with the first; <Concept id="validation" /> with the second.
+
+### Presenting variability honestly
+
+- **Say how many replicates** every summary is based on, and which interval a band shows.
+- **Show the spread, not only the centre.** A mean line without a band invites the reader to treat a stochastic model as deterministic.
+- **Show some individual replicates** when their shape matters: a mean can rise smoothly while no single population does.
+- **Report extinction separately.** With absorbing states, the mean over all replicates mixes zeros with surviving populations. State whether a mean includes the extinct replicates, and give the fraction extinct alongside it.
+- **Do not shrink bands by adding replicates.** If the question is about variability among populations, a standard error band that narrows with $n$ answers a different question.
+
+<Check
+  id="sd-or-se"
+  kind="interpret"
+  question="From 4000 replicates, the population size at year 4 has mean 11.1, standard deviation 10.8 and standard error 0.17. A conservation manager asks how large a reintroduced population of five is likely to be after four years. What should you report?"
+  options={[
+    "11.1 ± 0.17 individuals",
+    "11.1 ± 10.8 individuals, with the note that the distribution is skewed and includes zeros",
+    "Quantiles, for example the median and the 5–95 % range, together with the fraction of populations extinct",
+    "Nothing until more replicates have reduced the standard error further",
+  ]}
+  answer={2}
+  feedback={[
+    "The standard error says how well the simulation has pinned down the mean, not how large a particular population will be. Reported this way, the answer looks a hundred times more certain than it is.",
+    "Better: the standard deviation does describe the spread among populations. But mean ± SD suggests a symmetric range that includes negative sizes; quantiles describe a skewed count more faithfully.",
+    "Correct. The manager is asking about one population, so the spread among replicates is the answer. Quantiles describe a skewed, zero-bounded distribution honestly, and the extinction fraction is the most decision-relevant number of all.",
+    "The standard error is already small. More replicates would sharpen the estimate of the mean but would not change the spread among populations, which is what the manager needs.",
+  ]}
+/>
+
+<Check
+  id="replicates-needed"
+  kind="model"
+  question="A pilot run of 200 replicates estimates an extinction probability of 0.30. Roughly how many replicates do you need for a standard error of 0.005?"
+  options={["About 400", "About 2,000", "About 8,400", "About 42,000"]}
+  answer={2}
+  feedback={[
+    "That would give a standard error of about √(0.21/400) ≈ 0.023, almost five times too large.",
+    "With 2000 replicates the standard error is √(0.21/2000) ≈ 0.010: twice the target. Halving it takes four times the replicates.",
+    "Correct. n = p(1 − p)/SE² = 0.3 × 0.7 / 0.005² = 0.21 / 0.000025 = 8400.",
+    "This is five times too many: it would give a standard error of about 0.0022.",
+  ]}
+/>
+
+<Check
+  id="sqrt-n"
+  kind="predict"
+  question="You double the number of replicates from 1000 to 2000. What happens to the standard error of the estimated mean, and to the standard deviation among replicates?"
+  options={[
+    "Both halve",
+    "The standard error falls by about 29 %; the standard deviation stays about the same",
+    "The standard error halves; the standard deviation falls by about 29 %",
+    "Neither changes, because the model has not changed",
+  ]}
+  answer={1}
+  feedback={[
+    "Only the standard error depends on n, and it falls as 1/√n, not 1/n.",
+    "Correct. SE = s/√n, so doubling n divides it by √2 ≈ 1.41, a reduction of about 29 %. The standard deviation is a property of the model; a larger sample only estimates it more precisely.",
+    "This swaps the roles: the standard deviation does not shrink with n, and the standard error shrinks by √2, not 2.",
+    "The model's variability does not change, which is why the standard deviation stays put. But the precision of the mean does improve with more replicates.",
+  ]}
+/>
+
+## In biological modelling
+
+The same pipeline applies to every model on this site. A deterministic model needs no replicates, but a factorial design still produces a tidy table with the factors as columns and one row per run. An individual-based model (<Concept id="ibm-logic" />) usually writes two tables: population-level summaries per time step, and occasional snapshots of individuals. Write both long, with the replicate and the seed as columns, so they can be joined.
+
+Some summaries are easier in C++ than afterwards. If a run produces millions of events, write the state on a grid, as here, rather than every event; if you only ever need the final state, write only that, but write it for every replicate (<Concept id="standard-algorithms" /> shows how to compute summaries in C++ when you must). The rule is to reduce *within* a replicate if you have to, but never *across* replicates in the engine.
+
+## Common mistakes
+
+<Callout kind="pitfall" title="Error bars that shrink with effort">
+A figure showing mean ± standard error from 10,000 replicates has bars almost too thin to see, and readers take them to mean that the outcome is predictable. It is not: the bars only show that the *mean* is known precisely. If you plot standard errors, say so in the subtitle, and consider whether the question is really about variability.
+</Callout>
+
+- **Analysing a wide table by hand.** Copying columns between spreadsheets breaks the link between results and code. Read the raw file in a script.
+- **Averaging over the extinct.** The mean size "of the population" over all replicates includes zeros; the mean size of surviving populations is larger. Both can be useful; label which one you report.
+- **Too few replicates for the tails.** A 95 % quantile from 20 replicates is essentially the largest value. Extreme quantiles need hundreds of replicates or more.
+- **Dropping replicates that "failed".** If some runs crash or produce absurd values, that is a finding about the code or the model. Investigate it; do not filter it out quietly.
+
+## Practice
+
+<Practice>
+
+1. Using the output of `bd_trajectories_long`, compute for every replicate the first grid time at which $N = 0$ (if any). What fraction of replicates are extinct by year 2 and by year 4? Compare the second with the figure above.
+2. From the same table, compute the mean population size at year 4 over all replicates and over surviving replicates only. Which is larger, and by roughly what factor? Explain why.
+3. Run the program with 100 replicates as a pilot. From the pilot's standard deviation of $N$ at year 4, estimate how many replicates are needed for a standard error of 0.5 individuals. Run that many and check.
+4. Modify `bd_trajectories_long.cpp` so that it also writes a second file with one row per replicate: the seed, the final size and the time of extinction (exact, not on the grid), or `NA` if the population survives.
+
+<details>
+<summary>Hint for exercise 1</summary>
+In R: `runs |> filter(N == 0) |> group_by(replicate) |> summarise(t_ext = min(time))`, then compare `t_ext` with 2 and 4, dividing by the total number of replicates (not by the number that went extinct). In pandas: `runs[runs.N == 0].groupby("replicate")["time"].min()`.
+</details>
+
+<details>
+<summary>Worked answer for exercise 2</summary>
+The mean over survivors is larger, because the overall mean averages in the zeros: if a fraction $q$ is extinct, mean(all) = $(1 - q)$ × mean(survivors). With about 15 % of replicates extinct by year 4, the survivors' mean is about $1/0.85 \approx 1.18$ times the overall mean. The overall mean is the one that matches the exact expectation $N_0 e^{(b-d)t}$.
+</details>
+
+<details>
+<summary>Worked answer for exercise 3</summary>
+The pilot standard deviation will be near 11 individuals (it varies from pilot to pilot). From $\mathrm{SE} = s/\sqrt{n}$, $n = (s/\mathrm{SE})^2 \approx (11/0.5)^2 \approx 480$. A pilot of 100 estimates $s$ only roughly, so round up generously, to 600, say.
+</details>
+
+</Practice>

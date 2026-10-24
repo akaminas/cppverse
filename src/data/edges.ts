@@ -313,7 +313,7 @@ export const edges: Edge[] = [
   rel('object-design', 'ibm-logic', 'agents as interacting objects'),
   rel('object-semantics', 'update-order', 'copy the state, then update from the copy'),
   rel('exceptions', 'power-iteration', 'throw when convergence fails'),
-  rel('exceptions', 'gillespie', 'throw when no event can occur'),
+  rel('exceptions', 'gillespie', 'a zero total rate is an absorbing state, an error only where the model forbids it'),
   rel('sensitivity', 'power-iteration', 'sensitivity and elasticity of the growth rate'),
   rel('output-formatting', 'modern-cpp', 'std::format and std::print'),
   rel('numerical-stability', 'update-order', 'both change results without changing the model'),

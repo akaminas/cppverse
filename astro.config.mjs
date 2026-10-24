@@ -19,6 +19,8 @@ export default defineConfig({
   base,
   trailingSlash: 'always',
   output: 'static',
+  // Per-checkout cache (node_modules may be shared between worktrees).
+  cacheDir: './.astro-cache',
   integrations: [mdx(), react()],
   markdown: {
     processor: unified({

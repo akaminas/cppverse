@@ -1,0 +1,240 @@
+---
+title: Euler's method
+summary: Step along the tangent. Derive the forward-Euler update, implement it as a reusable stepper and drive it to an end time with regular output.
+level: intermediate
+module: 15
+manual: ["M15.2"]
+minutes: 40
+objectives:
+  - Derive the Euler update from the definition of the derivative
+  - Implement an Euler stepper that updates all variables of a system simultaneously
+  - Integrate to an exact end time, shortening the last step when necessary
+  - Write output at regular times independently of the step size
+  - Explain why Euler's solution lags behind a growing population
+lab: ode
+references:
+  - "Butcher (2016). Numerical Methods for Ordinary Differential Equations, 3rd edition. Wiley."
+---
+
+## What it is
+
+An ODE model $d\mathbf{x}/dt = \mathbf{f}(t, \mathbf{x})$ tells you the slope of the trajectory at every point (see <Concept id="odes" />). Euler's method, the simplest way to turn slopes into a trajectory, follows the current slope in a straight line for a short time, recomputes the slope, and repeats.
+
+The method falls straight out of the definition of the derivative,
+
+$$
+\frac{dx}{dt} = \lim_{h \to 0} \frac{x(t + h) - x(t)}{h}.
+$$
+
+Drop the limit and keep a small but finite step $h$. The difference quotient is then only approximately equal to the derivative, which the model gives as $f(t, x(t))$:
+
+$$
+\frac{x(t + h) - x(t)}{h} \approx f\bigl(t, x(t)\bigr)
+\quad\Longrightarrow\quad
+x(t + h) \approx x(t) + h\, f\bigl(t, x(t)\bigr).
+$$
+
+Starting from the initial value $x(t_0) = x_0$ and applying the update again and again gives approximations $x_1, x_2, \dots$ at the times $t_n = t_0 + nh$:
+
+$$
+x_{n+1} = x_n + h\, f(t_n, x_n).
+$$
+
+The symbols: $x_n$ is the approximation of the state at time $t_n$ (in the units of the state), $h$ is the step size (in units of time, for example days), and $f(t_n, x_n)$ is the rate of change at the start of the step (state units per unit time). Geometrically, each step moves along the tangent to the solution curve through the current point.
+
+### One step by hand
+
+Take logistic growth with $r = 0.8$ per day, $K = 100$ individuals and $N_0 = 2$. The slope at the start is $0.8 \times 2 \times (1 - 2/100) = 1.568$ individuals per day, so one Euler step of $h = 1$ day gives
+
+$$
+N_1 = 2 + 1 \times 1.568 = 3.568.
+$$
+
+The exact solution at $t = 1$ is $N(1) \approx 4.345$. Euler's estimate is too low because the true slope increases during the day as the population grows, while Euler keeps using the slope from the start of the day. That is the whole story of the method in miniature: its error comes from the slope changing within a step, and it shrinks as the step shrinks.
+
+## Why it matters
+
+Euler's method is rarely the best choice for serious work, but it is the template for every method that follows. The structure you build here, a model function, a stepper and a driver that advances time and writes output, stays the same when you replace the stepper by a Runge–Kutta method or an adaptive one. It is also the easiest method to reason about, so it is where the main pitfalls of numerical integration are easiest to see: lagging behind the true solution, the cost of small steps, and instability when steps are too large (see <Concept id="numerical-stability" />).
+
+The update $x_{n+1} = x_n + h f(t_n, x_n)$ also looks exactly like a discrete-time model (see <Concept id="time-stepping" />). That resemblance is a warning as much as a convenience. A discrete-time model *is* the biology: its time step is a generation or a breeding season. In Euler's method the step is an artefact of the approximation, and nothing in the results should depend on it once it is small enough.
+
+## How it works in C++
+
+### The stepper
+
+A *stepper* takes the model, the current time and state, and a step size, and returns the state one step later. The canonical program for this module, which compares three methods on the logistic equation, defines Euler's method like this. Select a term of the equation to see the code that implements it, or a line of code to see its term.
+
+<MathCode id="euler-method-step" />
+
+`RightHandSide` is a `std::function`: a container that can hold any callable object with the signature `State(double, const State&)`, whether an ordinary function or a lambda that has captured the model's parameters. Every stepper on this site has the same four parameters (model, time, state, step) and returns the new state, so methods can be swapped without touching the rest of the program.
+
+<Anchor id="simultaneous-update" />
+
+### All variables move together
+
+For a system, the update is a vector equation: every component of $\mathbf{x}_{n+1}$ uses the *old* state $\mathbf{x}_n$.
+
+$$
+S_{n+1} = S_n - h\,\beta S_n I_n, \qquad
+I_{n+1} = I_n + h\,(\beta S_n I_n - \gamma I_n), \qquad
+R_{n+1} = R_n + h\,\gamma I_n.
+$$
+
+The safe way to guarantee this is the one used above: compute the whole vector of derivatives first, then build the new state from it. The tempting shortcut of updating the variables in place, one after the other, is a different (and wrong) method:
+
+```cpp
+// Wrong: I and R are updated with the NEW value of S.
+S += h * (-beta * S * I);
+I += h * (beta * S * I - gamma * I);   // uses S after this step's infections
+R += h * (gamma * I);                  // uses I after this step's update
+```
+
+The infections removed from $S$ are no longer the infections added to $I$, so $S + I + R$ is no longer conserved, and the result depends on the order in which the lines are written. The same trap in discrete-time models is the subject of <Concept id="update-order" />.
+
+### Integrating to an end time
+
+A driver calls the stepper repeatedly until the end time $t_1$. If $h$ does not divide $t_1 - t_0$ exactly, the last step must be shortened so that the solution ends exactly at $t_1$. Counting the steps in advance avoids two classic floating-point problems:
+
+```cpp
+const int n = static_cast<int>(std::ceil((t1 - t0) / h - 1e-9));  // number of steps
+double t = t0;
+for (int i = 0; i < n; ++i) {
+    const double step = std::min(h, t1 - t);     // the last step may be shorter
+    x = eulerStep(f, t, x, step);
+    t = (i == n - 1) ? t1 : t + step;            // land exactly on t1
+}
+```
+
+The small `1e-9` stops rounding from adding a spurious step when $h$ divides the interval: in double precision `21.0 / 0.7` evaluates to 30.000000000000004, and without the correction `std::ceil` would schedule a 31st step of almost zero length. Setting `t = t1` on the last step stops accumulated rounding in `t` from leaving the run at, say, 0.9999999999999999 instead of 1.
+
+### Output at regular intervals
+
+The step size controls accuracy; the output interval controls how much you record. They should be independent: a run with $h = 0.01$ days over a year takes 36,500 steps, but daily output gives 365 rows. One clean design integrates from one output time to the next with the driver above, so output appears at exactly the requested times whatever $h$ is. Another records every $m$-th step, which is simpler but ties the output times to the step. Recording only some of the computed states is often called *decimation* or *thinning*.
+
+<Callout kind="manual" title="Output times">
+The course manual's driver writes a row whenever the integration time has passed the next output time, so rows appear at the first step *after* each requested time and their times depend on $h$. Integrating exactly to each output time, as here, gives rows at the requested times themselves, which makes runs with different step sizes or methods directly comparable.
+</Callout>
+
+## A minimal example
+
+The program below integrates the SIR model with Euler's method and $h = 0.3$ days, and prints a row every 10 days. Ten days is not a multiple of 0.3, so each interval ends with a shortened step of 0.1 days.
+
+<Example file="ode/euler_sir_trajectory.cpp" mark="19-24,27-36,52-55" />
+
+Read the output as a numerical experiment, not yet as a result. The epidemic grows, peaks and burns out, and $S$ settles near 0.103. The SIR final-size relation says that it should settle at $S_\infty \approx 0.1072$. Halving the step to 0.15 and again to 0.075 days moves $S(100)$ to 0.1053 and then 0.1063: the gap to 0.1072 roughly halves each time, which is what a first-order method should do (see <Concept id="numerical-error" />). Until results stop changing as $h$ shrinks, they describe the method as much as the epidemic.
+
+## Explore it
+
+The canonical comparison of Euler's method with the exact logistic solution shows the lag found by hand above, step after step:
+
+<Figure id="euler-vs-exact" />
+
+With $h = 1$ day the numerical population is still well below the true one at day 5; with $h = 0.25$ the gap is much smaller. Both approach the carrying capacity in the end, because $N = K$ is an equilibrium of the model and of the method alike.
+
+<Lab id="ode" />
+
+<Check
+  id="one-step"
+  kind="predict"
+  question="Logistic growth with r = 0.8 per day and K = 100. The population is N = 10. What does one Euler step of h = 0.5 days give?"
+  options={["13.6", "17.2", "10.36", "14.4"]}
+  answer={0}
+  feedback={[
+    "The slope is 0.8 × 10 × (1 − 10/100) = 7.2 individuals per day; half a day along it adds 3.6.",
+    "That uses a whole day (h = 1) instead of half a day: 10 + 1 × 7.2.",
+    "That multiplies the slope by h twice, or forgets the factor N. The increment is h × r N (1 − N/K) = 0.5 × 7.2.",
+    "That ignores the density dependence: 10 + 0.5 × 0.8 × 10 × 1. The factor (1 − N/K) = 0.9 reduces the slope.",
+  ]}
+/>
+
+<Check
+  id="sequential"
+  kind="debug"
+  question="A student writes an Euler step for the SIR model that updates S, then I, then R in place, each line using the variables as they stand (see the fragment in the lesson). What happens?"
+  options={[
+    "Nothing changes: the order of the three lines does not matter",
+    "The program fails to compile because S is modified and read in the same step",
+    "The infection term subtracted from S differs from the one added to I, so S + I + R drifts away from 1 and the result depends on the order of the lines",
+    "The method becomes more accurate, because I uses the most recent value of S",
+  ]}
+  answer={2}
+  feedback={[
+    "The order matters as soon as a line reads a variable that an earlier line changed. Here I is computed with the new S.",
+    "Reading and writing variables in sequence is valid C++. The error is in the numerical method, not the syntax, so no compiler will catch it.",
+    "Euler's method evaluates every rate at the old state. Mixing old and new values creates a different scheme, breaks the conservation of S + I + R that the model guarantees, and makes the answer depend on the line order.",
+    "Using a newer value is not the same as using a better slope. The result is a different, inconsistent scheme, and the conservation check exposes it.",
+  ]}
+/>
+
+<Check
+  id="lag"
+  kind="interpret"
+  question="In the figure, the Euler solution with h = 1 day lies below the exact logistic curve during the growth phase. Why?"
+  options={[
+    "Because the population grows more slowly when it is sampled once a day",
+    "Because each step uses the slope at its start, and during early growth the true slope increases within the step",
+    "Because Euler's method systematically underestimates every solution of every ODE",
+    "Because of rounding errors in double precision",
+  ]}
+  answer={1}
+  feedback={[
+    "The model has one trajectory; how often you compute it does not change the biology. The gap is an error of the method.",
+    "Below K/2 the slope rN(1 − N/K) rises as N rises, so the slope at the start of each step is the smallest one in the step. Euler therefore always undershoots there, and the errors accumulate.",
+    "The sign of the error depends on how the slope changes during the step. Start the logistic model above K/2, where growth decelerates, and each Euler step overshoots the true curve instead.",
+    "Rounding errors are about 10⁻¹⁶ relative; the gap in the figure is several individuals. It is truncation error, which comes from the finite step.",
+  ]}
+/>
+
+## In biological modelling
+
+- **Choose h from the timescales of the model.** The fastest process sets the scale: $1/r$ for growth, $1/\gamma$ for recovery, $1/k$ for elimination. Start with a step that is a small fraction of the shortest of these, then halve it until the quantities you report stop changing. With $\gamma = 0.2$ per day (an infectious period of five days), a step of 0.3 days already produces the visible error in $S_\infty$ found above.
+- **Change only the model to change the model.** To simulate another system, write its right-hand side and initial state; the stepper and the driver stay as they are. This is what the separation of model and method buys.
+- **Write trajectories to a file.** For real runs, send the rows to a CSV file with an `std::ofstream` rather than the console, and stop with an exception if the file cannot be opened (see <Concept id="trajectory-output" /> and <Concept id="exceptions" />). Record $h$ and the parameters in the file so that the run can be reproduced.
+- **Expect Euler in unexpected places.** Many individual-based and stochastic models contain a hidden Euler step, for example when growth within a time step is computed as rate × duration. The same accuracy and stability considerations apply there.
+
+## Common mistakes
+
+<Callout kind="pitfall" title="Testing floating-point times for equality">
+Writing output when `t == 10.0` fails if `t` was built by repeated additions: ten additions of 0.1 give 0.9999999999999999, not 1. Count steps with an integer, or integrate to each output time as in the example.
+</Callout>
+
+- **Updating components in place.** All derivatives must be computed from the old state before any component changes.
+- **Looping `while (t < tEnd)` with accumulated time.** Rounding can leave `t` a hair below `tEnd` after the intended last step, so the loop takes one extra, tiny or full-sized step past the end.
+- **Writing every step to the output.** Small steps produce enormous files. Decouple the output interval from the step size.
+- **Reporting a single step size.** One run shows what the method produces with that $h$. Results become trustworthy only when halving $h$ no longer changes them appreciably.
+- **Forgetting the shortened last step.** Without it the integration stops short of, or overshoots, the requested end time, and comparisons with exact solutions at that time are meaningless.
+
+## Practice
+
+<Practice>
+
+1. A drug taken by mouth moves from the gut into plasma: $dA/dt = -k_a A$ and $dC/dt = k_a A/V - k_e C$, with $A(0) = 100$ mg, $C(0) = 0$, $k_a = 1.2$ per hour, $k_e = 0.15$ per hour and $V = 40$ litres. Integrate it with Euler's method and $h = 0.1$ hours, printing $C$ every hour from 0 to 24 hours. Compare with the exact solution $C(t) = \dfrac{k_a A_0}{V (k_a - k_e)}\left(e^{-k_e t} - e^{-k_a t}\right)$.
+2. In the SIR program, change `outputEvery` from 10 to 1. Do the values printed at days 10, 20, … change? Explain why, and say what would happen with an exact method.
+3. Replace the stepper in the SIR program by the in-place sequential update from the lesson. Print $S + I + R$ at day 100 with 12 decimals, for $h = 0.3$ and $h = 0.03$. What do you observe, and what does it tell you about using conservation laws as checks?
+4. Gompertz growth, $dN/dt = rN\ln(K/N)$, has the solution $N(t) = K\exp\bigl(\ln(N_0/K)\,e^{-rt}\bigr)$. With $r = 0.3$ per day, $K = 500$ and $N_0 = 10$, compute the Euler error at $t = 10$ days for $h = 0.5$, 0.25 and 0.125. By what factor does the error shrink each time $h$ is halved?
+
+<details>
+<summary>Hint for exercise 1</summary>
+
+Write the right-hand side as a lambda that captures $k_a$, $k_e$ and $V$ and returns `State{-ka * x[0], ka * x[0] / V - ke * x[1]}`. The `integrate` function from the lesson can be reused unchanged: call it from one hour to the next. The exact concentration peaks at about two hours, at $t = \ln(k_a/k_e)/(k_a - k_e)$; Euler's peak should be close to it but not identical.
+</details>
+
+<details>
+<summary>Answer to exercise 2</summary>
+
+Yes, slightly (in the fourth significant digit of $S$). With daily output, the driver restarts at every whole day, so each day consists of three steps of 0.3 days and one of 0.1 days, while with 10-day output the steps follow a different pattern. The step sequence is part of the method, so a different sequence gives a different approximation. An exact method would give the same values whatever the output interval, which is a good way to see that these differences are numerical, not biological.
+</details>
+
+<details>
+<summary>Answer to exercise 3</summary>
+
+With the correct simultaneous update, $S + I + R$ stays at 1 to within rounding (about $10^{-15}$), because the three rates sum to zero and Euler's method adds them with the same $h$. With the sequential update the sum drifts to about 0.980 for $h = 0.3$ and 0.998 for $h = 0.03$: the drift shrinks in proportion to $h$, but it is billions of times larger than rounding error. Conservation laws are cheap and powerful checks. Every Runge–Kutta method, Euler's included, preserves linear conservation laws such as this one exactly apart from rounding, at any step size, so a drift points to a bug rather than to a coarse step.
+</details>
+
+<details>
+<summary>Hint for exercise 4</summary>
+
+The error should roughly halve with each halving of $h$, the signature of a first-order method. If it does not, check that your loop takes exactly $10/h$ steps.
+</details>
+
+</Practice>

@@ -1,0 +1,14 @@
+accepted,1779
+rejected,3
+evaluations,3564
+smallest_h,0.0184
+largest_h,16.3
+steps_days_0_50,1573
+steps_days_50_100,179
+steps_days_100_150,8
+steps_days_150_200,4
+steps_days_200_250,3
+steps_days_250_300,4
+steps_days_300_350,4
+steps_days_350_400,4
+final_S,0.10720885

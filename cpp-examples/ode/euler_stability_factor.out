@@ -1,0 +1,10 @@
+exact C(24) = 6.144e-05
+
+h,g,steps,C(24),behaviour
+0.5,0.75,48,1.007e-05,monotone decay
+1,0.5,24,5.960e-07,monotone decay
+2,0,12,0.000e+00,drops to zero in one step
+3,-0.5,8,3.906e-02,decay with sign changes
+4,-1,6,1.000e+01,oscillation that never decays
+6,-2,4,1.600e+02,oscillating growth
+8,-3,3,-2.700e+02,oscillating growth

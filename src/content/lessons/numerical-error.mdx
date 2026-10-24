@@ -1,0 +1,282 @@
+---
+title: Truncation error, convergence and stability
+summary: How wrong is a numerical solution, and how do you know? Local and global error, the order of a method, round-off, instability and stiffness.
+level: intermediate
+module: 15
+manual: ["M15.3", "M15.adv"]
+minutes: 50
+objectives:
+  - Distinguish local from global truncation error and relate both to the order of a method
+  - Measure the order of a method from a convergence study, with or without an exact solution
+  - Explain the round-off floor that limits how small a useful step can be
+  - Derive the stability condition h < 2/k for Euler's method on first-order elimination and recognise stiffness
+  - Tell an artefact of the method from behaviour of the model, using convergence, conservation laws and known results
+lab: ode
+references:
+  - "Hairer, Nørsett and Wanner (1993). Solving Ordinary Differential Equations I: Nonstiff Problems. Springer."
+  - "Hairer and Wanner (1996). Solving Ordinary Differential Equations II: Stiff and Differential-Algebraic Problems. Springer."
+  - "Goldberg (1991). What every computer scientist should know about floating-point arithmetic. ACM Computing Surveys 23: 5–48."
+---
+
+## What it is
+
+A numerical solution of an ODE is never exact. It can go wrong in three ways:
+
+1. **Truncation error.** A method replaces the true change over a step by a formula built from a few slopes. What the formula leaves out is the truncation error. It is a property of the method and shrinks as the step $h$ shrinks.
+2. **Round-off error.** Every arithmetic operation in `double` precision is rounded to about 16 significant digits (see <Concept id="numeric-limits" />). Each step adds a little rounding, and more steps add more.
+3. **Instability.** With too large a step, small errors can be amplified from step to step until the numerical solution has nothing to do with the model.
+
+This lesson shows how to measure the first, recognise the second and avoid the third, and how to check a simulation when the true solution is unknown.
+
+### Local and global error
+
+Write $x(t)$ for the exact solution and $x_n$ for the numerical approximation at $t_n = t_0 + nh$. Two errors matter.
+
+The **local error** is the error made in a single step that starts *on* the exact solution. For Euler's method, Taylor's theorem gives the exact change over a step,
+
+$$
+x(t + h) = x(t) + h\,\dot x(t) + \tfrac{1}{2}h^2\,\ddot x(t) + \tfrac{1}{6}h^3\,\dddot x(t) + \dots
+$$
+
+where the dots denote time derivatives. Euler's update $x(t) + h f(t, x(t)) = x(t) + h\,\dot x(t)$ keeps only the first two terms, so its local error is about $\tfrac{1}{2}h^2\,\ddot x$: proportional to $h^2$. This is written $O(h^2)$, meaning "at most a constant times $h^2$ for small enough $h$".
+
+The **global error** $e_n = x_n - x(t_n)$ is what you actually care about: how far the numerical solution is from the truth at a given time, after many steps. To reach a fixed time $T$ takes $T/h$ steps. If each contributes an error of order $h^2$, the total is of order $(T/h) \times h^2 = T\,h$. Euler's global error is therefore $O(h)$.
+
+In general, a method whose local error is $O(h^{p+1})$ has global error $O(h^p)$, and $p$ is called the **order** of the method. Euler's method has order 1, Heun's method order 2 and classical RK4 order 4 (local error $O(h^5)$).
+
+The argument "local errors add up" is only a first approximation. Each error made early on is carried forward by the dynamics, and the model decides whether it grows or fades. Near a stable equilibrium, errors are damped; in an unstable or chaotic model they are amplified. The figure shows Euler's global error along a logistic trajectory:
+
+<Figure id="numerical-error-over-time" />
+
+The error grows while the population grows fastest and the slope changes most within each step, and then decays as the population approaches $K$, because the stable equilibrium pulls every nearby trajectory, including the numerical one, towards it. A single number such as "the error at day 20" can therefore understate how far a run strayed on the way.
+
+<Callout kind="note" title="Two ways of stating the same order">
+You will read both that "the error of an Euler step is of order $h^2$" and that "Euler's method is first order". The first statement is about the local error; the second about the global error, after the $T/h$ steps needed to reach a fixed time. Both describe the same method.
+</Callout>
+
+## Why it matters
+
+Every quantitative conclusion drawn from a simulation, a peak prevalence, a time to extinction threshold, an equilibrium density, carries the numerical error with it. Unless you know that error is small compared with the effects you are interpreting, you cannot say whether a pattern belongs to the model or to the method. The tools in this lesson make that judgement routine: a convergence study tells you how large the truncation error is, and invariants and known results tell you whether the implementation is correct at all.
+
+## How it works in C++
+
+### Convergence studies
+
+If the global error behaves like $E(h) \approx C h^p$, then taking logarithms,
+
+$$
+\log E(h) \approx \log C + p\,\log h,
+$$
+
+so on a plot with logarithmic axes the error against the step size is a straight line whose slope is the order $p$. Here $C$ is a constant that depends on the model, the end time and the method, but not on $h$. The canonical program `ode/logistic_integrators.cpp` prints exactly this experiment for the logistic equation, which has a closed-form solution to compare against. Over a wider range of steps:
+
+<Figure id="numerical-error-convergence" />
+
+The three methods follow lines of slope 1, 2 and 4, as the theory predicts, once $h$ is small enough. With $h$ around 1 day the curves bend away from their lines: the leading-order term no longer dominates. And for RK4 the line stops at an error of about $10^{-13}$ individuals and then rises again.
+
+### The round-off floor
+
+That turn is the round-off floor. A `double` stores about 16 significant digits, so a population of about 100 is represented to within roughly $10^{-14}$. Every step adds rounding of that size, and the number of steps grows as $h$ shrinks. Truncation error falls with $h$ while accumulated rounding rises, so the total error has a minimum. For RK4 on this problem the minimum is reached around $h = 10^{-3}$ days; smaller steps cost more and give worse answers. For Euler the floor lies far below anything you would reach in practice, because its truncation error falls so slowly. Order is one more reason to prefer RK4: it reaches high accuracy before rounding becomes a concern.
+
+### Convergence without an exact solution
+
+Most models have no closed form to compare against. You can still measure the order, and even estimate the error, from three runs with steps $h$, $h/2$ and $h/4$. If $x_h \approx x + Ch^p$, the differences between successive runs shrink by a factor $2^p$:
+
+$$
+p \approx \log_2 \frac{\lvert x_h - x_{h/2} \rvert}{\lvert x_{h/2} - x_{h/4} \rvert},
+\qquad
+\lvert x_{h/4} - x \rvert \approx \frac{\lvert x_{h/2} - x_{h/4} \rvert}{2^p - 1}.
+$$
+
+Here $x$ is the unknown exact value of whatever you report (here the proportion infectious on day 30) and $x_h$ its approximation with step $h$. The program below applies this to the SIR model:
+
+<Example file="ode/sir_order_estimate.cpp" mark="39-44,57-62" />
+
+The observed orders, 1.01 for Euler and 3.91 for RK4, match the theory. The second formula then estimates the error of the finest RK4 run as $4.5 \times 10^{-8} / 15 \approx 3.0 \times 10^{-9}$; a much finer reference run ($h = 0.01$) shows the actual error is $3.1 \times 10^{-9}$. The same idea, comparing two approximations to estimate the error of one of them, drives adaptive step-size control (see <Concept id="adaptive-step" />).
+
+<Anchor id="stability" />
+
+### Numerical stability
+
+Truncation error shrinks smoothly as $h$ shrinks. Instability is different: below a critical step everything is fine, and above it the numerical solution explodes. The cleanest example is first-order elimination of a drug, $dC/dt = -kC$, with concentration $C$ (mg per litre) and elimination rate $k$ (per hour). Euler's update is
+
+$$
+C_{n+1} = C_n + h(-kC_n) = (1 - hk)\,C_n = g\,C_n,
+\qquad\text{so}\qquad C_n = g^n C_0,
+$$
+
+with amplification factor $g = 1 - hk$. The true solution $C_0 e^{-kt}$ decays for every $k > 0$. The numerical one decays only if $\lvert g \rvert < 1$, which requires
+
+$$
+0 < h < \frac{2}{k}.
+$$
+
+Within that range there are two regimes. For $h < 1/k$, $g$ is positive and the decay is monotone, like the truth. For $1/k < h < 2/k$, $g$ is negative: the solution still decays but changes sign at every step, producing negative concentrations that the model can never produce. At $h = 2/k$ it oscillates forever, and beyond, it oscillates with growing amplitude.
+
+<Figure id="euler-stability" />
+
+The program below tabulates the regimes for $k = 0.5$ per hour, where $2/k = 4$ hours:
+
+<Example file="ode/euler_stability_factor.cpp" mark="29-36" />
+
+For nonlinear models the same reasoning applies near an equilibrium. Close to $N = K$ the logistic equation behaves like $d(N - K)/dt \approx -r\,(N - K)$, an elimination equation with rate $r$, so Euler's method converges to $K$ only if $h < 2/r$, and does so without overshooting only if $h < 1/r$. For systems, the role of $k$ is played by the eigenvalues of the Jacobian matrix at the equilibrium: the fastest decaying mode sets the limit. RK4 has a larger stability range than Euler (for real decay rates, $h k$ up to about 2.8 instead of 2) but it too has a limit. Every explicit method does.
+
+### Stiffness and implicit methods
+
+The step-size limit is set by the *fastest* process in the model, even when that process has long since finished. Suppose a drug given by mouth enters the blood within minutes ($k_a = 50$ per hour) but is eliminated over days ($k_e = 0.1$ per hour). After the first hour, absorption is over and the concentration changes slowly; accuracy alone would allow steps of several hours. Stability does not: forward Euler needs $h < 2/k_a = 0.04$ hours for the whole run. Models that combine very fast and very slow processes are called **stiff**. They are common in biology: fast binding and slow synthesis in gene regulation, rapid enzyme–substrate equilibration, fast and slow ion channels in neurons, fast and slow trophic levels in food webs.
+
+Stiff problems call for **implicit methods**, which evaluate the slope at the *end* of the step. Backward (implicit) Euler is
+
+$$
+\mathbf{x}_{n+1} = \mathbf{x}_n + h\,\mathbf{f}(t_{n+1}, \mathbf{x}_{n+1}).
+$$
+
+The unknown $\mathbf{x}_{n+1}$ appears on both sides, so each step requires solving an equation, usually by Newton's method with the Jacobian of $\mathbf{f}$. That makes each step more expensive, but the payoff is stability. For elimination, solving $C_{n+1} = C_n - hkC_{n+1}$ gives $C_{n+1} = C_n / (1 + hk)$, which decays for every $h > 0$. Production solvers for stiff problems (backward differentiation formulae in SUNDIALS CVODE, Rosenbrock methods in Boost.Odeint, or LSODA, which switches automatically) are built on this idea. This site does not implement them, but you should recognise when you need one: if an explicit method demands absurdly small steps even where the solution looks smooth, the model is probably stiff.
+
+### Artefact or biology?
+
+Numerical problems often look like interesting dynamics. Some warning signs, and the checks that settle them:
+
+- **Oscillations where the model cannot oscillate.** The solution of a single autonomous first-order ODE is always monotone: it cannot pass the same value twice in different directions. Any oscillation in a simulated logistic or elimination model is therefore an artefact. Euler's method applied to the logistic equation with $h > 2/r$ even produces cycles and chaos, because with a large step the update is the discrete logistic map (see <Concept id="discrete-time" />), a different model.
+- **Impossible values.** Negative population sizes, concentrations or proportions in a model whose right-hand side keeps them positive point at the method.
+- **Results that change with h.** Halve the step. A biological pattern survives; an artefact changes or vanishes.
+- **Results that change with the method.** Run the same model with RK4 and with Euler at a small step. Converged answers agree.
+
+## A minimal example
+
+Known properties of the model provide independent checks. The SIR model has two. Its rates sum to zero, so $S + I + R$ stays at 1; and with $R(0) = 0$ and $S(0) + I(0) = 1$, the proportion that escapes infection satisfies the *final-size relation*
+
+$$
+\ln\frac{S_\infty}{S_0} = R_0\,(S_\infty - 1), \qquad R_0 = \frac{\beta}{\gamma},
+$$
+
+where $R_0$ is the basic reproduction number (dimensionless) and $S_\infty$ the final proportion susceptible. The relation has no closed-form solution either, but it is a single equation in one unknown, which bisection solves to full precision. The canonical program integrates the epidemic with RK4 and checks both:
+
+<Example file="ode/sir_rk4.cpp" mark="64-73" />
+
+With $h = 0.05$ days, the final proportion susceptible, about 0.107209, agrees with the final-size relation in every printed digit (the two differ by about $10^{-12}$), and $S + I + R$ never departs from 1 by more than about $5 \times 10^{-15}$. The two checks test different things. Every Runge–Kutta method conserves $S + I + R$ exactly apart from rounding, at *any* step size, so the conservation check tests the implementation (a sequential-update bug or a typing error in one rate breaks it) but says nothing about accuracy. The final-size check tests accuracy: a coarse step gives the wrong $S_\infty$ even though the sum is conserved perfectly.
+
+## Explore it
+
+<Lab id="ode" />
+
+<Check
+  id="halving"
+  kind="predict"
+  question="RK4 gives an error of 3.2 × 10⁻⁶ at the end time with h = 0.2. Roughly what error do you expect with h = 0.1, far from the round-off floor?"
+  options={["1.6 × 10⁻⁶", "8 × 10⁻⁷", "2 × 10⁻⁷", "3.2 × 10⁻⁷"]}
+  answer={2}
+  feedback={[
+    "Halving would be the behaviour of a first-order method such as Euler's.",
+    "Division by four is what a second-order method such as Heun's achieves.",
+    "A fourth-order method divides its global error by 2⁴ = 16 when h is halved: 3.2 × 10⁻⁶ / 16 = 2 × 10⁻⁷.",
+    "Division by ten would correspond to an order of about 3.3. RK4 is fourth order.",
+  ]}
+/>
+
+<Check
+  id="elimination-step"
+  kind="predict"
+  question="A drug is eliminated with k = 2 per hour, and the model dC/dt = −kC is integrated with Euler's method and h = 0.75 hours. What does the numerical solution do?"
+  options={[
+    "Decays monotonely, slightly faster than the true solution",
+    "Decays, but changes sign at every step",
+    "Oscillates with constant amplitude",
+    "Oscillates with growing amplitude",
+  ]}
+  answer={1}
+  feedback={[
+    "Monotone decay needs h < 1/k = 0.5 hours. Here the amplification factor 1 − hk is negative.",
+    "g = 1 − 0.75 × 2 = −0.5. Since |g| < 1 the solution decays, but each step flips its sign, so the concentration is negative every other step.",
+    "Constant amplitude needs g = −1, which happens at h = 2/k = 1 hour.",
+    "Growth needs |g| > 1, that is h > 2/k = 1 hour.",
+  ]}
+/>
+
+<Check
+  id="cycle"
+  kind="interpret"
+  question="A student integrates logistic growth with r = 0.8 per day using Euler's method and h = 2.7 days. The population settles into a cycle, alternating between two values around K. What should they conclude?"
+  options={[
+    "The population has a two-generation cycle, a known feature of density-dependent growth",
+    "The carrying capacity has been entered incorrectly",
+    "The cycle is an artefact: the logistic ODE cannot oscillate, and h = 2.7 exceeds the stability limit 2/r = 2.5 days for Euler near K",
+    "The cycle shows that the logistic model is chaotic for these parameters",
+  ]}
+  answer={2}
+  feedback={[
+    "Two-point cycles occur in the discrete-time logistic model, whose time step is biological. The continuous model has monotone solutions only.",
+    "The equilibrium K is still the centre of the cycle. Nothing about the parameters has changed; the step size has.",
+    "Near K the model behaves like elimination at rate r, so Euler's method is stable only for h < 2/r. Beyond that limit the update is the discrete logistic map, which cycles. Halving the step removes the cycle.",
+    "Solutions of a one-variable autonomous ODE are monotone, so they can be neither periodic nor chaotic. Any such behaviour comes from the method.",
+  ]}
+/>
+
+<Check
+  id="floor"
+  kind="read"
+  question="In the convergence figure, why does the RK4 error rise again for the very smallest steps?"
+  options={[
+    "RK4 becomes unstable when h is very small",
+    "Truncation error is now so small that accumulated rounding over many steps dominates the total error",
+    "The exact solution is computed inaccurately for small h",
+    "The logistic equation becomes stiff for small steps",
+  ]}
+  answer={1}
+  feedback={[
+    "Instability is a problem of large steps. Small steps are always stable.",
+    "Each step adds rounding of about 10⁻¹⁴ individuals, and smaller steps mean more steps. Once truncation error drops below that, the total error stops falling and slowly grows.",
+    "The exact solution is evaluated once at t = 10 with the same accuracy whatever h is.",
+    "Stiffness is a property of the model, not of the step size, and it limits large steps, not small ones.",
+  ]}
+/>
+
+## In biological modelling
+
+- **Make convergence part of every study.** Before interpreting a result, run it with the chosen step and with half that step (or a tighter tolerance). Report the step size and the change you observed. This takes minutes and is what reviewers mean by "numerically verified".
+- **Check invariants and benchmarks.** Population totals in closed compartment models, mass balance in nutrient or pharmacokinetic models, equilibria you can compute by hand, and special cases with closed forms are all cheap, independent tests (see <Concept id="verification" />).
+- **Know your fastest timescale.** It sets the step-size limit for explicit methods. If it is many orders of magnitude faster than the processes you care about, consider whether the fast variable can be set to its quasi-equilibrium, or use a stiff solver.
+- **Interpret with the error in mind.** Differences between scenarios that are smaller than the numerical error, measured by your convergence test, are not results.
+
+## Common mistakes
+
+- **Judging accuracy from one run.** A smooth, plausible trajectory may still be far from converged. Only a comparison across step sizes measures the error.
+- **Testing only on autonomous or linear problems.** Some bugs, such as wrong time offsets in the stages of RK4, are invisible on the logistic equation. Include a non-autonomous test.
+- **Expecting conservation to prove accuracy.** Runge–Kutta methods conserve linear invariants at any step size. A conserved total shows the code is consistent, not that $h$ is small enough.
+- **Shrinking h without limit.** Below the round-off floor, smaller steps make results worse and runs slower. A higher-order method is the better route to high accuracy.
+- **Reading negative concentrations or populations as biology.** In a model that cannot produce them, they are almost always a step that is too large.
+
+## Practice
+
+<Practice>
+
+1. Add Heun's method to `sir_order_estimate.cpp`, with $h = 0.2$, and report its observed order. Then deliberately break RK4 by building `k3` from `k1` instead of `k2`, and measure the order again.
+2. Integrate logistic growth ($r = 0.8$ per day, $K = 100$, $N_0 = 2$) with Euler's method to day 100 for $h = 1$, 2, 2.4, 2.6, 3 and 3.4 days. Predict from the stability analysis at which step the approach to $K$ starts to overshoot, and at which it stops converging. Describe what you see beyond that.
+3. For the oral dose with $k_a = 50$ per hour and $k_e = 0.1$ per hour: (a) What is the largest stable Euler step? How many steps does that imply for 48 hours? (b) Apply backward Euler by hand to $dA/dt = -k_a A$ and $dC/dt = k_a A/V - k_e C$: show that both updates can be solved explicitly because the system is linear, and that the result is stable for every $h > 0$.
+4. Extend the SIR model with waning immunity, $dR/dt = \gamma I - \omega R$ and $dS/dt = -\beta SI + \omega R$, with $\omega = 0.01$ per day. Which conservation law survives? Which check from the lesson no longer applies? Integrate with RK4 to day 1,000 and confirm the conservation law numerically.
+
+<details>
+<summary>Hint for exercise 1</summary>
+
+Heun should give an observed order close to 2. With `k3` built from `k1`, the method is still consistent (it converges to the right answer) but loses accuracy; expect an observed order of about 2 rather than 4. This is why convergence tests are the standard check on a new stepper.
+</details>
+
+<details>
+<summary>Answer to exercise 2</summary>
+
+Near $K$ the amplification factor is $1 - rh$. Overshooting starts when it becomes negative, at $h > 1/r = 1.25$ days, so $h = 2$ and 2.4 approach $K$ with damped oscillations. Convergence stops at $h = 2/r = 2.5$ days: $h = 2.6$ and 3 end in two-point cycles around $K$ (for 2.6 the cycle is still building up at day 100), and $h = 3.4$ wanders irregularly. The Euler update is $N + hrN(1 - N/K)$, which after rescaling is the discrete logistic map with growth parameter $1 + rh$, so it shows that map's period doubling and chaos. None of it belongs to the ODE.
+</details>
+
+<details>
+<summary>Answer to exercise 3</summary>
+
+(a) $h < 2/k_a = 0.04$ hours, so at least 1,200 steps for 48 hours, although after the first hour the solution changes on a timescale of $1/k_e = 10$ hours. (b) Backward Euler gives $A_{n+1} = A_n / (1 + hk_a)$ and then $C_{n+1} = \bigl(C_n + h k_a A_{n+1}/V\bigr) / (1 + hk_e)$. Both factors $1/(1 + hk)$ lie between 0 and 1 for every $h > 0$, so the scheme never blows up; its accuracy, not its stability, now limits the step.
+</details>
+
+<details>
+<summary>Hint for exercise 4</summary>
+
+The rates still sum to zero, so $S + I + R = 1$ remains a valid check. The final-size relation does not apply: with waning immunity susceptibles are replenished, and the epidemic settles to an endemic equilibrium rather than burning out. You can compute that equilibrium by hand ($S^* = \gamma/\beta$) and use it as the new benchmark.
+</details>
+
+</Practice>

@@ -1,0 +1,260 @@
+---
+title: Adaptive step-size control
+summary: Let the integrator choose its own steps. Estimate the local error with an embedded pair, accept or reject each step, and adjust h to meet a tolerance.
+level: seasoned
+module: 15
+manual: ["M15.adv"]
+minutes: 45
+optional: true
+objectives:
+  - Estimate the local error of a step without the true solution by comparing two methods of different order
+  - Scale the error estimate with absolute and relative tolerances and decide whether to accept a step
+  - Choose the next step from the error estimate with a safety factor and limits on growth and shrinkage
+  - Implement an adaptive Heun–Euler integrator that fails safely
+  - Name the standard embedded pairs and the libraries that provide them
+lab: ode
+references:
+  - "Hairer, Nørsett and Wanner (1993). Solving Ordinary Differential Equations I: Nonstiff Problems, section II.4. Springer."
+  - "Bogacki and Shampine (1989). A 3(2) pair of Runge–Kutta formulas. Applied Mathematics Letters 2: 321–325."
+  - "Dormand and Prince (1980). A family of embedded Runge–Kutta formulae. Journal of Computational and Applied Mathematics 6: 19–26."
+  - "Boost.Odeint documentation (boost.org); GNU Scientific Library manual, chapter on ordinary differential equations; SUNDIALS documentation (computing.llnl.gov/projects/sundials)."
+---
+
+## What it is
+
+A fixed step is a compromise. In an epidemic, the state changes quickly while the outbreak grows and peaks, and barely at all for the months afterwards. A step small enough for the peak wastes effort on the tail; a step suited to the tail ruins the peak. An *adaptive* integrator chooses the step as it goes: small where the solution changes rapidly, large where it is smooth, so that the error of every step stays below a tolerance you set.
+
+It needs three ingredients: an estimate of the error of each step, a rule for accepting or rejecting the step, and a rule for choosing the next step size. This lesson builds all three on top of <Concept id="runge-kutta" /> and <Concept id="numerical-error" />.
+
+### Estimating the error without the true solution
+
+The true solution is unknown, so the error of a step cannot be measured directly. But it can be *estimated* by taking the same step with two methods of different order. Suppose a method of order $p$ and one of order $p + 1$ both start from $\mathbf{x}$ at time $t$. Their local errors are
+
+$$
+\boldsymbol{\Delta}_{\mathrm{lo}} = \mathbf{x}_{\mathrm{lo}} - \mathbf{x}(t + h) = O(h^{p+1}),
+\qquad
+\boldsymbol{\Delta}_{\mathrm{hi}} = \mathbf{x}_{\mathrm{hi}} - \mathbf{x}(t + h) = O(h^{p+2}),
+$$
+
+where $\mathbf{x}(t + h)$ is the exact solution through $\mathbf{x}$. Subtracting,
+
+$$
+\mathbf{x}_{\mathrm{lo}} - \mathbf{x}_{\mathrm{hi}} = \boldsymbol{\Delta}_{\mathrm{lo}} - \boldsymbol{\Delta}_{\mathrm{hi}} \approx \boldsymbol{\Delta}_{\mathrm{lo}},
+$$
+
+because for small $h$ the higher-order error is negligible beside the lower-order one. The difference between the two answers, which you can compute, estimates the error of the lower-order answer, which you cannot.
+
+Computing two methods per step would double the cost, unless they share their slope evaluations. A pair of methods built to share them is an **embedded pair**. The simplest is Euler's method inside Heun's: both start with the slope $\mathbf{a} = \mathbf{f}(t, \mathbf{x})$, and Heun's method needs one more, $\mathbf{b} = \mathbf{f}(t + h, \mathbf{x} + h\mathbf{a})$. Then
+
+$$
+\mathbf{x}_{\mathrm{Euler}} = \mathbf{x} + h\,\mathbf{a}, \qquad
+\mathbf{x}_{\mathrm{Heun}} = \mathbf{x} + \tfrac{h}{2}(\mathbf{a} + \mathbf{b}), \qquad
+\mathbf{x}_{\mathrm{Euler}} - \mathbf{x}_{\mathrm{Heun}} = \tfrac{h}{2}(\mathbf{a} - \mathbf{b}).
+$$
+
+The error estimate for component $i$ is $e_i = \tfrac{h}{2}\lvert b_i - a_i \rvert$, at no cost beyond the two evaluations Heun's method needs anyway. Such pairs are labelled by their orders, here Heun–Euler 2(1).
+
+### Tolerances and the scaled error
+
+A tolerance must mean something for every variable, large or small. Professional solvers combine an *absolute* tolerance $a_{\mathrm{tol}}$ with a *relative* one $r_{\mathrm{tol}}$ into a scale per component,
+
+$$
+s_i = a_{\mathrm{tol}} + r_{\mathrm{tol}} \max\bigl(\lvert x_i \rvert, \lvert x_{\mathrm{Heun},i} \rvert\bigr),
+$$
+
+and measure the step by its largest scaled error,
+
+$$
+E = \max_i \frac{e_i}{s_i}.
+$$
+
+$E$ is dimensionless; the step is acceptable if $E \le 1$. The relative part makes the control independent of the units: an error of $10^{-6}$ is small for a variable near 1 and large for one near $10^{-5}$. The absolute part stops the solver from demanding impossible relative accuracy from a variable that decays towards zero, such as the proportion infectious late in an epidemic. Taking the maximum over components lets the hardest variable set the step.
+
+### Accept or reject
+
+If $E > 1$, the step is **rejected**: time does not advance, the state is unchanged and the step is retried with a smaller $h$. If $E \le 1$, the step is **accepted** and the solution moves on. Rejected attempts are not free; they cost evaluations and are counted in the total work.
+
+### Choosing the next step
+
+The Euler error estimate scales as $h^2$. If a step of size $h$ produced the scaled error $E$, a step $h_{\mathrm{new}}$ would produce about $E\,(h_{\mathrm{new}}/h)^2$. Setting that equal to 1 gives the step that would just meet the tolerance, $h_{\mathrm{new}} = h/\sqrt{E}$. In general, for a lower-order method of order $p$ the exponent is $1/(p + 1)$. Used naively, that rule misbehaves, so three safeguards are standard:
+
+- a **safety factor** (typically 0.8 to 0.9) aims a little below the predicted step, because the estimate is itself approximate and a step just at the limit is often rejected;
+- **growth and shrink limits** (for example at most five times larger and at least ten times smaller per attempt) stop a tiny error estimate from producing an enormous next step, and a huge one from collapsing the step;
+- a **minimum step**: if the step must shrink below a set minimum (which should lie well above the rounding error of $t$ itself), something is wrong (a singularity in the model, stiffness, or a bug), and the integrator should stop with an error rather than crawl forever.
+
+Altogether,
+
+$$
+h_{\mathrm{new}} = h \cdot \min\Bigl(f_{\max},\ \max\bigl(f_{\min},\ \sigma / \sqrt{E}\bigr)\Bigr),
+$$
+
+with safety factor $\sigma = 0.9$, growth limit $f_{\max} = 5$ and shrink limit $f_{\min} = 0.1$. On acceptance only the growth limit matters in practice, on rejection only the shrink limit.
+
+### Which answer to keep
+
+The error estimate refers to the lower-order (Euler) answer, but an accepted step keeps the higher-order (Heun) answer. This practice, called *local extrapolation*, is nearly universal: the Heun value is more accurate, so the step that is actually taken is usually better than the tolerance requires. The price is that the error of the value you keep is not itself estimated. In practice that is harmless, but it is one reason the tolerance is a target, not a guarantee.
+
+## Why it matters
+
+Adaptive control changes what you specify. Instead of a step size, whose consequences for accuracy you can only discover by experiment, you state an accuracy and let the integrator find the steps. For models with fast and slow phases (outbreaks, pulses of drug absorption, the spike of a neuron, a bloom and crash of plankton) the savings are large, because the steps can differ by orders of magnitude between phases. And the controller doubles as a diagnostic: steps that shrink drastically point to where the model is hard to integrate.
+
+Two caveats keep expectations realistic. The tolerance controls the *local* error of each step, not the *global* error at the end; the two are related, but only a run with a tighter tolerance tells you how far the result has converged. And an explicit adaptive method does not cure stiffness: on a stiff problem it will find the stability limit by trial and error and stay there (see <Concept id="numerical-stability" />).
+
+## How it works in C++
+
+The program below integrates the SIR model for 400 days with the Heun–Euler pair. `tryStep` makes one attempt: it computes the shared slope, the Euler predictor and the slope there, the Heun solution and the scaled error, and then either rejects the attempt and shrinks `h`, or accepts it, advances `t` and `x` and adjusts `h`. It reports success with its `bool` return value and changes `t`, `x` and `h` through references (see <Concept id="references" />). The driver loops until the end time, clipping the last step so that the run ends exactly at 400 days.
+
+<Example file="ode/adaptive_heun_euler_sir.cpp" mark="33-55,67-75" />
+
+The first trial step of one day is far too long; the controller rejects it, shrinks the step to about 0.13 days and then lets it evolve. Over the whole run it accepts 1,779 steps and rejects only 3. Steps range from 0.018 days during the outbreak to 16 days in the tail, and the step counts per 50-day window tell the same story: 1,573 steps in the first 50 days, 179 in the next 50, and between 3 and 8 in each window after that. The final proportion susceptible, 0.10720885, differs from the final-size relation's 0.10720857 by about $3 \times 10^{-7}$, below the requested tolerance of $10^{-6}$ per step.
+
+The minimum step is enforced with an exception (see <Concept id="exceptions" />): if a rejection pushes `h` below `hMin`, `tryStep` throws, and `main` reports where the integration failed instead of looping indefinitely.
+
+<Callout kind="manual" title="Absolute and mixed tolerances">
+The course manual's adaptive integrator compares the error estimate with a single absolute tolerance. This site uses a mixed absolute and relative tolerance, as Boost.Odeint, GSL, SUNDIALS and most other professional solvers do, so that the same settings work for variables of very different sizes. With $r_{\mathrm{tol}} = 0$ the two approaches coincide.
+</Callout>
+
+## Explore it
+
+<Figure id="adaptive-step-size-steps" />
+
+The step size follows the dynamics of the epidemic. It falls to about 0.02 days (with tolerance $10^{-6}$) while infections grow and peak, when the slopes change fastest within a step, and grows steadily as the epidemic fades. A tolerance a hundred times looser gives steps about ten times longer, as the square-root rule predicts.
+
+<Figure id="adaptive-step-size-prevalence" />
+
+Each dot is the end of one accepted step. They crowd together on the steep flanks and around the peak and thin out in the tail.
+
+<Figure id="adaptive-step-size-work-precision" />
+
+The decisive comparison is cost against accuracy. For the same error in the final proportion susceptible, the adaptive integrator needs several times fewer evaluations than Heun's method with a fixed step, although both use the same formula for the step itself. The difference is entirely in where the steps are placed.
+
+<Lab id="ode" />
+
+<Check
+  id="next-step"
+  kind="predict"
+  question="An attempted Heun–Euler step with h = 0.2 days gives a scaled error E = 4. The controller uses safety factor 0.9, shrink limit 0.1 and growth limit 5. What happens?"
+  options={[
+    "The step is accepted and the next step is 0.2 × 0.9 / 2 = 0.09 days",
+    "The step is rejected and retried with h = 0.2 × 0.9 / √4 = 0.09 days",
+    "The step is rejected and retried with h = 0.2 × 0.1 = 0.02 days",
+    "The step is rejected and retried with h = 0.2 / 4 = 0.05 days",
+  ]}
+  answer={1}
+  feedback={[
+    "E > 1 means the estimated error is four times the tolerance, so the step cannot be accepted.",
+    "E > 1, so the attempt is rejected. Because the error scales as h², the step that would just meet the tolerance is h/√E = 0.1; the safety factor gives 0.09. The shrink limit (×0.1) is not reached.",
+    "The shrink limit is only a floor on the reduction factor. Here the predicted factor, 0.9/√4 = 0.45, is well above 0.1.",
+    "The error of the Euler estimate scales as h², not h, so the step is reduced by the square root of E.",
+  ]}
+/>
+
+<Check
+  id="scale"
+  kind="read"
+  question="Why is each component's error divided by atol + rtol × |x| rather than compared with a single fixed number?"
+  options={[
+    "To make the error estimate more accurate",
+    "So that large variables are controlled in relative terms and variables near zero do not demand impossible relative accuracy",
+    "Because the Euler and Heun solutions have different units",
+    "To guarantee that the global error is below the tolerance",
+  ]}
+  answer={1}
+  feedback={[
+    "The scaling does not change the estimate itself, only how it is judged.",
+    "The relative part adapts the tolerance to the size of each variable; the absolute part takes over when a variable such as I decays towards zero, where a purely relative requirement would force ever smaller steps.",
+    "Both solutions approximate the same state and share its units. Different variables of the state may differ in size by orders of magnitude, which is what the scale addresses.",
+    "The tolerance controls the local error of each step. The global error depends on how errors propagate, and is checked by tightening the tolerance.",
+  ]}
+/>
+
+<Check
+  id="small-steps"
+  kind="interpret"
+  question="The adaptive integrator takes its smallest steps between days 15 and 25 of the epidemic. What does that tell you?"
+  options={[
+    "The model is unstable between days 15 and 25",
+    "The solution changes most rapidly within a step there, so the method needs short steps to stay within the tolerance",
+    "The parameter values are only valid outside that interval",
+    "Rounding errors are largest at the peak of the epidemic",
+  ]}
+  answer={1}
+  feedback={[
+    "The model is well behaved throughout. Step sizes reflect how hard the trajectory is to approximate with this method, not a property such as instability.",
+    "The step size is a measure of the method's difficulty: where slopes change quickly, the difference between the Euler and Heun answers grows, and the controller responds by shortening the step. Another method would choose different steps for the same model.",
+    "The parameters are the same for the whole run. The step size is a choice made by the numerical method.",
+    "Rounding is negligible at these step sizes. The controller is responding to truncation error.",
+  ]}
+/>
+
+## In biological modelling
+
+### Standard embedded pairs
+
+The Heun–Euler pair is ideal for learning but too low in order for serious work. Two higher-order pairs dominate practice, and you will meet them under these names in every library:
+
+- **Bogacki–Shampine 3(2)**: a third-order method with an embedded second-order estimate. It has four stages, but the last slope of an accepted step is the slope at the new point, which is exactly the first slope of the next step. Reusing it ("first same as last", FSAL) brings the cost to three evaluations per step. It suits moderate tolerances. MATLAB's `ode23` and SciPy's `RK23` are of this kind.
+- **Dormand–Prince 5(4)**: a fifth-order method with a fourth-order estimate and FSAL, about six evaluations per step. It is the default general-purpose choice: MATLAB's `ode45`, SciPy's `RK45` and Boost.Odeint's `runge_kutta_dopri5` use it.
+
+Both follow exactly the pattern of this lesson: shared stages, an error estimate from the difference, a scaled error, accept or reject, and a step update with exponent $1/(p+1)$ for the lower order $p$ (a cube root for Bogacki–Shampine, a fifth root for Dormand–Prince). Their coefficient tables are published in the original papers listed above and in standard texts.
+
+### Use a library for production work
+
+For research code, prefer a tested library over your own integrator:
+
+- **Boost.Odeint** (header-only C++): fixed-step and controlled steppers, Dormand–Prince with dense output, and Rosenbrock methods for stiff systems. It works with `std::vector`, `std::array` and your own state types.
+- **GNU Scientific Library (GSL)**, `gsl_odeiv2`: embedded Runge–Kutta pairs and implicit methods behind a C interface.
+- **SUNDIALS** (CVODE, ARKODE, IDA): the reference for large and stiff systems, with variable-order implicit methods and sensitivity analysis.
+
+Having written a controller yourself, you know what their options mean: absolute and relative tolerances, an initial step, a minimum step, a maximum number of steps, and what an error such as "step size too small" is telling you.
+
+### Practical advice
+
+- **Choose tolerances with the biology in mind.** For proportions, $10^{-6}$ to $10^{-8}$ is usually ample. For population sizes in individuals an absolute tolerance far below one individual is rarely meaningful, but a relative tolerance still is.
+- **Check convergence by tightening the tolerance.** Rerun with a tolerance ten or a hundred times smaller; the quantities you report should not move appreciably.
+- **Stop at discontinuities.** A dose, a harvest or a switch of season is better handled by integrating exactly to the event and restarting, than by letting the controller discover the jump through a cascade of rejections.
+- **Get output at regular times** either by clipping steps so that they end at output times (simple, slightly more steps) or by interpolating between accepted steps ("dense output", provided by good libraries).
+
+## Common mistakes
+
+- **Advancing time on a rejected step.** A rejected attempt must leave `t` and `x` unchanged. Only `h` changes.
+- **Keeping the wrong solution.** After computing the higher-order answer, propagate it; keeping the Euler value throws away accuracy you already paid for.
+- **No limits on the step change.** Without a growth limit, a step with an error estimate of almost zero (for example at an equilibrium, or when two slopes happen to coincide) produces a gigantic next step. Without a safety factor many steps are rejected.
+- **Purely relative tolerance.** A variable decaying towards zero then demands ever more relative accuracy and the steps never grow again.
+- **No escape route.** Without a minimum step and a limit on the number of attempts, a model with a singularity or a bug can keep the program running forever. Check also that the state stays finite: once it overflows to infinity the error estimate becomes NaN, and comparisons with NaN are always false, so a careless controller accepts the step.
+- **Equating the tolerance with the final error.** The tolerance controls each step; the accumulated error can be larger or smaller. Measure it.
+
+## Practice
+
+<Practice>
+
+1. Run the adaptive SIR program with `atol = rtol` equal to $10^{-4}$, $10^{-6}$ and $10^{-8}$. Record the number of evaluations and the error in the final proportion susceptible, using the final-size relation $S_\infty \approx 0.1072085721$. How do the error and the cost scale with the tolerance?
+2. Run it with a purely absolute tolerance (`rtol = 0`, `atol = 1e-6`) and with a purely relative one (`atol = 0`, `rtol = 1e-6`). Predict before running which one needs more steps, and where in the epidemic they are spent.
+3. Hyperbolic growth, $dN/dt = aN^2$, describes a population whose per-capita growth rate increases with density. With $a = 0.01$ per individual per day and $N_0 = 10$, its solution $N(t) = N_0 / (1 - aN_0 t)$ becomes infinite at $t = 10$ days. Adapt the program to this model and integrate to day 20. What does your controller do? Add a check with `std::isfinite` and a maximum number of attempts, so that the program stops with an informative message.
+4. Change the driver so that output appears every 5 days at exactly those times, by never letting a step cross the next output time. How many extra steps does that cost compared with the unconstrained run?
+
+<details>
+<summary>Answer to exercise 1</summary>
+
+Approximately: 414 evaluations and an error of $2.6 \times 10^{-5}$ at $10^{-4}$; 3,564 evaluations and $2.8 \times 10^{-7}$ at $10^{-6}$; about 35,000 evaluations and $3.5 \times 10^{-9}$ at $10^{-8}$. Each hundredfold tightening reduces the error about a hundredfold and multiplies the cost by about ten. The second relation follows from the step rule: the step scales with the square root of the tolerance, so the number of steps scales with its inverse square root.
+</details>
+
+<details>
+<summary>Answer to exercise 2</summary>
+
+The purely absolute run behaves much like the mixed one (about 4,300 evaluations). The purely relative run needs over 90,000: after the epidemic, $I$ decays towards zero but the controller still demands a relative accuracy of $10^{-6}$ in it, so the steps never grow beyond about 0.01 days, although $I$ is by then smaller than $10^{-20}$ and biologically irrelevant. This is exactly why practical tolerances combine both parts.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+
+The steps shrink as the singularity approaches, but because each accepted step can also shrink the next one, the controller may never reject a step and never reach `hMin`. With the program as written, the state overflows to infinity just after the singularity, at about $t = 10.000004$ days; from then on the scaled error is NaN, `std::max(E, NaN)` returns `E`, and steps are accepted with $N = \infty$ all the way to day 20 after hundreds of thousands of steps. A test `if (!std::isfinite(heun[i])) throw …` and a cap on the number of attempts turn this silent failure into a clear error.
+</details>
+
+<details>
+<summary>Hint for exercise 4</summary>
+
+Before each attempt, set `h = std::min(h, tNextOutput - t)`, and print when `t` reaches `tNextOutput` (set `t` equal to it exactly on that step, as the fixed-step driver did with `t1`). Only steps longer than the output interval are affected, so the extra cost falls in the tail of the epidemic. Remember that a clipped step should not count as evidence that the next step must be small: base the next step on the step the controller wanted, not on the clipped one.
+</details>
+
+</Practice>

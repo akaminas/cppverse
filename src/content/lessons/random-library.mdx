@@ -1,0 +1,278 @@
+---
+title: Engines and distributions
+summary: Draw survival, offspring numbers, waiting times and body masses from std::mt19937_64 and the standard distributions, correctly parameterised.
+level: intermediate
+module: 16
+manual: ["M16.2"]
+minutes: 40
+objectives:
+  - Combine an engine with a distribution object to draw random values
+  - Choose the distribution and parameters that match a biological process
+  - Pass the engine by reference and create it once per run
+  - Seed an engine through std::seed_seq
+standard: c++17
+references:
+  - "cppreference.com: Pseudo-random number generation (<random>)"
+  - "cppreference.com: std::seed_seq"
+---
+
+## What it is
+
+The `<random>` library splits the production of random numbers into two kinds of object.
+
+- An **engine** produces a stream of uniformly distributed raw integers. This site always uses `std::mt19937_64`, introduced in <Concept id="random-seeds" />.
+- A **distribution** turns raw integers into values with a particular probability distribution: a yes/no outcome with probability $p$, a count with a given mean, a waiting time with a given rate.
+
+You create one engine, as many distribution objects as you need, and draw a value by *calling the distribution with the engine as its argument*:
+
+```cpp
+std::mt19937_64 rng(20261024);                   // one engine, seeded once
+std::poisson_distribution<int> clutchSize(3.2);  // mean 3.2 eggs per clutch
+const int eggs = clutchSize(rng);                // one draw
+```
+
+The template argument (`<int>`) sets the type of the values returned, and the constructor arguments set the parameters of the distribution. Each call `clutchSize(rng)` takes as many raw numbers from the engine as it needs and returns one clutch size.
+
+## Why it matters
+
+Each kind of chance event in biology has a natural distribution. Choosing the right one, with correctly interpreted parameters, is part of writing down the model.
+
+| Process | Distribution | C++ | Parameters |
+|---|---|---|---|
+| One individual survives the year | Bernoulli | `std::bernoulli_distribution` | probability $p$ |
+| Survivors among $n$ individuals | Binomial | `std::binomial_distribution<int>` | $n$, $p$ |
+| Eggs in a clutch, seeds per plant | Poisson | `std::poisson_distribution<int>` | mean $\mu$ |
+| Time until the next event | Exponential | `std::exponential_distribution<double>` | **rate** $\lambda$ |
+| Body mass, measurement error | Normal | `std::normal_distribution<double>` | mean $\mu$, **standard deviation** $\sigma$ |
+| A position along a transect | Uniform (real) | `std::uniform_real_distribution<double>` | $[a, b)$ |
+| One of 25 numbered quadrats | Uniform (integer) | `std::uniform_int_distribution<int>` | $a, \dots, b$ inclusive |
+
+Their probabilities, with the symbols the C++ constructors use:
+
+$$
+\begin{aligned}
+\text{Bernoulli:}\quad & P(X = 1) = p, \quad P(X = 0) = 1 - p \\
+\text{binomial:}\quad & P(K = k) = \binom{n}{k} p^k (1 - p)^{n - k}, \quad k = 0, \dots, n \\
+\text{Poisson:}\quad & P(K = k) = \frac{\mu^k e^{-\mu}}{k!}, \quad k = 0, 1, 2, \dots \\
+\text{exponential:}\quad & f(\tau) = \lambda e^{-\lambda \tau}, \quad \tau \ge 0, \quad \text{mean } 1/\lambda \\
+\text{normal:}\quad & f(x) = \frac{1}{\sigma\sqrt{2\pi}} \exp\!\left(-\frac{(x - \mu)^2}{2\sigma^2}\right)
+\end{aligned}
+$$
+
+Here $p$ is a probability (no unit), $n$ a number of individuals, $\mu$ a mean count or a mean mass (in grams, say), $\sigma$ a standard deviation in the same unit as $x$, and $\lambda$ a rate in events per unit time, so that $\tau$ and the mean $1/\lambda$ are times.
+
+## How it works in C++
+
+### One engine, several distributions
+
+The program below draws one value from each distribution in the table, for illustrative parameter values, and then checks the exponential distribution's parameterisation by averaging many waiting times.
+
+<Example file="stochastic/random_distributions_tour.cpp" mark="16-17,20-26" />
+
+There is no expected output to compare with. The C++ standard specifies every engine exactly, but for distributions it specifies only *what* distribution must be produced, not the algorithm. GCC's library (libstdc++) and Clang's (libc++) turn the same raw numbers into different clutch sizes and body masses. Both are correct, and the statistics agree; the individual values do not. A seed therefore reproduces a run exactly only with the same standard library.
+
+### Read the parameters carefully
+
+Most errors with `<random>` are not crashes but wrong parameters, which produce plausible-looking nonsense.
+
+- `std::exponential_distribution<double>(lambda)` takes the **rate**. A pollinator that visits at 0.25 visits per hour has a mean waiting time of $1/0.25 = 4$ hours, which is what the last lines of the program confirm.
+- `std::normal_distribution<double>(mean, sd)` takes the **standard deviation**, not the variance.
+- `std::uniform_int_distribution<int>(a, b)` includes **both** ends; `std::uniform_real_distribution<double>(a, b)` includes $a$ but not $b$.
+- Integer distributions need an integer type (`<int>`, `<long>`), real distributions a floating-point type (`<double>`). Asking for `std::uniform_real_distribution<int>` is not allowed.
+- Rates, means and probabilities must be valid: $\lambda > 0$, $\mu > 0$, $0 \le p \le 1$. A rate of zero is a *precondition violation*, with undefined results; you will meet that case again in <Concept id="gillespie" />.
+
+When a parameter changes from draw to draw, for example when clutch size depends on a female's condition, simply create the distribution where you need it. Distribution objects are small and cheap to make:
+
+```cpp
+// Mean clutch size depends on the female's body condition.
+int drawClutch(double meanEggs, std::mt19937_64& rng) {
+    std::poisson_distribution<int> clutch(meanEggs);
+    return clutch(rng);
+}
+```
+
+The *engine*, in contrast, must not be re-created: it carries the position in the random sequence.
+
+### Pass the engine by reference
+
+An engine is an object with a large state (312 numbers). Passed **by value**, a function receives a copy; it draws from the copy, the copy is destroyed when the function returns, and the caller's engine never moves on. Every call then returns the same number. The program below shows this, and the related mistake of creating a new engine inside a loop. It prints raw engine output only, so its output is the same on every platform.
+
+<Example file="stochastic/random_engine_by_reference.cpp" mark="12-13,27" />
+
+The copy and the restarted engine return the first number of the sequence three times. Only the function that takes `std::mt19937_64&` returns three successive numbers, and because the first two loops never advanced the original engine, they are the first three numbers of the sequence. Passing by reference is explained in <Concept id="references" />. The rule for models: create the engine once, in `main` or in the object that runs the simulation, and pass it by reference to every function that draws random numbers.
+
+<Callout kind="note" title="A global engine">
+Some programs, including later chapters of the course manual, declare the engine as a global variable so that every function can reach it. That works, but it hides which functions consume random numbers and makes it hard to give each replicate its own engine. An explicit `std::mt19937_64&` parameter documents the dependency.
+</Callout>
+
+### Seeding with `std::seed_seq`
+
+Seeding with a single integer, as in `std::mt19937_64 rng(20261024)`, fills the engine's 312-number state from that one number by a fixed recipe. `std::seed_seq` instead takes a *list* of integers and mixes all of them into the whole state:
+
+```cpp
+std::seed_seq seeds{baseSeed, replicate};   // two 32-bit values
+std::mt19937_64 rng(seeds);
+```
+
+This is the natural way to give each replicate of an experiment its own stream from a base seed and the replicate number, which <Concept id="replicates" /> uses. Two details matter. `std::seed_seq` keeps only the lowest 32 bits of each value, so a 64-bit seed must be split into two halves to be used in full; the examples on this site keep seeds below $2^{32} \approx 4.3 \times 10^9$. And the mixing algorithm is specified by the standard, so an engine seeded through `std::seed_seq` produces the same raw sequence everywhere.
+
+<Callout kind="manual" title="Differences from the course manual">
+The manual seeds with `rng.seed(seed)`, using a seed taken from the system clock. The member function `seed()` is equivalent to seeding in the constructor, and it accepts a `std::seed_seq` too. The manual also refers to cplusplus.com for the list of distributions; cppreference.com is the more complete and more current reference.
+</Callout>
+
+## Explore it
+
+The figure compares Poisson clutch sizes drawn by the site's browser generator with the exact probabilities $\mu^k e^{-\mu}/k!$ for $\mu = 3.2$.
+
+<Figure id="random-library-poisson" />
+
+With 100 draws, the sampled frequencies scatter visibly around the exact values; with 10 000 they are hard to tell apart. The typical error of a frequency estimated from $n$ draws shrinks like $1/\sqrt{n}$, so 100 times more draws make it about 10 times smaller, in line with the largest deviations given under the figure.
+
+<Check
+  id="rate"
+  kind="predict"
+  question="What is the mean of the values drawn from this distribution?"
+  code={`std::exponential_distribution<double> nextVisit(2.0);  // visits per hour`}
+  options={["2 hours", "0.5 hours", "1 hour", "It depends on the seed"]}
+  answer={1}
+  feedback={[
+    "2.0 is the rate, not the mean. Treating the rate as a mean is the most common mistake with this distribution.",
+    "The exponential distribution is parameterised by its rate λ; its mean is 1/λ = 1/2 hour. Two visits per hour means half an hour between visits on average.",
+    "The mean does not depend on how many visits you count; it is set by the rate alone.",
+    "Individual draws depend on the seed; the mean of the distribution does not.",
+  ]}
+/>
+
+<Check
+  id="by-value"
+  kind="debug"
+  question="Every nest in a simulation gets the same clutch size. Which line explains it?"
+  code={`int drawClutch(std::mt19937_64 rng, double meanEggs) {
+    std::poisson_distribution<int> clutch(meanEggs);
+    return clutch(rng);
+}`}
+  options={[
+    "The Poisson distribution is created inside the function",
+    "The engine is passed by value, so each call draws from a fresh copy of the same state",
+    "The function returns an int instead of a double",
+    "meanEggs should be passed by const reference",
+  ]}
+  answer={1}
+  feedback={[
+    "Creating a distribution per call is fine: it holds only its parameter. The state that must persist is the engine's.",
+    "Each call copies the caller's engine, draws from the copy and throws it away. The caller's engine never advances, so the same raw numbers, and the same clutch size, come back every time. Write std::mt19937_64& rng.",
+    "Clutch sizes are counts; int is the right type.",
+    "A double is cheap to copy and is best passed by value. The problem is the engine.",
+  ]}
+/>
+
+<Check
+  id="normal-sd"
+  kind="read"
+  question="A model assumes that adult body mass is normally distributed with mean 21 g and variance 6.25 g². Which declaration draws from this distribution?"
+  options={[
+    "`std::normal_distribution<double> mass(21.0, 6.25);`",
+    "`std::normal_distribution<double> mass(21.0, 2.5);`",
+    "`std::normal_distribution<double> mass(6.25, 21.0);`",
+    "`std::normal_distribution<int> mass(21, 2.5);`",
+  ]}
+  answer={1}
+  feedback={[
+    "The second argument is the standard deviation. This would give a standard deviation of 6.25 g, a variance of about 39 g².",
+    "The standard deviation is the square root of the variance: √6.25 = 2.5 g. The constructor takes the mean, then the standard deviation.",
+    "The mean comes first.",
+    "A normal distribution produces real numbers; its template argument must be a floating-point type such as double.",
+  ]}
+/>
+
+<Check
+  id="portable"
+  kind="interpret"
+  question="Two students run random_distributions_tour.cpp with the same seed. One compiled with GCC on Linux, the other with Clang and libc++ on macOS. Their clutch sizes differ. What does this tell you?"
+  options={[
+    "One of the compilers has a bug in its Poisson distribution",
+    "The seed was not used",
+    "Nothing is wrong: the engines agree, but the standard does not fix the algorithm each library uses to turn raw numbers into Poisson values",
+    "std::mt19937_64 is implemented differently on macOS",
+  ]}
+  answer={2}
+  feedback={[
+    "Both libraries produce correctly Poisson-distributed values; they simply use different algorithms to get there.",
+    "The seed was used: on either machine, rerunning with the same seed reproduces that machine's numbers exactly.",
+    "Engine output is specified bit for bit; distribution algorithms are not. Compare such runs through their statistics (means, frequencies), not value by value.",
+    "The engine is specified exactly by the standard and gives identical raw numbers everywhere.",
+  ]}
+/>
+
+## In biological modelling
+
+### Individuals or cohorts
+
+A year of survival in a cohort of 40 fledglings can be simulated individual by individual or in one draw:
+
+```cpp
+std::bernoulli_distribution survives(0.7);
+int survivors = 0;
+for (int bird = 0; bird < 40; ++bird) {
+    if (survives(rng)) ++survivors;           // 40 Bernoulli draws
+}
+
+std::binomial_distribution<int> cohort(40, 0.7);
+const int survivorsAtOnce = cohort(rng);      // one binomial draw
+```
+
+The two versions have *exactly* the same distribution: the number of successes in $n$ independent trials with probability $p$ is binomial. Use the Bernoulli loop when individuals carry their own attributes (an individual-based model), and the binomial draw when only the count matters; for large cohorts it is much faster. The two versions consume different numbers of raw values, so the same seed gives different individual results.
+
+### Choosing distributions with care
+
+- **Poisson counts** have variance equal to their mean. Clutch sizes or seed numbers that vary more than that (over-dispersion) are better described by `std::negative_binomial_distribution`.
+- **Normal traits** can come out negative. For masses and lengths, a `std::lognormal_distribution`, or a normal distribution with a mean many standard deviations above zero, avoids impossible values.
+- **Exponential waiting times** describe events that happen at a constant rate, with no memory of how long one has already waited. They are the engine of the Gillespie algorithm (<Concept id="waiting-times" />).
+
+## Common mistakes
+
+- **Rate or mean?** `std::exponential_distribution` takes the rate. **Standard deviation or variance?** `std::normal_distribution` takes the standard deviation.
+- **Passing the engine by value**, or creating a new engine inside a function or a loop: the same numbers repeat.
+- **Inclusive bounds.** `std::uniform_int_distribution<int>(1, 25)` returns 1 to 25 including 25. To draw an index into a container of size $n$, the upper bound is $n - 1$.
+- **Expecting identical values across standard libraries.** Only engine output is portable.
+- **Using a normal distribution for counts.** Counts are whole numbers and cannot be negative; use a binomial or Poisson model.
+
+## Practice
+
+<Practice>
+
+1. **Lifespans.** An adult songbird survives each year with probability 0.6, independently of its age. Write a program that simulates the number of complete years survived by each of 10 000 birds using `std::bernoulli_distribution`, and prints the mean. Compare it with the theoretical mean $s/(1 - s)$ for survival probability $s$.
+2. **Seeds and seedlings.** Each of 50 plants produces a Poisson number of seeds with mean 12, and each seed germinates with probability 0.15. Simulate the total number of seedlings in two ways: (a) a Bernoulli draw for every seed; (b) one binomial draw per plant. Repeat each 2000 times and compare the means and variances. Then explain why the total is also Poisson-distributed, with mean $50 \times 12 \times 0.15 = 90$.
+3. **Units.** A colleague writes `std::exponential_distribution<double> wait(4.0);` to model a mean time of 4 days between rainfall events. What mean does the code actually produce, and how should the line read?
+
+<details>
+<summary>Worked answer to exercise 1</summary>
+
+```cpp
+std::mt19937_64 rng(seed);
+std::bernoulli_distribution survivesYear(0.6);
+long total = 0;
+for (int bird = 0; bird < 10000; ++bird) {
+    int years = 0;
+    while (survivesYear(rng)) ++years;   // stop at the first failure
+    total += years;
+}
+std::cout << "mean years survived: " << static_cast<double>(total) / 10000 << '\n';
+```
+
+The number of years survived before the first death is geometric with mean $s/(1 - s) = 0.6/0.4 = 1.5$ years. With 10 000 birds the printed mean should be within a few hundredths of 1.5.
+</details>
+
+<details>
+<summary>Hint for exercise 2</summary>
+
+Both methods give the same distribution, so their means and variances agree to within sampling error. Selecting each event of a Poisson process independently with probability $q$ ("thinning") gives another Poisson process, with mean multiplied by $q$; summing independent Poisson counts gives a Poisson count whose mean is the sum. So the variance should be close to 90 as well.
+</details>
+
+<details>
+<summary>Answer to exercise 3</summary>
+
+A rate of 4 per day gives a mean of $1/4$ day, sixteen times too short. The intended model is `std::exponential_distribution<double> wait(1.0 / 4.0);`, a rate of 0.25 rainfall events per day.
+</details>
+
+</Practice>

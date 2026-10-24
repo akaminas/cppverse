@@ -1,0 +1,9 @@
+pass  torusDelta: plants 0.2 apart
+pass  torusDelta: shortest path crosses the edge
+pass  torusDelta: symmetric
+pass  wrap: positions return to [0, 1)
+pass  survival: an uncrowded plant survives with s0
+pass  survival: falls as crowding rises
+pass  equilibrium: s(N*) (1 + f) = 1
+pass  equilibrium: none when s0 (1 + f) < 1
+8 of 8 checks passed

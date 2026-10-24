@@ -1,0 +1,220 @@
+---
+title: Emergence and validation
+summary: Population patterns that no rule states, how to measure them, and how to tell an emergent effect from a bug by testing the model against its exact limits.
+level: intermediate
+module: 17
+manual: ["M17.1"]
+minutes: 45
+objectives:
+  - Identify and measure an emergent population pattern, such as clustering, against a null expectation
+  - Explain why local interaction and short dispersal lower abundance below the mean-field prediction
+  - Validate an individual-based model against a limit in which its mean-field model is exact
+  - Use Jensen's inequality to explain why variable crowding raises abundance above the mean-field value
+  - Test the sensitivity of results to scheduling, boundary conditions and random seeds
+standard: c++17
+lab: ibm
+references:
+  - "Grimm, V. et al. (2005). Pattern-oriented modeling of agent-based complex systems: lessons from ecology. Science 310, 987–991."
+  - "Law, R. and Dieckmann, U. (2000). A dynamical system for neighborhoods in plant communities. Ecology 81, 2137–2148."
+---
+
+## What it is
+
+A pattern is **emergent** when it appears at the level of the population although no rule of the model mentions it. The plant model has two rules, crowding-dependent survival and short-range seed dispersal. Neither says "form clusters" or "settle at 200 plants", yet both happen. Emergent does not mean mysterious: once you have seen an emergent pattern you can usually explain it by a mechanism. It means that the pattern is a *consequence* of the rules, not an *ingredient*, and therefore something the model can teach you.
+
+Emergence creates a problem of trust. If an IBM produces a result that no simple model predicts, is it an insight or a bug? The answer comes from **validation**: testing the model where its answer is known exactly, and probing how results depend on choices that are not part of the biology.
+
+## Why it matters
+
+Individual-based models are used precisely because they can produce outcomes that aggregate models miss. That only counts as a scientific result if the departure from the aggregate model has been measured, explained by a mechanism, and shown not to be an artefact of the implementation. This lesson does all three for the plant model, and the same sequence applies to any IBM you write.
+
+## How it works in C++
+
+### Measuring a pattern against a null expectation
+
+To claim that plants are clustered you need a number and a reference. A natural number is the **mean crowding**: the average, over plants, of the number of neighbours within $R$. The reference is what the mean crowding would be if the same $N$ plants were scattered independently and uniformly over the plot, a pattern called **complete spatial randomness**. Each of a plant's $N - 1$ companions then lies within $R$ with probability equal to the area of the disc, $\pi R^2$ (the plot has area 1), so the expected crowding is $(N-1)\pi R^2$. Their ratio is a **clustering index**:
+
+$$
+\text{clustering index} = \frac{\bar n}{(N-1)\,\pi R^2},
+$$
+
+where $\bar n$ is the observed mean crowding. Values near 1 mean random placement; values above 1 mean that plants are closer together than chance; values below 1 mean that they are more evenly spaced. `plants.cpp` prints both terms every year, as the columns `mean_crowding` and `csr_crowding`, so the index is one division away:
+
+```cpp
+const Population::Census c = population.step();
+const double clustering = c.csrCrowding > 0.0 ? c.meanCrowding / c.csrCrowding : 0.0;
+```
+
+### Emergent clustering
+
+Start 400 plants at random positions and run the model with seeds dispersing a distance of about $\sigma = 0.02$ plot widths (less than half the interaction radius $R = 0.05$):
+
+<Figure id="emergence-clustering" />
+
+The index starts at 1, because the initial pattern *is* random. Within about twenty years it exceeds 2; over the following decades it creeps higher and then fluctuates around 3, with slow swings (in one run up to 5) as whole patches grow and die out. The mechanism is simple once stated: seedlings land near their parents, so families form patches, and patches persist because a plant's offspring keep arriving next to it. No rule says this. It follows from where seeds land.
+
+### Emergent abundance
+
+Clustering changes what each plant experiences. A typical plant has two to three times as many neighbours as it would in a random pattern of the same density, so it dies more often, and the population stops growing at a much lower density. With short dispersal the plants settle near 200, well below the mean-field value $N^* \approx 499$ that the same parameters give when every plant experiences the average crowding.
+
+How strong is the effect, and how does it depend on dispersal? Running the model over a range of dispersal distances, with three seeds each, gives:
+
+<Figure id="validation-dispersal" />
+
+Three regimes emerge. With very short dispersal ($\sigma \lesssim 0.015$) most seedlings land within the radius of their parent and siblings, families compete mostly with themselves, and the population hovers at a few dozen plants, close to extinction. As $\sigma$ approaches $R$, offspring escape their family and abundance rises steeply. With wide dispersal the pattern becomes nearly random, yet abundance does not settle at $N^*$: it rises *above* it, to almost 590. The next section explains why, and why that is not a bug.
+
+<Anchor id="validation" />
+
+### Validating the model
+
+#### An exact limit: global interaction
+
+The mean-field model assumes that every plant experiences the average crowding $(N-1)\pi R^2$. That assumption can be imposed on the IBM: run it with **global interaction**, so that each plant's survival uses the expected crowding instead of its counted neighbours. Then the expected number of plants next year, given $N_t$ this year, is *exactly*
+
+$$
+\mathbb{E}[N_{t+1} \mid N_t] = N_t \,\frac{s_0}{1 + c\,(N_t-1)\pi R^2}\,(1+f),
+$$
+
+because each of the $N_t$ plants survives with the same probability and each survivor contributes itself plus on average $f$ seeds. The IBM must fluctuate around the corresponding equilibrium, $N^* \approx (s_0(1+f) - 1)/(c\,\pi R^2) \approx 499$ for the default parameters. This is a test with a sharp answer:
+
+<Figure id="validation-global-limit" />
+
+The three runs fluctuate around $N^*$ and around the deterministic recursion (dashed), with pooled long-run means within about 1 % of $N^*$. That agreement tests a great deal of code: the survival draws, the Poisson seed numbers, the bookkeeping of births and deaths, the census. It does not test neighbour counting, which global interaction bypasses, so that part needs its own unit tests (see <Concept id="individual-representation" />). Had the global run settled at 400 or 600, the departure would be a bug, not an emergent effect: in this limit there is nothing left for emergence to work with.
+
+`plants.cpp` accepts `global` as its second argument for exactly this purpose, and this site's continuous integration runs it on every change, checking that its long-run mean lies within 5 % of $N^*$ (see <Concept id="testing-reproducibility" />).
+
+#### Why wide dispersal exceeds the mean field: Jensen's inequality
+
+With wide dispersal the plants are close to randomly placed, so the *mean* crowding is close to $(N-1)\pi R^2$. But in a random pattern crowding still *varies* from plant to plant: some have no neighbours, others six or seven, following approximately a Poisson distribution. And survival $s(n) = s_0/(1+c\,n)$ is a **convex** function of crowding: it falls steeply at first and then levels off. For a convex function, the average of the function exceeds the function of the average (**Jensen's inequality**), so
+
+$$
+\mathbb{E}\big[s(n)\big] \;>\; s\big(\mathbb{E}[n]\big).
+$$
+
+A plant with no neighbours gains more survival than a plant with twice the average number loses. The population therefore has higher average survival than the mean-field model assumes at the same density, and it must become denser before births and deaths balance:
+
+<Figure id="validation-jensen" />
+
+Solving $\mathbb{E}[s(n)](1+f) = 1$ with Poisson-distributed crowding gives a "random pattern" prediction of about 567 plants, the upper reference line in the dispersal figure. The simulations at $\sigma = 0.2$ sit a little higher still, near 590, because crowding-dependent deaths remove plants from crowded spots and leave the survivors slightly *more* evenly spaced than random (a clustering index of about 0.95).
+
+The same reasoning explains the clustered case. Clustering raises the mean crowding far above $(N-1)\pi R^2$, which lowers survival much more than the variation raises it. Two emergent effects act in opposite directions, and dispersal distance decides which one wins.
+
+#### Sensitivity to implementation choices
+
+A result is robust only if it survives changes that the biology does not determine. For the plant model three such choices matter:
+
+- **Scheduling.** Random-order updating raises abundance about three and a half times relative to synchronous updating (<Concept id="scheduling" />). Any conclusion about abundance must say which schedule it assumes, and why.
+- **Boundary conditions.** The torus has no edges. On a bounded plot, plants near the boundary have fewer neighbours and survive better, which tends to raise abundance by an amount that grows with the ratio of perimeter to interior area. Compare the two, or keep the interaction radius small relative to the plot.
+- **Initial conditions and run length.** The first decades reflect the random start, not the model's long-run behaviour. Discard a burn-in period and check that the summaries do not change when it is lengthened.
+
+#### Replicates
+
+Every point in the dispersal figure is an average over a run's later years, and the dots show three seeds per dispersal distance. Where the dots of neighbouring points overlap, as for $\sigma = 0.1$ and $0.2$, three seeds do not establish a difference; where they are far apart relative to their spread, as for $\sigma = 0.0175$ and $0.025$, they do. Draw conclusions from the variation between independent replicates, never from one run, and record every seed (<Concept id="replicates" />).
+
+## Explore it
+
+<Check
+  id="index"
+  kind="interpret"
+  question="After 60 years, a run reports mean crowding 4.6 and csr crowding 1.6. What does this say about the plants?"
+  options={[
+    "Plants have 4.6 neighbours on average, so the population is at its mean-field equilibrium",
+    "The typical plant has nearly three times as many neighbours as it would if the same number of plants were placed at random: the population is strongly clustered",
+    "The plants are more evenly spaced than random, because 4.6 is larger than 1",
+    "The population is growing, because crowding exceeds its random expectation",
+  ]}
+  answer={1}
+  feedback={[
+    "The mean-field equilibrium is a statement about the number of plants, not about crowding alone, and here the observed crowding is far above the value expected from N.",
+    "Correct. The clustering index is 4.6 / 1.6 ≈ 2.9. A random pattern of the same density would give each plant about 1.6 neighbours.",
+    "An index above 1 means more neighbours than random, which is clustering. Even spacing would give an index below 1.",
+    "The index describes the spatial pattern, not the direction of change in abundance.",
+  ]}
+/>
+
+<Check
+  id="global-fails"
+  kind="model"
+  question="You run your own IBM with global interaction, where the mean-field model is exact, and the long-run mean is 20 % above N* in every one of ten replicates. What should you conclude?"
+  options={[
+    "An interesting emergent effect worth reporting",
+    "Probably a bug, such as newborns reproducing in their birth year or survival computed with the wrong crowding, because in this limit the IBM must agree with the mean-field model",
+    "Ten replicates are too few; run a hundred and the difference will vanish",
+    "Jensen's inequality: variable crowding raises survival",
+  ]}
+  answer={1}
+  feedback={[
+    "With global interaction every plant experiences exactly the average crowding, so there is no spatial structure from which an effect could emerge.",
+    "Correct. A consistent, large departure in an exact limit points to the implementation. Check the bookkeeping first: births counted twice, newborns reproducing, the dead still counted in N.",
+    "A 20 % bias that appears in all ten replicates is far larger than replicate-to-replicate variation. More replicates would only measure the bias more precisely.",
+    "Under global interaction crowding does not vary: every plant receives the same value, so Jensen's inequality has nothing to act on.",
+  ]}
+/>
+
+<Check
+  id="jensen"
+  kind="predict"
+  question="Suppose survival fell linearly with crowding, s(n) = s₀ − k n (with k small enough that s stays positive). With wide dispersal, where would long-run abundance settle relative to the mean-field value?"
+  options={[
+    "Above it, as with s₀/(1 + c n)",
+    "At it: for a linear function the mean of s(n) equals s of the mean, so variation in crowding has no effect on average survival",
+    "Below it, because a linear decline is steeper",
+    "It cannot be predicted without simulating",
+  ]}
+  answer={1}
+  feedback={[
+    "The excess above N* comes from the curvature of s(n). A straight line has no curvature.",
+    "Correct. Jensen's inequality becomes an equality for linear functions. Only a convex survival function (above N*) or a concave one (below N*) turns variation in crowding into a change in average survival.",
+    "Steepness alone does not shift the mean; what matters is curvature.",
+    "The direction follows from the shape of s(n) alone, which is exactly what makes this a useful check on simulation results.",
+  ]}
+/>
+
+The laboratory in <Concept id="scheduling" /> lets you vary the dispersal distance and switch to global interaction, so you can reproduce these effects yourself.
+
+## In biological modelling
+
+Spatial ecology has studied these effects for decades. Plant ecologists describe the neighbourhood that individuals actually experience, as opposed to the mean density, and have built aggregate models that track not only densities but also the density of *pairs* of neighbours, recovering much of what IBMs show (see Law and Dieckmann in the references). The broader lesson is the strategy, sometimes called **pattern-oriented modelling**: an IBM is credible when it reproduces several independent patterns at once (here abundance, clustering and their dependence on dispersal), each produced by mechanisms you can name.
+
+A validation plan for any IBM follows the same order as this lesson:
+
+1. **Unit tests** for each rule and for the bookkeeping.
+2. **Exact limits**: switch off the features that make the IBM individual-based (spatial structure, heterogeneity) and compare with the aggregate model it then reduces to.
+3. **Mechanistic explanations** of each departure from the aggregate model, ideally with an independent quantitative check, like the random-pattern prediction above.
+4. **Sensitivity** to implementation choices that the biology does not fix.
+5. **Replicates** for every reported number.
+
+## Common mistakes
+
+- **Calling every surprise emergent.** An unexpected result is a hypothesis until it has passed the exact-limit test and has a mechanism.
+- **Validating only the full model.** Agreement with field data can hide two compensating errors. Test limits where the answer is known.
+- **A null model with the wrong density.** The clustering index compares with a random pattern of the *same* $N$; comparing with the mean-field $N^*$ mixes two effects.
+- **Forgetting the curvature.** Plugging the mean crowding into a nonlinear survival function does not give mean survival. Average the function, not its argument.
+- **Ignoring the burn-in.** Long-run summaries that include the transient from the initial condition are biased.
+- **Concluding from overlapping replicates.** If replicate values overlap, the difference is not established.
+
+## Practice
+
+<Practice>
+
+1. Compute the clustering index for the six plants of `design_crowding.cpp` (radius $R = 0.1$). Is the number meaningful? What would you need to make it so?
+2. Run `plants.cpp` with `synchronous global` for five seeds and 200 years. For each run, average $N$ over years 50–200. Write a short program or script that reads the five means and fails (non-zero exit status) if their average differs from $N^*$ by more than 5 %. What kind of error would this test catch, and what kind would it miss?
+3. Suppose survival were $s(n) = s_0\,e^{-c\,n}$ instead. Derive the mean-field mean crowding at equilibrium and the corresponding value when crowding is Poisson-distributed, using $\mathbb{E}[e^{-cn}] = \exp(-\lambda(1 - e^{-c}))$ for a Poisson variable with mean $\lambda$. Would wide dispersal still push abundance above the mean-field value?
+4. Design, but do not necessarily run, an experiment to measure how much the torus raises or lowers abundance compared with a bounded plot. Which outputs would you compare, how many seeds would you use, and how would you decide whether the difference matters?
+
+<details>
+<summary>Worked answer for exercise 1</summary>
+The observed crowding values are 2, 1, 1, 1, 1 and 0, so $\bar n = 1$. A random pattern of six plants gives $(6-1)\pi(0.1)^2 \approx 0.157$, so the index is about 6.4. With six plants, however, the index is dominated by chance: moving one plant changes it greatly. A meaningful estimate needs many plants (or many replicate patterns) so that the mean crowding is precise.
+</details>
+
+<details>
+<summary>Hint for exercise 2</summary>
+The test exercises the survival draws, seed numbers and bookkeeping, so it would catch newborns reproducing or deaths not being removed. It bypasses neighbour counting entirely, so a wrong torus distance would pass unnoticed: that needs a unit test of its own.
+</details>
+
+<details>
+<summary>Worked answer for exercise 3</summary>
+At equilibrium average survival must be $1/(1+f)$. If every plant has crowding $\lambda$, then $s_0 e^{-c\lambda}(1+f) = 1$, so $\lambda_{\text{mf}} = \ln(s_0(1+f))/c$. With Poisson crowding, $s_0 \exp(-\lambda(1-e^{-c}))(1+f) = 1$, so $\lambda_{\text{P}} = \ln(s_0(1+f))/(1-e^{-c})$. Because $1 - e^{-c} < c$ for every $c > 0$, $\lambda_{\text{P}} > \lambda_{\text{mf}}$: the exponential is convex too, so wide dispersal would again lift abundance above the mean-field value. With $s_0 = 0.9$, $f = 1.2$ and $c = 0.25$ the two values are 2.73 and 3.09 neighbours, about 13 % apart.
+</details>
+
+</Practice>

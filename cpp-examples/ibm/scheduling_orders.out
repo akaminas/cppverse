@@ -1,0 +1,4 @@
+start          #######  (7 survive)
+synchronous    #.....#  (2 survive)
+left to right  #.#.#.#  (4 survive)
+evens first    ##.#.##  (5 survive)

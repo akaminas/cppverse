@@ -1,0 +1,193 @@
+---
+title: Individual-based models
+summary: When to represent every organism explicitly, how such models relate to ODE, matrix and Gillespie models, and what they can reveal.
+level: intermediate
+module: 17
+manual: ["M17.1"]
+minutes: 30
+objectives:
+  - Decide whether a biological question needs an individual-based model or an aggregate one
+  - State the rules of an individual-based model in the way a biologist would describe behaviour
+  - Explain how an individual-based model relates to its ODE, matrix and Gillespie counterparts
+  - Recognise the costs of individual-based modelling and plan for them
+standard: c++17
+references:
+  - "Grimm, V. and Railsback, S. F. (2005). Individual-based Modeling and Ecology. Princeton University Press."
+  - "Grimm, V. et al. (2020). The ODD protocol for describing agent-based and other simulation models: a second update. Journal of Artificial Societies and Social Simulation 23(2), 7."
+---
+
+## What it is
+
+Every model so far has described a population by a few numbers: a population size $N_t$, a vector of stage abundances, a pair of densities in an ODE, or counts of molecules in a Gillespie simulation. An **individual-based model** (IBM) instead keeps one record for every organism alive. Each record holds that individual's own state, such as its position, age, size, genotype or energy reserves. The model's rules say what happens to *an individual*, and population quantities are obtained afterwards by counting and averaging.
+
+The running example of this part of the atlas is a perennial plant growing on a square plot. Its rules can be written in the words a field ecologist would use:
+
+1. **Survival.** Each year, every plant counts the other plants within a distance $R$ of it. A plant with $n$ such neighbours survives the year with probability $s_0/(1 + c\,n)$: crowded plants die more often.
+2. **Reproduction.** Each surviving plant sets a random number of seeds, on average $f$. A seed lands a short, random distance from its parent and becomes a new plant.
+
+That is the whole model. There is no equation for the population size and no carrying capacity. Abundance, spatial pattern and their fluctuations all follow from the two rules acting on hundreds of individual plants.
+
+## Why it matters
+
+Representing individuals one by one costs computing time and makes models harder to analyse, so it needs a reason. Four situations provide one.
+
+**Individuals differ in ways that matter.** Suppose survival depends on age, body condition and genotype. An aggregate model needs one state variable for every *possible kind* of individual, and the number of kinds multiplies with each trait. An IBM needs one record per individual *that actually exists*. Once there are more possible kinds than individuals, tracking individuals is the more economical description. The minimal example below makes this concrete.
+
+**Interactions are local.** ODE and matrix models assume that every individual experiences the same average conditions, as if the population were thoroughly mixed. Plants, corals, territorial animals and hosts on a contact network interact with a few neighbours, and *which* neighbours depends on where each one is. An IBM can track this directly.
+
+**Numbers are small.** Ten individuals cannot produce 10.4 offspring, and a population of three can be lost in one bad year. This *demographic noise* matters for extinction and establishment. Note, however, that a stochastic model of counts such as the <Concept id="gillespie">Gillespie algorithm</Concept> already captures demographic noise exactly as long as individuals of a type are interchangeable. Small numbers are a reason to be stochastic; they become a reason to be individual-based only together with heterogeneity or local interactions.
+
+**The rules are what you know.** Field biologists often know how an individual behaves (when it disperses, whom it competes with, what it eats) far better than they know population-level rate laws. An IBM lets you write that knowledge down as rules and then ask what population behaviour it implies.
+
+<Callout kind="biology" title="Emergence, as a preview">
+Neither rule of the plant model mentions clusters or a target population size. Yet when the model runs, seedlings landing near their parents form dense patches, and the population settles at well under half the size that an aggregate model with the same parameters predicts. Patterns like this, which arise from the rules without being written into them, are the subject of <Concept id="emergence" />.
+</Callout>
+
+## How it works in C++
+
+An IBM has the same skeleton as every simulation on this site, with the state replaced by a collection of individuals:
+
+```cpp
+struct Plant {            // one individual and its own state
+    double x, y;          // position on the plot
+    int age;
+};
+
+std::vector<Plant> plants;              // the population owns its individuals
+for (int year = 1; year <= years; ++year) {
+    applySurvival(plants, rng);         // rule 1, applied to each plant
+    applyReproduction(plants, rng);     // rule 2, for the survivors
+    writeCensus(year, plants);          // population quantities: counts, means
+}
+```
+
+Three design decisions follow, and each has its own lesson:
+
+- **How to represent an individual and the population** (a struct or class, a `std::vector` of values, how births and deaths change the container): <Concept id="individual-representation" />.
+- **How individuals interact**, for example how a plant finds its neighbours: <Concept id="interaction-rules" />.
+- **In what order things happen**, which in an IBM is a genuine modelling decision, not a detail: <Concept id="scheduling" />.
+
+### How an IBM relates to aggregate models
+
+An IBM is not a different kind of science from the models in earlier lessons. It sits at the fine-grained end of a family of descriptions of the same population:
+
+| Model | State | Assumes | Lesson |
+|---|---|---|---|
+| ODE | continuous densities | large, well-mixed, interchangeable individuals | <Concept id="odes" /> |
+| Matrix model | numbers per age or stage class | individuals within a class are interchangeable | <Concept id="matrix-models" /> |
+| Gillespie simulation | integer counts per type | well mixed; exact demographic noise | <Concept id="gillespie" /> |
+| IBM | one record per individual | only what the rules say | this part of the atlas |
+
+Moving up the table means *aggregating*: counting individuals by type and assuming that the details lost in the count (who is next to whom, small differences within a class) do not matter. Often the IBM can be made to satisfy those assumptions, and then it must reproduce the aggregate model. For the plant model, if every plant experienced the *average* crowding instead of its own, the expected population would follow
+
+$$
+N_{t+1} = N_t \,\frac{s_0}{1 + c\,\bar n_t}\,(1 + f), \qquad \bar n_t = (N_t - 1)\,\pi R^2 ,
+$$
+
+where $N_t$ is the number of plants in year $t$, $\bar n_t$ the mean number of neighbours on a plot of area 1, and the factor $(1+f)$ counts each survivor and its seeds. Setting $N_{t+1} = N_t$ gives an equilibrium of about $N^* = (s_0(1+f) - 1)/(c\,\pi R^2)$. This **mean-field** limit is a precise test of an IBM implementation, developed in <Concept id="ibm-validation" />. Where the IBM departs from it, something the aggregate model ignores is doing work.
+
+## A minimal example
+
+How quickly do the possible kinds of individual outnumber the individuals? Take a diploid organism with $L$ biallelic loci (three genotypes per locus: AA, Aa, aa), 10 age classes and 3 levels of body condition. An aggregate model needs $3^L \times 10 \times 3$ state variables. A simulation of 5,000 individuals needs 5,000 records, whatever $L$ is.
+
+<Example file="ibm/intro_type_count.cpp" mark="18-23" />
+
+With five loci there are already more possible kinds than individuals, and with twelve there are about 16 million. Most of those kinds would have an abundance of zero at any time, so an aggregate model would spend nearly all its effort on empty classes. The program uses `std::uint64_t` because the counts grow quickly: in a 32-bit `int`, the product $3^L \times 30$ would overflow from $L = 17$ onwards, and signed overflow is undefined behaviour (<Concept id="numeric-limits" />).
+
+## Explore it
+
+<Check
+  id="choose"
+  kind="model"
+  question="Which study most clearly calls for an individual-based model rather than an aggregate one?"
+  options={[
+    "Growth of a bacterial culture of about 10⁹ cells in a well-stirred chemostat",
+    "Projection of a fish stock with ten age classes from survey data on numbers at age",
+    "Spread of a clonal plant whose ramets compete only with neighbours within 20 cm, in plots of a few hundred ramets",
+    "The decline of a drug concentration in blood plasma",
+  ]}
+  answer={2}
+  feedback={[
+    "Huge numbers and thorough mixing are exactly the conditions under which an ODE describes the population well. An IBM would add cost without adding biology.",
+    "Age classes with interchangeable members are what a matrix model is designed for. Nothing suggests that individuals within an age class differ or interact locally.",
+    "Correct. Interactions are local, so who is next to whom matters, and the numbers are small enough for chance to shape the spatial pattern. An aggregate model would have to assume mixing that does not happen.",
+    "This is a single well-mixed quantity following first-order kinetics; there are no individuals to represent.",
+  ]}
+/>
+
+<Check
+  id="kinds"
+  kind="predict"
+  question="In intro_type_count.cpp, suppose the population is raised from 5,000 to 100,000 individuals. From which number of loci onwards does the program print yes?"
+  options={["5, as before", "7", "8", "It never does"]}
+  answer={2}
+  feedback={[
+    "The threshold depends on the population size: with 100,000 individuals, 7,290 kinds (five loci) is no longer more than the number of individuals.",
+    "At seven loci there are 2,187 × 30 = 65,610 kinds, still fewer than 100,000.",
+    "Correct. At eight loci there are 6,561 × 30 = 196,830 kinds, the first value above 100,000. Each extra locus multiplies the kinds by three, so even a twentyfold larger population moves the threshold by only three loci.",
+    "The number of kinds grows without bound as loci are added, so it always overtakes a fixed population size eventually.",
+  ]}
+/>
+
+<Check
+  id="departure"
+  kind="interpret"
+  question="With the same parameters, the mean-field model of the plants predicts about 500 plants, but the individual-based model with short seed dispersal settles near 200. What does the gap tell you?"
+  options={[
+    "The IBM has a bug, because a correct IBM must always agree with its mean-field model",
+    "Something the mean-field model averages away, such as plants experiencing more crowding than the average because they grow in patches, is affecting survival",
+    "The IBM has not been run for long enough; with more years it will reach 500",
+    "The mean-field model is wrong and should be discarded",
+  ]}
+  answer={1}
+  feedback={[
+    "Agreement is required only where the mean-field assumptions hold, for example when every plant experiences the average crowding. With local interactions, departures are expected and are often the interesting result.",
+    "Correct. The mean-field model gives every plant the average number of neighbours. With short dispersal, plants grow in patches, so a typical plant has far more neighbours than average and dies more often. The gap measures the effect of spatial structure.",
+    "The population settles within a few decades and then fluctuates around its long-run level; running longer does not remove a systematic difference.",
+    "The mean-field model remains valuable as a reference and as a test: it states what would happen without spatial structure, which is what lets you see the effect of that structure.",
+  ]}
+/>
+
+The plant model also runs in your browser, in the laboratory of <Concept id="scheduling" />. Run it once and look at where the plants are before reading on.
+
+## In biological modelling
+
+Individual-based models have a long history in ecology and evolution. Forest gap models follow every tree in a stand as it grows, shades its neighbours and dies. Models of animal movement follow foragers across real landscapes. Epidemiological models follow hosts on contact networks. Evolutionary models follow genomes with many interacting loci. What they share is a population built from individuals whose state and surroundings differ.
+
+That flexibility has a price, and planning for it is part of the craft:
+
+- **Results are distributions.** Every run is one realisation of a stochastic process, so conclusions rest on <Concept id="replicates" /> and on summaries of their spread.
+- **Many choices are hidden in code.** The order of updates, the treatment of edges and the timing of births all change results. Describing an IBM completely is hard enough that ecologists developed a standard format, the ODD protocol (Overview, Design concepts, Details; see the references), for publishing them.
+- **Verification needs anchors.** An IBM rarely has an exact solution, so it is tested piece by piece and against limits in which an aggregate model must hold. This is the subject of <Concept id="ibm-validation" /> and <Concept id="testing-reproducibility" />.
+- **Start simple.** Begin with the fewest rules that can address the question, test them, and add one process at a time. An IBM that contains everything explains nothing.
+
+## Common mistakes
+
+- **Choosing an IBM by default.** If individuals are numerous, well mixed and interchangeable, an ODE, matrix or Gillespie model gives the same answer faster and can be analysed. Use an IBM when heterogeneity or local interaction is part of the question.
+- **Confusing heterogeneity with randomness.** Individuals that differ in a fixed trait are heterogeneous; individuals that are identical but have different luck are subject to demographic noise. The two have different consequences and should be modelled, and reported, separately.
+- **Rules that a biologist could not state.** If a rule exists only as a side effect of code (for example, which plant happens to be updated first), it is an assumption nobody chose. Write the rules in words first.
+- **Reporting one run.** A single trajectory of a stochastic IBM is an anecdote. Run replicates with recorded seeds.
+- **Comparing with no reference.** Without a mean-field or other limiting case to compare with, there is no way to tell an emergent effect from a bug.
+
+## Practice
+
+<Practice>
+
+1. For each system, say whether you would start with an ODE, a matrix, a Gillespie or an individual-based model, and give the deciding reason in one sentence: (a) about 40 breeding pairs of a territorial songbird in a fragmented woodland, where territories are defended against neighbours; (b) a laboratory population of about 10⁶ *Daphnia* in a mixed tank; (c) a population of a long-lived tortoise counted in five size classes; (d) a newly introduced pathogen with ten initially infected hosts in a well-mixed herd of 200.
+2. Extend `intro_type_count.cpp` with a sex (female or male). At how many loci do the possible kinds first exceed 5,000? Then estimate how many bytes an aggregate model would need at 20 loci if each kind's abundance is stored as an 8-byte `double`.
+3. Choose an organism you study and write the rules of an individual-based model for it in plain sentences: one sentence per process (for example survival, growth, movement, reproduction), saying which state variables each rule reads and changes, and in what order the rules apply each time step.
+
+<details>
+<summary>Worked answers for exercises 1 and 2</summary>
+
+1. (a) An IBM: territories make interactions local and the numbers are small. (b) An ODE: huge numbers and mixing. (c) A matrix model: interchangeable individuals within size classes. (d) A Gillespie simulation: demographic noise decides whether the outbreak takes off, but hosts are interchangeable and mixed, so counts suffice.
+2. With sex the kinds are $3^L \times 10 \times 3 \times 2$. At four loci that is 4,860, still not above 5,000; at five it is 14,580, so the answer remains five loci. At 20 loci there are $3^{20} \times 60 \approx 2.1 \times 10^{11}$ kinds, so about $1.7 \times 10^{12}$ bytes (1.7 terabytes) for one copy of the state. An IBM of 5,000 individuals storing 20 genotypes, an age, a condition and a sex in a few dozen bytes each needs well under a megabyte.
+
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+Test each rule by asking whether a colleague who has never seen your code could carry it out by hand for one individual. If a rule needs the words "the population", check whether it is really a rule about an individual and its neighbours.
+</details>
+
+</Practice>

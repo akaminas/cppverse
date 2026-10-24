@@ -1,0 +1,241 @@
+---
+title: Running replicates in parallel
+summary: Spread independent replicates over many cores or machines while keeping every result reproducible, with one recorded random stream per replicate.
+level: seasoned
+module: null
+manual: []
+minutes: 35
+objectives:
+  - Explain why replicates are embarrassingly parallel and what must still be kept separate
+  - Derive a distinct, recorded seed for every replicate with std::seed_seq
+  - Run replicates as separate processes with a shell loop, GNU parallel or a cluster job array
+  - Run replicates on threads with std::async, std::thread or OpenMP without sharing an engine
+  - Make results independent of how the work happened to be scheduled
+standard: c++17
+optional: true
+references:
+  - "cppreference.com: std::seed_seq, std::async, std::thread"
+  - "Tange, O. (2011). GNU Parallel: the command-line power tool. ;login: The USENIX Magazine 36(1), 42–47."
+  - "OpenMP Architecture Review Board: OpenMP Application Programming Interface specification"
+---
+
+## What it is
+
+A study with a stochastic model needs many runs: replicates for every parameter combination, often hundreds or thousands in total (<Concept id="replicates" />). Each run uses its own random numbers and does not communicate with the others, so they can all run at the same time. Problems of this shape are called **embarrassingly parallel**: the only work needed to parallelise them is to start the runs and collect their outputs.
+
+There are two levels at which to do it:
+
+- **Processes**: start the same compiled program many times with different arguments, on the cores of one computer or on the nodes of a cluster.
+- **Threads**: inside one program, hand replicates to several threads of execution that share the program's memory.
+
+Both work. The first is simpler and more robust; the second is useful when replicates are short and numerous or share a large read-only input.
+
+## Why it matters
+
+The plant model takes a fraction of a second per run in the browser. A study of dispersal with 20 dispersal distances, 3 schedules and 100 replicates each is 6,000 runs, and a more realistic model may take minutes per run. On a laptop with eight cores, running replicates in parallel turns a week into a day.
+
+The danger is that parallelism can silently change results. If two threads draw from one random engine, which thread gets which number depends on timing, so the same seed gives different results on every execution, and the program has a data race, which is undefined behaviour. The rule that prevents this is simple: **every replicate owns its own engine, seeded from a recorded value that depends only on the replicate's identity.**
+
+## How it works in C++
+
+### One engine per replicate, seeded from a master seed
+
+Derive each replicate's seed from a single recorded **master seed** and the replicate's index, so that the whole experiment can be regenerated from one number and any single replicate can be rerun on its own:
+
+<Example file="inference/parallel_seed_streams.cpp" mark="16-21,25" />
+
+`std::seed_seq` mixes the values it is given into a well-scrambled initial state for the engine, so seeds that differ only slightly (replicate 3 and replicate 4) still give unrelated streams. It keeps only the low 32 bits of each value, which is why the 64-bit master seed is split into two halves. The program deliberately runs the replicates in reverse order and then reruns one of them alone: each result depends only on (master seed, replicate), not on what ran before it. That property is what makes every form of parallelism below safe.
+
+Avoid the tempting shortcut of seeding replicate $r$ with `master + r`. Two experiments with master seeds 1000 and 1001 would then share 99 of their 100 replicates, and nothing in the output would reveal it.
+
+### Process-level parallelism
+
+The simplest parallel program is a serial program run many times. Give it the seed (or the replicate index) as a command-line argument (<Concept id="command-line" />) and let each run write its own file:
+
+```bash
+mkdir -p out
+for seed in $(seq 1001 1008); do
+  ./plants synchronous local "$seed" 160 > "out/plants_seed${seed}.csv" &
+done
+wait    # until all eight background runs have finished
+```
+
+For more runs than cores, a tool that keeps a fixed number running is better. With GNU parallel:
+
+```bash
+parallel -j 8 './plants synchronous local {} 160 > out/plants_seed{}.csv' ::: $(seq 1001 1100)
+```
+
+On a computing cluster with the Slurm scheduler, a **job array** runs one task per replicate, possibly on different machines:
+
+```bash
+#!/bin/bash
+#SBATCH --job-name=plants
+#SBATCH --array=0-99
+#SBATCH --cpus-per-task=1
+#SBATCH --time=00:30:00
+seed=$((1001 + SLURM_ARRAY_TASK_ID))
+./plants synchronous local "$seed" 160 > "out/plants_seed${seed}.csv"
+```
+
+Process-level parallelism needs no change to the model code, isolates crashes to one replicate, cannot produce data races because processes share no memory, and scales from a laptop to a cluster unchanged. Its outputs are per-replicate files that a separate script combines, which also means that a failed run can simply be repeated.
+
+### Threads inside one program
+
+When replicates are short, starting a process for each one costs more than the run itself, and threads become attractive. The code below cannot run in this site's checks (it needs the `-pthread` flag), so it is shown as fragments to add to `parallel_seed_streams.cpp`. Compile with `g++ -std=c++17 -O2 -pthread`.
+
+With `std::async`, each call starts a task and returns a `std::future` from which the result is collected later:
+
+```cpp
+#include <future>
+
+std::vector<std::future<int>> jobs;
+for (std::uint32_t r = 0; r < replicates; ++r) {
+    jobs.push_back(std::async(std::launch::async, finalPopulation, master, r));
+}
+std::vector<int> results;
+for (std::future<int>& job : jobs) results.push_back(job.get());   // in replicate order
+```
+
+This starts one thread per replicate, which is fine for dozens but wasteful for thousands. A fixed **pool** of worker threads that take the next replicate number from a shared atomic counter keeps every core busy:
+
+```cpp
+#include <algorithm>
+#include <atomic>
+#include <thread>
+
+std::vector<int> results(replicates);              // one slot per replicate
+std::atomic<std::uint32_t> next{0};
+auto worker = [&] {
+    for (std::uint32_t r = next++; r < replicates; r = next++) {
+        results[r] = finalPopulation(master, r);   // its own engine, its own slot
+    }
+};
+const unsigned nThreads = std::max(1u, std::thread::hardware_concurrency());
+std::vector<std::thread> pool;
+for (unsigned k = 0; k < nThreads; ++k) pool.emplace_back(worker);
+for (std::thread& t : pool) t.join();              // wait for every worker
+```
+
+Each thread writes only to the elements for its own replicates, and distinct elements of a `std::vector<int>` are distinct objects, so there is no data race. (A `std::vector<bool>` packs its elements into shared bytes and is *not* safe in this way.) The counter is `std::atomic` because all workers update it.
+
+**OpenMP** expresses the same pattern with a single directive, provided the compiler supports it (`-fopenmp` for GCC and Clang):
+
+```cpp
+std::vector<int> results(replicates);
+#pragma omp parallel for schedule(dynamic)
+for (long r = 0; r < static_cast<long>(replicates); ++r) {
+    results[r] = finalPopulation(master, static_cast<std::uint32_t>(r));
+}
+```
+
+Without `-fopenmp` the directive is ignored and the loop runs serially with identical results, a useful property for testing. (`-Wall` then warns about the unknown pragma.) `schedule(dynamic)` hands out iterations as threads become free, which matters when some runs take much longer than others, for example when some populations go extinct early.
+
+### Results that do not depend on scheduling
+
+Threads finish in an unpredictable order. Make sure nothing in the output depends on it:
+
+- **Store results by replicate, not by completion.** Use `results[r]`, never `push_back` from whichever thread finishes first.
+- **Combine after joining, in a fixed order.** Floating-point addition is not associative, so a mean accumulated in completion order can differ in its last digits from run to run. Sum the stored results in replicate order once all threads have finished.
+- **One output file per replicate, or write after joining.** Several threads writing to `std::cout` or to one `std::ofstream` interleave their lines. Name each replicate's file after its seed and give it a provenance header (<Concept id="testing-reproducibility" />).
+- **No hidden shared state.** A function that uses a `static` or global engine, a global counter, or `rand()` shares state between threads even if its signature does not show it.
+
+Done this way, a parallel run produces exactly the same numbers as a serial one, and any single replicate can be rerun by itself from the master seed and its index.
+
+## Explore it
+
+<Check
+  id="shared-engine"
+  kind="debug"
+  question="Four threads each run replicates using a single std::mt19937_64 rng declared in main and captured by reference. What is wrong?"
+  options={[
+    "Nothing, as long as the engine was seeded once and the seed was recorded",
+    "Concurrent calls to the same engine are a data race, which is undefined behaviour, and even if it seemed to work, which thread receives which random numbers would depend on timing, so results could not be reproduced",
+    "Only the first thread receives random numbers",
+    "It is merely slower, because the threads take turns",
+  ]}
+  answer={1}
+  feedback={[
+    "A recorded seed fixes the sequence of numbers the engine produces, but not which replicate consumes which of them when threads interleave.",
+    "Correct. Standard library engines are not safe to call from several threads at once, and sharing one ties results to the timing of threads. Give every replicate its own engine, seeded from the master seed and the replicate index.",
+    "All threads can call the engine; the problem is that they do so simultaneously and in an unpredictable interleaving.",
+    "Nothing makes the threads take turns: there is no lock, so their calls can overlap and corrupt the engine's internal state.",
+  ]}
+/>
+
+<Check
+  id="seed-collision"
+  kind="model"
+  question="Experiment A uses replicate seeds 1000 + r and experiment B, run a week later, uses 1001 + r, each for r = 0 to 99. What is the problem?"
+  options={[
+    "None: the seeds within each experiment are distinct",
+    "99 replicates of B are identical copies of replicates of A, so the two experiments are not independent samples",
+    "The seeds are too small for std::mt19937_64",
+    "Consecutive seeds give correlated streams within each experiment",
+  ]}
+  answer={1}
+  feedback={[
+    "Within each experiment they are distinct, but across experiments they overlap almost completely.",
+    "Correct. B's replicate r uses the seed of A's replicate r + 1. Results that seem to replicate across experiments would partly be the same runs. Deriving seeds with std::seed_seq from (master, r) avoids such collisions.",
+    "Small seeds are valid; the engine expands any seed into its full state.",
+    "Seeding through std::seed_seq or the engine's own seeding procedure scrambles nearby seeds; the problem here is reuse across experiments.",
+  ]}
+/>
+
+<Check
+  id="order"
+  kind="predict"
+  question="A pool of threads computes 100 replicate means and each thread adds its result to a shared total protected by a mutex, in whatever order the threads finish. Run twice with the same master seed, what do you expect?"
+  options={[
+    "Exactly the same total both times",
+    "Totals that agree to many digits but may differ in the last ones, because floating-point additions were performed in different orders",
+    "Completely different totals, because the replicates used different random numbers",
+    "A compile-time error, because doubles cannot be protected by a mutex",
+  ]}
+  answer={1}
+  feedback={[
+    "Each replicate's mean is reproducible, but floating-point addition is not associative, so the sum depends on the order of additions.",
+    "Correct. The individual results are identical, but their sum is accumulated in a different order. Store results by replicate index and sum them in a fixed order after joining.",
+    "With one engine per replicate seeded from (master, r), every replicate produces the same result in both executions.",
+    "A mutex can protect any shared variable; the issue is the order of the additions, not their safety.",
+  ]}
+/>
+
+## In biological modelling
+
+Parallel replicates are usually part of a larger design: a grid of parameter values, each with its replicates (<Concept id="experiment-design" />). Practical habits:
+
+- **Make the replicate the unit of work.** One run, one seed, one output file named after its parameters and seed. Then any mix of processes, threads and machines can carry out the design.
+- **Estimate before launching.** Time one run, multiply, and divide by the cores available. Long runs are worth checkpointing.
+- **Expect uneven run times.** Extinct populations finish early; dense ones take longer. Dynamic scheduling, or simply more tasks than cores, keeps machines busy.
+- **Keep the analysis separate.** A script that reads all per-replicate files and computes summaries can be rerun, tested and changed without repeating the simulations.
+
+## Common mistakes
+
+- **Sharing one engine between threads.** A data race and irreproducible results. One engine per replicate.
+- **Seeds from the clock.** Several processes started in the same second receive the same seed. Derive seeds from a recorded master seed.
+- **Overlapping seed ranges between experiments.** Use `std::seed_seq` with the master seed and replicate index.
+- **Losing the high bits of a seed.** `std::seed_seq` stores 32 bits per value; split 64-bit seeds.
+- **Results collected in completion order.** Index by replicate.
+- **Writing from many threads to one stream.** Lines interleave; use one file per replicate or write after joining.
+- **Oversubscribing.** Starting a thousand processes or threads on eight cores slows everything down; limit concurrency to the cores available.
+
+## Practice
+
+<Practice>
+
+1. Run `parallel_seed_streams` three ways with the same master seed: once for replicates 0 to 7, and as two separate processes for 0 to 3 and 4 to 7, started at the same time with `&`. Check, by sorting and comparing the output lines, that the results are identical.
+2. Change the thread pool fragment so that each worker writes its replicate's final population to its own file `out/replicate_<r>.csv`, with a provenance header that records the master seed and the replicate index.
+3. A colleague's model uses a function `double randomUniform()` that keeps a `static std::mt19937_64` inside it. Explain why this model cannot be parallelised with threads as it stands, and how you would change its design.
+
+<details>
+<summary>Hint for exercise 1</summary>
+Each line is a pair `replicate,final_N`. `sort` both outputs (after removing the comment lines that start with `#`) and compare them with `diff`. Because each result depends only on the master seed and the replicate index, the split runs must agree line for line.
+</details>
+
+<details>
+<summary>Worked answer for exercise 3</summary>
+The static engine is shared by every caller in the program, so threads calling `randomUniform()` at the same time race on it, and the sequence each replicate receives depends on timing. Make the engine an explicit object owned by each replicate (for example a member of the population class, seeded from the master seed and the replicate index) and pass it, by reference, to every function that needs random numbers. This also makes the dependence on randomness visible in each function's signature, which helps testing.
+</details>
+
+</Practice>

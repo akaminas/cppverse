@@ -1,0 +1,3 @@
+after the census : 0 1 2 3 4 5 6
+erase-remove     : 0 3 4 6
+swap-and-pop     : 0 6 4 3

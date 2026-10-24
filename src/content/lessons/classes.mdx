@@ -1,0 +1,196 @@
+---
+title: Classes and encapsulation
+summary: Hide a type's data behind member functions that keep it valid, and treat the resulting objects as values that can be copied, passed and returned.
+level: intermediate
+module: 10
+manual: ["M10.3", "M10.4", "M11.4"]
+minutes: 40
+objectives:
+  - Define a class with private data members and public member functions
+  - "Define member functions outside the class with the scope resolution operator ::"
+  - State a class invariant and write member functions that preserve it
+  - Copy, assign, pass and return objects, and predict which object a change affects
+  - Decide whether a plain struct is enough or a class is needed
+references:
+  - "cppreference.com: Classes; Access specifiers"
+  - "cppreference.com: Default member initializer"
+  - "Stroustrup, B. (2022) A Tour of C++, 3rd ed., chapter 5. Addison-Wesley."
+---
+
+## What it is
+
+A *class* is a user-defined type that combines data with the functions allowed to operate on that data. You have used classes from the first lesson: `std::cout`, `std::string` and `std::vector` are all objects of library classes. You call their *member functions* with a dot (`v.push_back(x)`, `s.find('-')`), and you never touch their internal data directly. That is deliberate, and this lesson shows how to give your own types the same protection.
+
+In C++, `class` and `struct` define exactly the same kind of type. The only difference is the default *access*: members of a `struct` are public (usable by any code) unless you say otherwise; members of a `class` are private (usable only by the class's own member functions) unless you say otherwise.
+
+## Why it matters
+
+A struct with public members, as in <Concept id="structs" />, lets any line of the program set any member to any value. For a parameter set that is fine. For many model types it is not, because some values are simply invalid: a population of −3 individuals, a survival probability of 1.4, a list of individuals whose stored count differs from the actual number. Such a state never arises from the biology; it arises from a bug. If it can arise anywhere in the code, you have to check everywhere.
+
+A class turns that around. Its data are private, and every change goes through a small number of public member functions. If those functions keep the data valid, the data *are* valid, everywhere and always. A condition of this kind is called a *class invariant*, and keeping it is the main reason to write a class.
+
+## How it works in C++
+
+Select the parts of this definition to see what each does:
+
+<Anatomy id="classes-population" />
+
+### Access: public and private
+
+The labels `public:` and `private:` divide the members into the *interface*, available to everyone, and the *hidden* part, available only inside the class. Each label applies until the next one. A common layout puts the public member functions first, because they are what a reader of the class needs, and the private data last.
+
+Private does not mean secret or secure; it means that the compiler rejects any use from outside the class:
+
+<Example file="data/class_private_access.cpp" mark="16" />
+
+GCC reports `'int Population::size_' is private within this context`. The program cannot even be built with the invariant broken.
+
+### Member functions
+
+A member function is declared inside the class and called through an object: `beetles.addBirths(30)`. Inside the function, the data members of *that* object are available by their names, so `size_ += births;` changes the `size_` of `beetles` and of no other `Population`.
+
+A member function that only reads the object is marked `const` after its parameter list: `int size() const;`. The compiler then refuses any change to the data members inside it, and only `const` member functions may be called on a `const` object or through a `const` reference. Mark every reading function `const`; forgetting it makes the class unusable in code that, correctly, passes objects as `const Population&`.
+
+Member functions can be defined in two places. A short function can be written directly inside the class body, as in `int size() const { return size_; }`. Longer ones are usually only *declared* in the class and *defined* afterwards under their qualified name, `Population::removeDeaths`, with the scope resolution operator `::` (the same operator as in `std::cout`). Both forms mean the same.
+
+### Default member initialisers
+
+A data member can be given an initial value where it is declared: `int size_ = 0;`. Every new object then starts in a valid state. Without it, a `Population` created as `Population beetles;` would contain an uninitialised `int`, and the first `addBirths` would add to whatever bits happened to be in memory.
+
+<Callout kind="manual" title="Initialise every data member">
+The manual's first class example adds to a private member that is never initialised, so its output is undefined. Since C++11 a default member initialiser (`double reserve = 0.0;`) fixes this in one line. The usual alternative, a *constructor* that sets the members when the object is created, is the subject of <Concept id="constructors" />. The manual also leaves its reading member functions without `const`; mark them `const` as shown here.
+</Callout>
+
+### Interface, implementation, application
+
+A class naturally splits code into three parts:
+
+1. the **interface**: the class definition, which says *what* can be done with a `Population`;
+2. the **implementation**: the definitions of the member functions, which say *how*;
+3. the **application**: the code that uses objects of the class, such as `main`, which may rely on the interface only.
+
+In larger programs the three go into different files: the class definition in a header `population.hpp`, the member definitions in `population.cpp`, and the application in `main.cpp` (see <Concept id="multiple-files" />). Even in a single file, keeping them in this order makes the class easy to read and to check.
+
+## A minimal example
+
+<Example file="data/class_population.cpp" mark="9-16,29-39" />
+
+`removeDeaths` is where the invariant is defended. A stochastic model might draw more deaths than there are individuals (a Poisson number with a large mean, for example). Instead of letting the size go negative, the function removes everyone and *returns* how many actually died, so the caller can see what happened. Negative arguments are ignored. Another reasonable design would reject them loudly, by throwing an exception (<Concept id="exceptions" />); what matters is that the decision is taken in one place, inside the class.
+
+<Anchor id="objects" />
+
+### Objects as values
+
+Objects of your own classes behave like `int`s and `double`s: they can be copied, assigned, passed to functions and returned from them.
+
+- **Copying** creates a new, independent object with the same member values: `const Population before = island;`. Later changes to `island` do not affect `before`.
+- **Assignment**, `mainland = island;`, overwrites every data member of `mainland` with the corresponding member of `island`.
+- **Passing by value**, `int sizeIfHalved(Population p)`, gives the function its own copy. Whatever it does to `p` leaves the caller's object untouched.
+- **Passing by reference**, `void harshWinter(Population& p)`, lets the function change the caller's object (<Concept id="references" />).
+- **Passing by const reference**, `const Population& other`, gives read-only access without a copy. This is the normal way to pass objects that are not cheap to copy, such as anything containing a vector (<Concept id="const-reference" />).
+- **Returning** an object from a function, as `founders(40)` does, hands the new object to the caller.
+
+The compiler writes the copy and assignment operations for you: they copy the members one by one. That is exactly right for classes whose members are numbers, strings and vectors. (Classes that manage a resource by hand need more care, which is one reason this site never does that; see <Concept id="pointers-ownership" />.)
+
+<Example file="data/class_objects.cpp" mark="19-21,32-39,43,55" />
+
+`isLargerThan` takes another `Population` and reads its private `size_`. This is allowed: access control is per *class*, not per object, so a member function may use the private members of any object of its own class. It is how comparisons, merges and other operations between two objects of the same type are written.
+
+Copies are also how a model takes a *snapshot*. A simultaneous update reads only from the old state; the simplest correct implementation copies the state, computes every new value from the copy, and only then replaces the state (<Concept id="update-order" />).
+
+## Explore it
+
+<Check
+  id="access"
+  kind="debug"
+  question="Which line in `main` fails to compile, given the `Population` class of this lesson?"
+  code={`Population p;              // line A
+p.addBirths(10);           // line B
+int n = p.size_;           // line C
+const Population q = p;    // line D`}
+  options={["Line A", "Line B", "Line C", "Line D"]}
+  answer={2}
+  feedback={[
+    "Creating an object is allowed; the default member initialiser sets size_ to 0.",
+    "addBirths is public, so any code may call it.",
+    "size_ is private, so code outside the class may not even read it. Use the public p.size() instead.",
+    "Copying is always allowed (the compiler generates the copy operation), and q can be const.",
+  ]}
+/>
+
+<Check
+  id="copy"
+  kind="predict"
+  question="What does this print?"
+  code={`Population a;
+a.addBirths(20);
+Population b = a;
+b.addBirths(5);
+a.removeDeaths(8);
+std::cout << a.size() << ' ' << b.size() << '\\n';`}
+  options={["`12 25`", "`17 17`", "`12 17`", "`17 25`"]}
+  answer={0}
+  feedback={[
+    "b is an independent copy made when a had 20 individuals. b gains 5 (25); a then loses 8 (12).",
+    "Copies do not share their data: b and a change separately after the copy.",
+    "The deaths are removed from a only; b never loses any.",
+    "a had 20 and lost 8, so it has 12. The births happened to b, not to a.",
+  ]}
+/>
+
+<Check
+  id="const-member"
+  kind="debug"
+  question="A function `void report(const Population& p)` calls `p.size()` and fails to compile with “passing 'const Population' as 'this' argument discards qualifiers”. What is the fix?"
+  options={[
+    "Pass p by value instead of by const reference",
+    "Declare the member function as int size() const; (and define it with const too)",
+    "Make size_ public",
+    "Remove the const from the parameter of report",
+  ]}
+  answer={1}
+  feedback={[
+    "That would compile, but only by making an unnecessary copy and hiding the real problem.",
+    "Only const member functions can be called through a const reference. A function that only reads the object should promise so with const.",
+    "The error is about calling a non-const member function on a const object, not about access.",
+    "That would compile, but it gives report permission to change the population, which it should not have.",
+  ]}
+/>
+
+## In biological modelling
+
+When is a struct enough, and when does a class help? A useful rule:
+
+- **A struct** when every combination of member values is acceptable, or when the type is a passive record: a parameter set, a sample, the output of a function. `struct Parameters { double r; double K; };` needs no protection worth the extra code.
+- **A class** when some combinations are invalid, or when members depend on each other. A population size that must stay non-negative; a probability that must stay in [0, 1]; a landscape whose vector of patches must always have `rows * cols` elements; a population of individuals that keeps a running total of biomass that must equal the sum over individuals. The class makes the rule part of the type.
+
+Classes also give the code the shape of the model. An individual-based model reads naturally as interacting objects: `plant.grow(light)`, `plant.isAlive()`, `patch.colonise(seeds)` (see <Concept id="individual-representation" />). Once the member functions of each class are correct, the main loop can be written, and checked, at the level of the biology.
+
+## Common mistakes
+
+- **Uninitialised data members.** Give each member a default initialiser (or a constructor).
+- **Missing `const` on reading member functions.** The class then cannot be used through `const` references.
+- **Forgetting the class qualifier.** Writing `int size() const { … }` outside the class defines a free function, which then fails to compile because `size_` is unknown, or, worse, compiles if a global of that name exists. Write `int Population::size() const`.
+- **Getters and setters for everything.** A public `setSize(int)` that accepts any value gives the invariant away again. Offer operations that mean something in the model (`addBirths`, `removeDeaths`) rather than raw access to each member.
+- **Forgetting the semicolon** after the closing brace of the class.
+- **Passing objects by value by accident.** `void report(Population p)` copies the whole object at every call. For anything containing a vector, use `const Population&`.
+
+## Practice
+
+<Practice>
+
+1. Write a class `Probability` that stores a value that must lie in [0, 1]. Give it a member function `set(double p)` that accepts only valid values and returns whether it did, and a `value() const`. Test it with 0.3, 1.2 and −0.1.
+2. Extend the `Population` class with a member function `void receive(Population& other, int migrants)` that moves up to `migrants` individuals from `other` into this population. Why does it take `other` by non-const reference? Check that the total number of individuals is unchanged by a migration.
+3. A model keeps a list of plant heights and their mean. Write it once as a struct with a public `std::vector<double>` and a public `double mean`, and once as a class whose `add(double height)` updates both. Write a short `main` that puts the struct version into an inconsistent state in one line. Can you do the same with the class?
+
+<details>
+<summary>Hint for exercise 2</summary>
+The function changes two objects: the population on which `receive` is called gains individuals and `other` loses them, so `other` must be a non-const reference. Use the existing member functions rather than touching `other.size_` directly: `const int moved = other.removeDeaths(migrants); addBirths(moved);` (here “deaths” in the source population are emigrants). Print the sum of both sizes before and after.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+With the struct, `record.heights.push_back(5.0);` changes the vector without updating `mean`. With the class, the vector is private and `add` is the only way to change it, so `add` can recompute the mean every time. The class makes the inconsistent state impossible to reach.
+</details>
+
+</Practice>

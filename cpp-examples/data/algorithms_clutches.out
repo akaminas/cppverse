@@ -1,0 +1,7 @@
+ascending: 2 3 4 5 5 6 6
+descending: 6 6 5 5 4 3 2
+first clutch of 4 at position 4
+31 eggs, 4 clutches of 5 or more, sizes 2 to 6
+threshold is now 6, but the lambda still counts 5 clutches of 4 or more
+22 eggs in large clutches
+expected fledglings: 3.6 3.6 3 3 2.4 1.8 1.2

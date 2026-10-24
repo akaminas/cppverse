@@ -1,0 +1,219 @@
+---
+title: Standard algorithms and lambdas
+summary: Sort, search, count, sum and transform with the tested algorithms of the standard library, and write the small functions they need as lambdas.
+level: intermediate
+module: 12
+manual: ["M12.1", "M14.1"]
+minutes: 45
+objectives:
+  - Call standard algorithms on an iterator range and interpret the iterator they return
+  - Sort, search, count, sum and transform the contents of a container
+  - Write lambdas, capturing outside variables by value or by reference
+  - Summarise a simulated trajectory (peak, time of peak, mean, settling time) with standard algorithms
+  - Remove elements that satisfy a condition in one pass with the erase–remove idiom
+references:
+  - "cppreference.com: Algorithms library; Numerics library (std::accumulate)"
+  - "cppreference.com: Lambda expressions"
+---
+
+## What it is
+
+The headers `<algorithm>` and `<numeric>` contain more than a hundred *algorithms*: function templates for the small, recurring tasks of data processing. Finding the largest element, sorting, counting the elements that satisfy a condition, summing, copying with a transformation. Each takes an iterator range, usually `c.begin()` and `c.end()`, so the same algorithm works on a vector, an array, a list or a string (<Concept id="iterators" />).
+
+Many algorithms take a small function as an argument: the condition to count, the rule for transforming each element, the order for sorting. Such functions are usually written on the spot as *lambdas*, which this lesson introduces from scratch.
+
+## Why it matters
+
+Every model produces output that has to be summarised: the peak of an epidemic and when it occurs, the mean population size after a burn-in, the number of years a population spends below a threshold. Writing each of these as a hand-made loop works, but every loop is a new chance for an off-by-one error or an uninitialised accumulator. The standard algorithms are short, already tested, and say what they do in their name: `std::max_element` finds the largest element, and a reader does not have to work through a loop to see that.
+
+They also encode good algorithms. Finding the maximum by sorting a copy and taking its last element gives the right answer, but sorting takes time proportional to *n* log *n*; a single pass, which is what `std::max_element` does, takes time proportional to *n*. Choosing the algorithm that does no more work than needed is part of designing a program (<Concept id="algorithm-design" />).
+
+<Callout kind="manual" title="The promised algorithms section is missing">
+The introduction to Module 12 of the manual announces a selection of elementary algorithms, but this edition contains no such section: apart from the member function `std::list::sort` and `std::advance`, the algorithms library is only mentioned in passing. Module 14 then designs a maximum search by hand. This lesson fills the gap with the algorithms most used in modelling.
+</Callout>
+
+## How it works in C++
+
+### Algorithms work on ranges
+
+An algorithm receives the range as two iterators, `first` and `last`, with the usual half-open meaning: `first` is included, `last` is not. Algorithms that *find* something return an iterator to it, and return `last` when there is nothing to find. Always compare the result with `last` before dereferencing it.
+
+The most useful algorithms for summarising data:
+
+| Algorithm | Header | Result |
+|---|---|---|
+| `std::sort(first, last)` | `<algorithm>` | sorts ascending (needs random-access iterators) |
+| `std::sort(first, last, comp)` | `<algorithm>` | sorts by the order `comp(a, b)` ("a comes before b") |
+| `std::find(first, last, value)` | `<algorithm>` | iterator to the first element equal to `value`, or `last` |
+| `std::find_if(first, last, pred)` | `<algorithm>` | iterator to the first element for which `pred` is true, or `last` |
+| `std::count(first, last, value)`, `std::count_if(first, last, pred)` | `<algorithm>` | how many elements equal `value` / satisfy `pred` |
+| `std::min_element`, `std::max_element`, `std::minmax_element` | `<algorithm>` | iterator(s) to the smallest / largest element (`last` if empty) |
+| `std::accumulate(first, last, init)` | `<numeric>` | `init` plus every element, added left to right |
+| `std::transform(first, last, out, f)` | `<algorithm>` | writes `f(x)` for each element `x` to the range starting at `out` |
+| `std::for_each(first, last, f)` | `<algorithm>` | calls `f(x)` for each element |
+| `std::remove_if(first, last, pred)` | `<algorithm>` | moves the elements to keep to the front (see below) |
+
+<Example file="data/algorithms_clutches.cpp" mark="26,28,31,36-38" />
+
+Two details deserve attention. `std::greater<int>()` from `<functional>` is a ready-made comparison that reverses the order. And `std::distance(clutches.begin(), four)` turns the iterator returned by `find` into a position.
+
+<Callout kind="pitfall" title="The type of accumulate's initial value">
+`std::accumulate` adds in the type of its *third* argument. `std::accumulate(x.begin(), x.end(), 0)` sums a vector of doubles as an `int`, truncating after every addition, so the "total" of {0.4, 0.3, 0.6} is 0. Write `0.0` for doubles.
+</Callout>
+
+### Lambdas
+
+A *lambda* is a function without a name, written where it is needed:
+
+```cpp
+[](int c) { return c >= 5; }
+```
+
+It has three parts. The square brackets are the *capture list* (see below); the parentheses hold the parameters, exactly as for a normal function; the braces hold the body. The return type is deduced from the `return` statement. This lambda takes a clutch size and answers whether it is large, which is exactly the kind of function `std::count_if` wants: it calls it once for each element and counts the `true` answers.
+
+A lambda is an object, so it can also be stored in a variable and used several times:
+
+```cpp
+const auto isLarge = [](int c) { return c >= 5; };
+const auto n = std::count_if(clutches.begin(), clutches.end(), isLarge);
+```
+
+### Capturing outside variables
+
+A lambda body cannot see the local variables of the function in which it is written, unless it *captures* them:
+
+- **`[threshold]`, capture by value**: the lambda gets its own copy of `threshold`, made when the lambda is created. Later changes to the original do not affect it, as the `threshold = 6` line in the program shows.
+- **`[&eggsInLarge]`, capture by reference**: the lambda refers to the original variable, and can read its current value or change it. That is how the `for_each` in the program accumulates a total outside the lambda.
+- **`[=]` and `[&]`** capture every variable the body uses, by value or by reference respectively.
+
+Capturing by value is the safe default for parameters such as a threshold or a rate. Capture by reference when the lambda must update something, or when copying would be expensive, and only if the lambda is used while that variable still exists. (A lambda that outlives the function in which it was created, for example one that is stored for later, must not hold references to that function's local variables.)
+
+### Removing elements: the erase–remove idiom
+
+`std::remove_if` does not remove anything from the container. Algorithms see only iterators, so they cannot change a container's size. It moves every element that is to be *kept* to the front, in order, and returns an iterator to the end of the kept elements. The container's own `erase` then cuts off the rest:
+
+```cpp
+population.erase(
+    std::remove_if(population.begin(), population.end(),
+                   [](const Individual& ind) { return !ind.alive; }),
+    population.end());
+```
+
+This removes all dead individuals in a single pass, however many there are. Erasing them one by one would shift the rest of the vector after each removal (see <Concept id="container-choice" />).
+
+<Callout kind="modern" title="std::erase_if and ranges (C++20)">
+<Std v="c++20" /> `std::erase_if(population, [](const Individual& ind) { return !ind.alive; });` does both steps in one call. C++20 also adds *range* versions of the algorithms in `<algorithm>`, which take the container itself: `std::ranges::sort(clutches);`, `std::ranges::max_element(x)`.
+</Callout>
+
+## A minimal example
+
+A discrete-time logistic model, $x_{t+1} = r\,x_t (1 - x_t)$, with $r = 2.8$: $x_t$ is the population density in generation *t*, scaled so that $x = 1$ is the largest density the habitat could ever hold. Started at low density, it overshoots its equilibrium $x^* = 1 - 1/r$ and then settles in damped oscillations. Five summaries, each one line:
+
+<Example file="data/algorithms_trajectory.cpp" mark="23-31" />
+
+- **Peak and time of peak.** `std::max_element` returns an iterator to the largest value; `*peak` is the value and `std::distance(x.begin(), peak)` its index, which is the generation because `x[t]` holds generation *t*. If two values were equally large, it would return the first.
+- **Mean.** `std::accumulate` with `0.0`, divided by the number of values.
+- **Generations above the equilibrium.** `std::count_if` with a lambda that captures `equilibrium` by value.
+- **Settling time.** `std::find_if` returns the first generation within the tolerance of the equilibrium. (For a damped oscillation, as here, the trajectory stays within the tolerance afterwards; for other dynamics that would need checking.)
+
+<Figure id="standard-algorithms-summary" />
+
+## Explore it
+
+<Check
+  id="find-end"
+  kind="debug"
+  question="What is wrong with this code if no count in `N` exceeds 1000?"
+  code={`auto it = std::find_if(N.begin(), N.end(),
+                       [](int n) { return n > 1000; });
+std::cout << "first outbreak year: " << std::distance(N.begin(), it)
+          << ", size " << *it << '\\n';`}
+  options={[
+    "Nothing: find_if returns the last element when there is no match",
+    "find_if returns N.end(), which must not be dereferenced, so *it is undefined behaviour",
+    "find_if throws an exception when there is no match",
+    "The lambda must be declared before it is used",
+  ]}
+  answer={1}
+  feedback={[
+    "It returns the end iterator, one past the last element, not the last element.",
+    "When nothing matches, the result is N.end(). The distance is then N.size(), which looks like a valid year but is not, and *it reads past the end. Test it != N.end() first.",
+    "Algorithms report “not found” by returning the end of the range, never by throwing.",
+    "A lambda can be written directly in the argument list; that is its main use.",
+  ]}
+/>
+
+<Check
+  id="capture"
+  kind="predict"
+  question="What does this print?"
+  code={`double rate = 0.1;
+const auto byValue = [rate](double n) { return rate * n; };
+const auto byRef   = [&rate](double n) { return rate * n; };
+rate = 0.5;
+std::cout << byValue(100.0) << ' ' << byRef(100.0) << '\\n';`}
+  options={["`10 10`", "`50 50`", "`10 50`", "`50 10`"]}
+  answer={2}
+  feedback={[
+    "byRef refers to rate itself, so it sees the new value 0.5.",
+    "byValue copied rate when it was created, before the change to 0.5.",
+    "byValue holds a copy of rate taken at creation (0.1); byRef reads the variable when it is called (0.5).",
+    "The two are the other way round: the copy keeps the old value.",
+  ]}
+/>
+
+<Check
+  id="remove"
+  kind="interpret"
+  question="After `auto keep = std::remove_if(v.begin(), v.end(), isDead);` but *before* any erase, what has happened to `v`?"
+  options={[
+    "The dead individuals have been deleted and v.size() is smaller",
+    "The individuals to keep have been moved to the front, v.size() is unchanged, and the elements from keep to v.end() are leftovers to be erased",
+    "The dead individuals have been moved to the back, in their original order",
+    "Nothing; remove_if only counts",
+  ]}
+  answer={1}
+  feedback={[
+    "An algorithm cannot change a container's size; it sees only iterators. The size changes only with v.erase(keep, v.end()).",
+    "That is why remove_if is always followed by erase: the erase–remove idiom.",
+    "The elements after keep are in a valid but unspecified state; they are not guaranteed to be the dead individuals.",
+    "remove_if rearranges the elements; std::count_if is the one that counts.",
+  ]}
+/>
+
+## In biological modelling
+
+- **Trajectory summaries**, as in the example: `max_element` for peaks (the epidemic peak and its day), `accumulate` for totals and means (the cumulative number of infections), `count_if` for time spent above or below a threshold, `find_if` for the first time something happens (extinction, invasion, settling).
+- **After a burn-in.** Every algorithm takes a range, so `std::accumulate(x.begin() + 100, x.end(), 0.0)` sums only the generations after the first 100.
+- **Ranking and selection.** `std::sort` with a lambda such as `[](const Plant& a, const Plant& b) { return a.seeds > b.seeds; }` orders individuals by fitness; `std::nth_element` finds a median or a quantile without sorting everything.
+- **Mortality in one pass.** The erase–remove idiom removes all individuals that died in a time step.
+- **Replicates.** The final sizes of a set of replicate runs, collected in a vector, are summarised with the same algorithms; for distributions and confidence intervals see <Concept id="output-analysis" />.
+
+## Common mistakes
+
+- **Dereferencing the result of a failed search.** Compare with the end of the range first. This includes `max_element` on an empty vector.
+- **`std::accumulate(…, 0)` for doubles.** The sum is computed as an `int`.
+- **`std::remove_if` without `erase`.** The container keeps its size, with leftovers at the end.
+- **Capturing by reference a variable that no longer exists** when the lambda is called.
+- **Sorting to find a maximum or a median.** `max_element` and `nth_element` do less work.
+- **`std::sort` on a `std::list`.** Lists need their member `sort()`.
+
+## Practice
+
+<Practice>
+
+1. Simulate the logistic map from the example for 200 generations with $r = 3.2$, where the population settles on a two-cycle. Discard the first 100 generations and use `std::minmax_element` on the rest to find the two densities of the cycle.
+2. A vector of structs `Plant { double height; int seeds; };` describes a population. Use `std::sort` with a lambda to order the plants by seed production (most first), then `std::accumulate` with a lambda as fourth argument, `[](int sum, const Plant& p) { return sum + p.seeds; }`, to compute the total seed output.
+3. For an SIR trajectory stored as a vector of `State` structs (from <Concept id="structs" />), find the day of peak prevalence (largest *I*) and the first day after the peak on which *I* falls below 1 per cent. Which algorithm takes a starting point other than `begin()`?
+
+<details>
+<summary>Hint for exercise 1</summary>
+`const auto [lo, hi] = std::minmax_element(x.begin() + 100, x.end());` gives two iterators; print `*lo` and `*hi`. For $r = 3.2$ the two values are close to 0.513 and 0.799.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+`std::max_element` needs a comparison lambda that compares the `I` members: `[](const State& a, const State& b) { return a.I < b.I; }`. Then call `std::find_if(peak, trajectory.end(), …)` starting from the peak iterator, so that the early days of the epidemic, when *I* is also small, are skipped.
+</details>
+
+</Practice>

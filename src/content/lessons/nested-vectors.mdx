@@ -1,0 +1,178 @@
+---
+title: Vectors of vectors
+summary: Two-dimensional data such as quadrat grids and projection matrices, stored as a vector of rows and traversed with nested loops.
+level: beginner
+module: 5
+manual: ["M5.2", "M11.4"]
+minutes: 30
+objectives:
+  - Create an n × m grid as a vector of rows, filled with a given value
+  - Read and write element [i][j] and say which index is the row
+  - Traverse a matrix with nested loops to print it and compute row and column totals
+  - Multiply a matrix by a vector, as in one step of a matrix population model
+  - Store a grid in a single flat vector with the index r * cols + c
+references:
+  - "cppreference.com: std::vector"
+  - "Caswell, H. (2001) Matrix Population Models, 2nd ed. Sinauer."
+---
+
+## What it is
+
+Many biological data are two-dimensional: seedling counts in a grid of quadrats, the occupancy of patches in a landscape, the transition rates between the stages of a life cycle. C++ has no separate matrix type in its standard library, but the element type of a `std::vector` can be anything, including another vector. A vector whose elements are vectors is a table: each inner vector is one *row*.
+
+```cpp
+std::vector<std::vector<int>> seedlings;   // a vector of rows; each row is a vector of int
+```
+
+Element `seedlings[i][j]` is read from left to right: `seedlings[i]` is row *i* (itself a vector), and `[j]` picks element *j* of that row. The first index is the row, the second the column, as in the mathematical notation $a_{ij}$.
+
+## Why it matters
+
+Structured populations are where matrices first become indispensable in ecology and evolution. In a matrix population model the state is a vector of stage densities and one time step multiplies it by a projection matrix (see <Concept id="matrix-models" />). Spatial models store a landscape as a grid; distance matrices, contact matrices between age classes and genotype-by-environment tables all have the same shape. Being able to build, fill, traverse and print such a table is the step from one-dimensional trajectories to structured models.
+
+## How it works in C++
+
+### Creating an n × m matrix
+
+The quickest way to make a matrix of `rows` × `cols` zeros uses the fill form of the vector constructor twice:
+
+```cpp
+std::vector<std::vector<int>> grid(rows, std::vector<int>(cols, 0));
+```
+
+Read from the inside out: `std::vector<int>(cols, 0)` creates a *temporary* row of `cols` zeros, an unnamed object that exists only for this statement. The outer vector is then created with `rows` copies of that row. Each copy is independent, so changing `grid[0][2]` does not touch row 1.
+
+Small matrices with known values can be written out with nested braces, one inner brace pair per row:
+
+```cpp
+const std::vector<std::vector<double>> A{
+    {0.0, 1.2, 3.0},
+    {0.3, 0.4, 0.0},
+    {0.0, 0.5, 0.8},
+};
+```
+
+(The trailing comma after the last row is allowed and keeps the rows uniform.)
+
+Because each row is a vector in its own right, rows can differ in length (a *jagged* array) or be appended with `push_back(row)`. Nothing forces a vector of vectors to be rectangular: that is your responsibility.
+
+### Indexing and nested loops
+
+To visit every element, put a loop over the columns inside a loop over the rows. The outer loop runs once per row; for each row, the inner loop runs over all its columns. `grid.size()` is the number of rows and `grid[i].size()` the length of row *i*:
+
+<Example file="data/matrix_quadrats.cpp" mark="15,22-29" />
+
+The order of the loops determines what you can compute on the way. Row totals fall out naturally when the inner loop runs over columns, because each row is completed before the next begins. Column totals need a separate vector of accumulators, one per column, as in the second pair of loops.
+
+Printing a matrix follows the same pattern: print the elements of a row separated by spaces, then a newline at the end of the row, *outside* the inner loop.
+
+## A minimal example
+
+A matrix population model projects the stage densities from one year to the next by a matrix–vector product, $\mathbf{n}(t+1) = \mathbf{A}\,\mathbf{n}(t)$. Element *i* of the new vector is a sum over all stages *j* this year:
+
+$$
+n_i(t+1) = \sum_{j=1}^{3} a_{ij}\, n_j(t)
+$$
+
+Here $n_j(t)$ is the number of individuals in stage *j* in year *t*, and $a_{ij}$ is the number of stage-*i* individuals produced next year per stage-*j* individual this year (a fecundity in the first row, a survival or transition probability elsewhere). In C++ this is two nested loops and an accumulator. Select a term in the equation or a line in the code to see how they correspond:
+
+<MathCode id="nested-vectors-product" />
+
+The new densities are collected in a separate vector, `next`, which replaces `n` only once all three have been computed. Writing them straight into `n` would let the second and third sums use values that already belong to the next year. The model would then no longer be $\mathbf{A}\,\mathbf{n}(t)$ (see <Concept id="update-order" />).
+
+### Flat storage: one vector, computed indices
+
+A vector of vectors is easy to read but is not one block of memory: each row is a separate allocation. For large grids that are always rectangular, many programmers store all elements in a single vector of `rows * cols` elements, row after row, and compute the position of element (*r*, *c*) as `r * cols + c`:
+
+<Example file="data/matrix_flat_grid.cpp" mark="13,18,27" />
+
+Row *r* starts at element `r * cols`; within the row, the column is the offset. This *row-major* layout is also how image files and numerical libraries store matrices. It guarantees a rectangular shape, keeps neighbouring elements of a row next to each other in memory (good for speed), and is simple to resize or copy. The cost is readability: every access needs the formula, and a slip such as `r * rows + c` produces wrong results without an error. If you choose flat storage, write the formula once, in a small function (see <Concept id="functions" />), rather than at every access.
+
+## Explore it
+
+<Check
+  id="row-col"
+  kind="read"
+  question="`std::vector<std::vector<double>> m(2, std::vector<double>(5, 1.0));` What are `m.size()` and `m[0].size()`?"
+  options={["`2` and `5`", "`5` and `2`", "`10` and `5`", "`2` and `1`"]}
+  answer={0}
+  feedback={[
+    "The outer vector has two elements (rows); each of them is a vector of five copies of 1.0 (columns).",
+    "The first argument of the outer constructor is the number of rows. Here that is 2; each row has 5 elements.",
+    "size() of the outer vector counts rows, not elements. The total number of elements is m.size() × m[0].size() = 10.",
+    "The 1.0 is the fill value of each element, not a length. Each row has five elements.",
+  ]}
+/>
+
+<Check
+  id="print"
+  kind="predict"
+  question="What does this fragment print?"
+  code={`std::vector<std::vector<int>> g{{1, 2, 3}, {4, 5, 6}};
+for (std::size_t j = 0; j < g[0].size(); ++j) {
+    std::cout << g[1][j] + g[0][j] << ' ';
+}`}
+  options={["`3 7 11`", "`5 7 9`", "`6 15`", "`1 2 3 4 5 6`"]}
+  answer={1}
+  feedback={[
+    "That would be the sum of neighbouring elements within a row. The loop adds the two rows column by column.",
+    "j runs over the three columns; each pass adds the element in row 1 to the element in row 0 of the same column: 4 + 1, 5 + 2, 6 + 3.",
+    "Those are the row totals. Here the loop variable is a column index and both rows appear in each pass.",
+    "Only one loop runs, over the columns, and it prints one sum per column.",
+  ]}
+/>
+
+<Check
+  id="product-order"
+  kind="debug"
+  question="A student computes the matrix–vector product with `n[i] += A[i][j] * n[j];` directly in the vector `n`, starting each `n[i]` at zero. Why are the results wrong?"
+  options={[
+    "Because += is not allowed on vector elements",
+    "Because setting n[i] to zero and then adding to it destroys values that later rows still need",
+    "Because the loops must run over columns first",
+    "There is no problem: the result is the same",
+  ]}
+  answer={1}
+  feedback={[
+    "+= works on any element that can be assigned to; the problem is which values are read.",
+    "Row 1 needs the old n[0], but n[0] has already been overwritten with next year's value. A separate vector for the new state keeps every sum based on year t.",
+    "The order of the loops changes the order of the additions, not the fact that n is overwritten while it is still being read.",
+    "From row 1 onwards the sums read partly updated values, so the result is not A n(t).",
+  ]}
+/>
+
+## In biological modelling
+
+- **Projection matrices.** A Leslie (age-classified) or Lefkovitch (stage-classified) matrix is a small, square vector of vectors. The matrix–vector product above is the whole of one time step; repeated products give the projection, and the long-term growth rate is the dominant eigenvalue of the matrix (<Concept id="power-iteration" />).
+- **Landscapes.** Occupancy, habitat quality or density on a grid of patches. Dispersal to neighbouring cells uses indices `[i - 1][j]`, `[i + 1][j]` and so on, which must be checked at the edges of the grid: row −1 does not exist (see <Concept id="indexing-errors" />).
+- **Trajectories of structured states.** A vector of stage vectors, one per year, `std::vector<std::vector<double>> history;` with `history.push_back(n);` after every step, is a matrix whose rows are years and whose columns are stages: exactly the table you will want to write to a file.
+
+A name for the type makes such code easier to read. `using Matrix = std::vector<std::vector<double>>;` lets you write `Matrix A(3, std::vector<double>(3, 0.0));` (type aliases are explained in <Concept id="auto-range-for" />).
+
+## Common mistakes
+
+- **Swapping rows and columns.** Decide once whether `[i][j]` means (row, column) or (column, row), write it in a comment next to the declaration, and match the mathematics: in a projection matrix, $a_{ij}$ is the contribution of stage *j* to stage *i*.
+- **Using the row count for columns.** `for (j = 0; j < grid.size(); ++j)` runs over as many columns as there are rows. Use `grid[i].size()` for the length of a row.
+- **Indexing rows that were never created.** `std::vector<std::vector<int>> g(3);` has three *empty* rows, so `g[0][0]` is out of range. Give each row a size, as in the fill form above.
+- **Updating a state in place** during a matrix–vector product, instead of writing into a new vector.
+- **Writing `> >`.** Older code (and the course manual) writes `std::vector<std::vector<int> >` with a space; since C++11 the space is unnecessary.
+
+## Practice
+
+<Practice>
+
+1. Write a program that stores a 4 × 4 Leslie matrix for an organism with four age classes (fecundities 0, 1.5, 2.0 and 1.0 in the first row; survival probabilities 0.5, 0.7 and 0.4 just below the diagonal; zeros elsewhere) and prints it as a table with one row per line.
+2. Project the population $\mathbf{n}(0) = (100, 0, 0, 0)$ for ten years with that matrix. Store every year's vector in a `std::vector<std::vector<double>>` and print the total population in each year.
+3. A 5 × 5 grid of patches is stored flat in a `std::vector<int>`. Write the loop that counts, for the patch in row 2 and column 2, how many of its four neighbours (up, down, left, right) are occupied. Then generalise it to any patch, including those on the edges.
+
+<details>
+<summary>Hint for exercise 1</summary>
+Start with `std::vector<std::vector<double>> L(4, std::vector<double>(4, 0.0));`, then set the first row and the subdiagonal: `L[1][0] = 0.5; L[2][1] = 0.7; L[3][2] = 0.4;`. Survival from age class *j* to *j* + 1 sits in row *j* + 1, column *j*.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+The neighbours of (r, c) are (r − 1, c), (r + 1, c), (r, c − 1) and (r, c + 1). Because the indices are unsigned, test `r > 0` before using `r - 1` and `r + 1 < rows` before using `r + 1`; never compute an index first and check it afterwards.
+</details>
+
+</Practice>

@@ -1,0 +1,7 @@
+year 0: 800.0
+year 2: 392.0
+year 4: 192.1
+year 6: 94.1
+year 8: 46.1
+last sample: year 8, 46.1 seeds
+(2, 1000.0) < (4, 192.1): true

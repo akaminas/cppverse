@@ -1,0 +1,4 @@
+merged: A20 A17 B02 B09 A03 A11
+group B now has 0 animals
+sorted: A03 A11 A17 A20 B02 B09
+without A11: A03 A17 A20 B02 B09

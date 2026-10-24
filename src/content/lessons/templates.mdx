@@ -1,0 +1,211 @@
+---
+title: Templates
+summary: Write a function or class once and let the compiler generate a version for each type, the mechanism behind std::vector<double> and the whole standard library.
+level: intermediate
+module: 12
+manual: ["M12.1", "M12.2", "M12.2-opt"]
+minutes: 45
+optional: false
+objectives:
+  - Explain why the standard library is built from templates and read template syntax such as std::vector<double>
+  - Write a function template and call it with deduced and with explicit template arguments
+  - Write a class template, including member functions defined outside the class
+  - Explain why template definitions go in header files
+  - (Optional) Use non-type and default template parameters, and constrain a template with static_assert or a C++20 concept
+references:
+  - "cppreference.com: Templates; Function template; Class template argument deduction"
+  - "cppreference.com: Type traits (<type_traits>)"
+  - "Vandevoorde, D., Josuttis, N. M. & Gregor, D. (2017) C++ Templates: The Complete Guide, 2nd ed. Addison-Wesley."
+---
+
+## What it is
+
+A *template* is a function or a class written with one or more types left open. You write it once, with a placeholder such as `T`; each time you use it with a particular type, the compiler fills in the placeholder and generates an ordinary function or class for that type.
+
+You have been using templates all along. `std::vector` is a class template, and `std::vector<double>` and `std::vector<int>` are two different classes generated from it. `std::pair<int, double>` is another. Most of the C++ standard library (its containers, and the algorithms in <Concept id="standard-algorithms" />) consists of templates.
+
+## Why it matters
+
+Without templates, every data structure and algorithm would have to be written again for every type. A function that keeps a value inside an interval would need one version for counts (`int`), one for rates (`double`), one for large counts (`long long`), each identical apart from the type. Overloading (<Concept id="overloading-defaults" />) lets them share a name, but the code is still duplicated, and a bug fixed in one copy survives in the others.
+
+The standard library avoids this by writing its containers and algorithms as templates. That is why it can offer fast, carefully tested containers for *any* element type, including the structs and classes you define yourself: a `std::vector<Plant>` works without anyone at the standards committee knowing about your `Plant`. The price is syntax that looks daunting at first. Once you can read a template, the library becomes much easier to use.
+
+## How it works in C++
+
+### Function templates
+
+<Anatomy id="templates-function" />
+
+A function template begins with `template <typename T>`, followed by an otherwise ordinary function in which `T` stands for a type:
+
+<Example file="data/template_clamp.cpp" mark="9-10,20-21,31,33-34" />
+
+When you call `clampTo(14, 0, 12)`, the compiler looks at the argument types (three `int`s), *deduces* `T = int`, and generates the function `clampTo<int>`. The call `clampTo(1.08, 0.0, 1.0)` generates a second function, `clampTo<double>`. You can also name the type yourself in angle brackets, as in `clampTo<double>(0.35, 0, 1)`; then nothing needs to be deduced, and the `int` arguments are simply converted.
+
+`total` shows deduction from a more complicated parameter type: from an argument of type `std::vector<int>`, the parameter `const std::vector<T>&` yields `T = int`. Inside, `T sum{};` creates a zero of whatever type `T` turns out to be.
+
+<Callout kind="tip" title="The standard library has one already">
+C++17 provides `std::clamp(value, low, high)` in `<algorithm>`, written as a template in just this way. Writing your own here shows the mechanism; in real code, use the library version.
+</Callout>
+
+### Instantiation happens at compile time
+
+Generating a function or class from a template for particular arguments is called *instantiation*. It happens during compilation, before linking, and only for the types actually used. Two consequences matter in practice:
+
+- **The compiler needs the whole template wherever it is used.** For an ordinary function, a header with its declaration is enough; the definition can sit in a separate `.cpp` file that is compiled once (<Concept id="multiple-files" />). A template cannot be compiled on its own, because the compiler does not yet know `T`. Template definitions, including the bodies of all their member functions, therefore go in header files.
+- **Errors appear when a template is used with an unsuitable type.** `clampTo` compares with `<` and `>`. Calling it with a struct that has no comparison operators fails inside the template body, and the error message can be long. The optional section below shows how to make such errors clearer.
+
+Deduction is also strict about consistency. In `clampTo(0.35, 0, 1)` the first argument says `T = double` and the other two say `T = int`, and the compiler refuses to pick one:
+
+<Example file="data/template_deduction_conflict.cpp" mark="19" />
+
+GCC reports `deduced conflicting types for parameter 'T' ('double' and 'int')`. Write `0.0` and `1.0`, or give the type explicitly.
+
+<Callout kind="manual" title="Terminology and keywords">
+The manual calls the functions generated from a template "specialisations". In standard terminology they are *instantiations*; an *explicit specialisation* is something else, a hand-written replacement of the template for one particular type. The manual also writes only `template <class T>`. `template <typename T>` means exactly the same, and makes clear that `T` can be any type, not only a class.
+</Callout>
+
+### Class templates
+
+A class template works the same way: the whole class is written with a placeholder type. This `TimeSeries<T>` stores one value of type `T` per time step. It is placed in a header, as every template should be:
+
+<Example file="data/time_series.hpp" bare mark="12-13,24-25" />
+
+Member functions written inside the class body need nothing special. A member function defined *outside* the class repeats the template header and names the class with its parameter: `template <typename T> T TimeSeries<T>::peak() const`. Inside the class, plain `TimeSeries` (without `<T>`) refers to the current instantiation.
+
+A program that includes the header can now generate as many classes as it needs:
+
+<Example file="data/template_time_series.cpp" mark="16-17" />
+
+`TimeSeries<int>` and `TimeSeries<double>` are unrelated classes that happen to come from the same recipe; you cannot assign one to the other. A class template can have several parameters, separated by commas: `template <typename Key, typename Value> class Table { … };` is used as `Table<std::string, double>`, just like the standard `std::map<std::string, double>` (<Concept id="lists-sets-maps" />).
+
+### Deducing class template arguments (C++17)
+
+For function templates, the arguments have always been deducible from the call. Since C++17 the same is possible for class templates when an object is created with initial values (*class template argument deduction*, CTAD):
+
+```cpp
+std::pair sample{3, 0.42};       // std::pair<int, double>
+std::vector counts{4, 7, 9};     // std::vector<int>
+std::array stages{1.0, 2.0, 3.0}; // std::array<double, 3>
+```
+
+This works for the standard library's types. For your own class templates, CTAD needs a constructor (<Concept id="constructors" />) or, for a plain aggregate struct, C++20. When the element type is not obvious from the initialiser, writing it out remains clearer: `std::vector<double> N{40, 60}` holds doubles, whereas `std::vector N{40, 60}` holds ints.
+
+<Callout kind="modern" title="No space needed in >>">
+Nested template arguments such as `std::vector<std::vector<double>>` end with `>>`. Before C++11 this was read as the shift operator, so older code (and the manual) writes `> >` with a space. The space has not been necessary for more than a decade.
+</Callout>
+
+<Anchor id="template-parameters" />
+
+### Optional: values as parameters, defaults and constraints
+
+This subsection goes beyond everyday use; skip it on a first reading.
+
+**Non-type parameters.** A template parameter can also be a compile-time *value*, typically an integer. `std::array<double, 3>` has a type parameter (`double`) and a value parameter (`3`): the size is part of the type. A function template can take such a value as well, and it is deduced like a type:
+
+<Example file="data/template_fixed_size.cpp" mark="12-13,21-23" />
+
+`total(stages)` deduces `N = 3` and `total(sexes)` deduces `N = 2`. Because `N` is known at compile time, a model whose state has a fixed number of variables (three stages, four SEIR compartments) can be written for `std::array<double, N>` and checked by the compiler: passing a two-element state where three are expected is a type error, not a run-time surprise. The value must be a constant expression: `std::array<double, n>` with an `n` read from a file does not compile (use a `std::vector` then).
+
+**Default template arguments.** Like function parameters, template parameters can have defaults. `template <typename Result = double, typename T>` lets `mean(clutches)` return a `double`, while `mean<int>(clutches)` asks for integer division. A parameter with a default can precede a deduced one in a function template, because the deduced one is never given explicitly.
+
+**Constraints with `static_assert`.** `std::is_arithmetic_v<T>`, from `<type_traits>`, is `true` for number types (including `bool` and `char`) and `false` otherwise. `static_assert(condition, "message")` checks the condition at compile time and stops the build with your message if it fails. A call `mean(std::vector<std::string>{…})` is then rejected with "mean() needs a vector of numbers" instead of a cascade of errors from deep inside the template. Dozens of other traits exist (`std::is_integral_v`, `std::is_floating_point_v`, `std::is_same_v<A, B>`).
+
+<Callout kind="manual" title="Check template arguments at compile time">
+The manual's optional section tests `std::is_integral<T>::value` inside the function and throws a run-time exception (and includes `<exception>` for `std::runtime_error`, which actually lives in `<stdexcept>`). A property of a type is known at compile time, so `static_assert` is the right tool: a wrong instantiation then never produces a program at all.
+</Callout>
+
+**Concepts** <Std v="c++20" />. C++20 lets you state requirements in the template header itself. `template <std::floating_point T>` accepts only `float`, `double` and `long double`; the standard concepts live in `<concepts>`:
+
+<Example file="data/template_concepts.cpp" mark="10" />
+
+The equivalent long form is `template <typename T> requires std::floating_point<T>`. Concepts make the requirements part of the interface, and the compiler's error message names the unsatisfied concept. With a C++17 compiler, `static_assert` does the same job.
+
+## Explore it
+
+<Check
+  id="deduce"
+  kind="predict"
+  question="Given `template <typename T> T total(const std::vector<T>& v)` from this lesson, what is printed?"
+  code={`const std::vector<int> v{1, 2, 2};
+std::cout << total(v) / 2 << '\\n';`}
+  options={["`2.5`", "`2`", "`3`", "It does not compile"]}
+  answer={1}
+  feedback={[
+    "T is deduced from the element type of v, int, so total returns the int 5, and 5 / 2 is integer division.",
+    "T = int, so total(v) is the int 5; dividing by the int 2 truncates to 2. Use a double result type when you need a mean.",
+    "The sum is 1 + 2 + 2 = 5, and 5 / 2 in integer arithmetic is 2.",
+    "The call deduces T = int from std::vector<int> and compiles without trouble.",
+  ]}
+/>
+
+<Check
+  id="header"
+  kind="debug"
+  question="A student moves the definition of `TimeSeries<T>::peak` from the header into `time_series.cpp`, leaving only the class definition in the header. Each file compiles, but the build fails. Why?"
+  options={[
+    "Templates may not have member functions defined outside the class",
+    "When time_series.cpp is compiled, no TimeSeries<int> or <double> is used there, so peak is never instantiated; main.cpp sees only a declaration, and the linker finds no definition",
+    "The header must be included twice",
+    "The member function must be declared static",
+  ]}
+  answer={1}
+  feedback={[
+    "Out-of-class definitions are fine; they just have to be visible where the template is used.",
+    "Instantiation needs the full definition at the point of use. The usual rule follows: put the whole template, member definitions included, in the header.",
+    "Including a header twice in one file only repeats declarations (and is prevented by the include guard).",
+    "static has nothing to do with it; the problem is where the definition is visible.",
+  ]}
+/>
+
+<Check
+  id="ctad"
+  kind="read"
+  question="Which declaration creates a vector of doubles?"
+  options={["`std::vector v{40, 60};`", "`std::vector<double> v{40, 60};`", "`std::vector v(40, 60);`", "`std::vector<int> v{40.0, 60.0};`"]}
+  answer={1}
+  feedback={[
+    "Class template argument deduction looks at the initialisers, which are ints, so this is a std::vector<int>.",
+    "The element type is given explicitly, and the int literals are converted to 40.0 and 60.0.",
+    "Deduction gives std::vector<int> here as well: forty copies of the int 60.",
+    "This does not compile: brace initialisation refuses to narrow 40.0 from double to int.",
+  ]}
+/>
+
+## In biological modelling
+
+Most modellers *use* templates daily and *write* them only occasionally. Good reasons to write one:
+
+- **A numerical routine that should work for several state types.** An integrator or a summary function that accepts a `std::vector<double>` state today and a `std::array<double, 4>` state tomorrow.
+- **A container-like class** such as `TimeSeries<T>` for counts and densities, or a grid `Grid<T>` that holds `int` occupancy in one model and `double` resource levels in another.
+- **Fixed-size states.** Non-type parameters (`std::array<double, N>`) let the compiler check that every function receives a state with the right number of variables.
+
+Equally important is knowing when *not* to write one. If a function will only ever be used with `double`, an ordinary function is simpler to read, to debug and to put in a separate source file. Write the concrete version first, and turn it into a template when a second type actually appears.
+
+## Common mistakes
+
+- **Template definitions in a `.cpp` file.** Put them in the header.
+- **Conflicting deduced types**, as in `clampTo(0.35, 0, 1)`. Make the argument types agree or name `T` explicitly.
+- **Integer surprises.** A template that returns `T` returns an `int` for `int` arguments; a mean computed that way truncates.
+- **Forgetting the template header on out-of-class member definitions.** Both `template <typename T>` and `TimeSeries<T>::` are needed.
+- **Reading the whole error message.** Template errors can run to dozens of lines. The first line that mentions *your* file, and the line that says which call caused the instantiation, usually tell you what is wrong.
+
+## Practice
+
+<Practice>
+
+1. Write a function template `lastValue(const std::vector<T>& v)` that returns the last element, and test it with a vector of `int` counts and a vector of `std::string` plot codes. What should happen for an empty vector?
+2. Add a member function `T change(std::size_t t) const` to `TimeSeries<T>` that returns the change between time *t* and *t* + 1. Instantiate it with `int` and `double`. Which index values are valid?
+3. (Optional section) Write `template <std::size_t N> std::array<double, N> scaled(const std::array<double, N>& x, double factor)` and use it on a three-stage and a two-sex state. Then add a `static_assert` that refuses `N == 0`.
+
+<details>
+<summary>Hint for exercise 2</summary>
+`template <typename T> T TimeSeries<T>::change(std::size_t t) const { return values_.at(t + 1) - values_.at(t); }`, declared inside the class as `T change(std::size_t t) const;`. Valid values satisfy `t + 1 < size()`; `.at()` turns any other value into an exception rather than undefined behaviour.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+Copy the argument into a local `std::array<double, N> result = x;`, multiply each element in a range-for loop by reference, and return `result`. Inside the function, `static_assert(N > 0, "a state needs at least one variable");` is checked separately for every `N` you use.
+</details>
+
+</Practice>

@@ -1,0 +1,227 @@
+---
+title: Vectors
+summary: Store many values of one type under one name, such as a population trajectory, and read them back safely by index.
+level: beginner
+module: 5
+manual: ["M5.2", "M11.4"]
+minutes: 35
+objectives:
+  - Create a std::vector empty, with a given size, with a fill value or from a list of values
+  - Read and write elements by index, knowing that indices run from 0 to size() − 1
+  - Grow and shrink a vector with push_back and pop_back, and inspect it with front, back, size and empty
+  - Store a simulated trajectory and print it with a loop
+  - Recognise off-by-one errors and choose between [] and .at()
+references:
+  - "cppreference.com: std::vector"
+  - "cppreference.com: std::vector::at"
+---
+
+## What it is
+
+A `std::vector` is a sequence of values of one type, kept under one name. A vector of `double` can hold the population size in every generation of a simulation; a vector of `int` can hold the number of nests in each of forty plots. You reach an element by its position, called its *index*, and the vector can grow or shrink while the program runs.
+
+Three properties define it:
+
+- **One element type.** A `std::vector<double>` holds only `double`s. The type goes between angle brackets.
+- **Contiguous storage.** The elements sit next to each other in memory, in order. That is why jumping straight to element 30 is as fast as reading element 0.
+- **Resizable.** Elements can be appended at the end at any time. The vector manages its own memory, so you never allocate or free anything by hand.
+
+## Why it matters
+
+A model with one variable, such as the size of a single population, can live in a single `double`. As soon as you want to keep the *history* of that variable, or describe many things at once (stages, patches, individuals, replicate runs), you need a container. Without one you would have to declare `N0`, `N1`, `N2`… by hand and could not decide at run time how many generations to simulate.
+
+The vector is the container you will use most. A trajectory is a vector; the state of a stage-structured population is a vector; a population of individuals in an individual-based model is a vector of individuals. Other containers exist (see <Concept id="container-choice" />), but the vector should be your default.
+
+## How it works in C++
+
+The vector lives in the header `<vector>`. Its full name, `std::vector<double>`, is read "vector of double": `std::vector` is a *class template* (a type with a blank for the element type), and `<double>` fills the blank. <Concept id="templates" /> explains the mechanism later; for now, the angle brackets simply name the element type.
+
+### Creating a vector
+
+There are four everyday ways to create one:
+
+```cpp
+std::vector<double> N;                    // empty: no elements yet
+std::vector<int> nests(40);               // 40 elements, each 0
+std::vector<double> survival(3, 0.85);    // 3 elements, each 0.85
+std::vector<int> clutchSizes{4, 6, 5, 3}; // exactly these four values
+```
+
+Round parentheses give a *size* (and optionally a fill value); curly braces give the *values* themselves. The difference matters: `std::vector<int> a(3)` has three zeros, whereas `std::vector<int> b{3}` has a single element whose value is 3.
+
+A vector can also be created as a copy of another, `std::vector<int> original = clutchSizes;`. The copy is independent: changing one does not change the other.
+
+<Callout kind="manual" title="Sized vectors are filled with zeros">
+The manual says that the elements of `std::vector<int> v(15)` are left uninitialised. That is not the case: a vector created with only a size *value-initialises* its elements, so numbers start at 0 (and `bool`s at `false`). You can rely on `std::vector<double> births(n)` being all zeros. The manual also writes nested types as `std::vector< std::vector<int> >` with a space between the closing brackets; since C++11 `>>` works without the space.
+</Callout>
+
+### Indexing: from 0 to size() − 1
+
+`N[t]` is the element with index `t`. Indices start at **0**, so a vector of five elements has the indices 0, 1, 2, 3 and 4. The last index is always `N.size() - 1`. An indexed element can be read or written like any variable:
+
+```cpp
+nests[2] = 7;                  // write: the third plot has 7 nests
+double now = survival[1];      // read the second element
+```
+
+`N.size()` returns the number of elements. Its type is `std::size_t`, an *unsigned* integer type (it cannot hold negative numbers), large enough for the size of any object. Loop counters that are compared with `size()` should be `std::size_t` as well. Comparing an `int` with a `std::size_t` mixes signed and unsigned types and makes the compiler warn, with good reason (see [Bounds and off-by-one errors](#bounds) below).
+
+### Member functions
+
+A vector is an *object*: besides its elements it has functions of its own, called with a dot after the vector's name. The ones you will use constantly:
+
+| Call | Effect |
+|---|---|
+| `v.push_back(x)` | append `x` at the end; the size grows by one |
+| `v.pop_back()` | remove the last element; the size shrinks by one |
+| `v.front()`, `v.back()` | the first and the last element (can be read or assigned to) |
+| `v.size()` | the number of elements, as `std::size_t` |
+| `v.empty()` | `true` if there are no elements |
+| `v.clear()` | remove all elements |
+| `v.at(i)` | element `i`, with a check that `i` is a valid index |
+
+`front`, `back` and `pop_back` require at least one element. Calling them on an empty vector is an error the program does not detect, so test `empty()` first when the vector might be empty.
+
+The program below uses each construction form and most of the members:
+
+<Example file="data/vector_tools.cpp" mark="10-13,20-22" />
+
+### A first look at range-for
+
+The loop near the end of that program, `for (int clutch : clutchSizes)`, is a *range-based for loop*. It reads "for each element `clutch` of `clutchSizes`", visiting every element once, in order, without an index. Use it whenever you need each element but not its position. Its variants (modifying elements, avoiding copies) are covered in <Concept id="auto-range-for" />.
+
+## A minimal example
+
+The everyday use of a vector in modelling is to keep a trajectory. Start with the initial state, then append one value per time step. `N.back()` is always the most recent state, so the update rule reads from it:
+
+<Example file="data/vector_trajectory.cpp" mark="14-19" />
+
+Because the whole trajectory is kept, it can be printed, analysed or written to a file after the simulation has finished, rather than only while it runs.
+
+<Anchor id="bounds" />
+
+### Bounds and off-by-one errors
+
+Every index you use must lie between 0 and `size() - 1`. Time loops make this easy to get wrong, because a model run over *T* steps has *T* + 1 states (the initial one plus one per step), and anything computed *between* states (changes, growth rates) has only *T* values.
+
+The square-bracket operator does **not** check the index. Reading `N[N.size()]`, one past the end, is *undefined behaviour*: the program may print a nonsense number, crash, or appear to work and fail later, and the compiler is allowed to assume it never happens. Writing out of range is worse, because it can silently overwrite other data in your program. Nothing in the language stops you.
+
+`.at(i)` does the same as `[i]` but checks the index first. If the index is invalid it *throws an exception* of type `std::out_of_range`: the normal flow of the program stops, and unless the exception is caught the program ends with an error message rather than continuing with wrong numbers. The program below makes the classic mistake twice, once correctly guarded and once not:
+
+<Example file="data/vector_bounds.cpp" mark="16,22-23" />
+
+The `try { … } catch (…) { … }` block catches the exception so that the program can say what happened; <Concept id="exceptions" /> explains exceptions properly. Without it, the program would stop at the bad index with a message from the C++ runtime.
+
+Two habits prevent most of these errors:
+
+- Write loop conditions that count *elements*, not positions: `t < N.size()` visits every element; `t + 1 < N.size()` visits every element that has a successor.
+- Never compute `N.size() - 1` on a vector that might be empty. Because `size()` is unsigned, `0 - 1` does not give −1 but wraps around to the largest possible `std::size_t` (about 1.8 × 10¹⁹ on a 64-bit machine), and a loop up to that value runs off the end at once. `t + 1 < N.size()` has no such problem.
+
+<Callout kind="tip" title="When to use .at()">
+`.at()` costs one comparison per access. In inner loops of large simulations, `[]` with indices that are correct by construction (a loop from 0 to `size()`) is the norm. Use `.at()` where an index comes from outside the loop's control: user input, a file, or a computed position such as `t + lag`. While developing, you can also ask the standard library to check every `[]`: GCC's libstdc++ does this when you compile with `-D_GLIBCXX_ASSERTIONS`.
+</Callout>
+
+## Explore it
+
+Step through the trajectory program and watch the vector grow. The variables panel shows the whole vector after each step.
+
+<Trace id="vectors-trajectory" />
+
+<Check
+  id="construct"
+  kind="predict"
+  question="How many elements does each vector have, and what are their values?"
+  code={`std::vector<int> a(3);
+std::vector<int> b{3};
+std::vector<int> c(3, 1);`}
+  options={[
+    "a: three zeros; b: one element, 3; c: three ones",
+    "a: three zeros; b: three zeros; c: three ones",
+    "a: three uninitialised values; b: one element, 3; c: three ones",
+    "a: one element, 3; b: one element, 3; c: 3 and 1",
+  ]}
+  answer={0}
+  feedback={[
+    "Parentheses give a size (and a fill value); braces list the elements themselves. A sized vector of int is filled with zeros.",
+    "Braces list values: b{3} contains the single value 3. Only parentheses are read as a size.",
+    "Elements of a sized vector are value-initialised, so they are zeros, not indeterminate values (the manual is mistaken on this point).",
+    "Parentheses with one number give a size, not a value: a(3) has three elements. c(3, 1) means three copies of 1.",
+  ]}
+/>
+
+<Check
+  id="last-index"
+  kind="debug"
+  question="A model is run for `T` steps and the states are stored in `N`, which has `T + 1` elements. Which loop prints every per-step change `N[t + 1] - N[t]` without going out of range?"
+  options={[
+    "`for (std::size_t t = 0; t < N.size(); ++t)`",
+    "`for (std::size_t t = 0; t + 1 < N.size(); ++t)`",
+    "`for (std::size_t t = 1; t <= N.size(); ++t)`",
+    "`for (int t = 0; t < N.size() - 1; ++t)`",
+  ]}
+  answer={1}
+  feedback={[
+    "In the last pass t = N.size() − 1, so N[t + 1] is one past the end: undefined behaviour with [], an exception with .at().",
+    "t + 1 must be a valid index, so t + 1 < N.size(). This also behaves correctly for an empty vector, where the loop simply does not run.",
+    "This reads N[N.size()] in the last pass (and computes changes one position later than intended).",
+    "The bound is right for a non-empty vector, but it compares a signed int with an unsigned size (a compiler warning), and on an empty vector N.size() − 1 wraps around to a huge number.",
+  ]}
+/>
+
+<Check
+  id="back"
+  kind="predict"
+  question="What does this fragment print?"
+  code={`std::vector<int> v{2, 4, 6};
+v.push_back(8);
+v.pop_back();
+v.pop_back();
+std::cout << v.back() << ' ' << v.size() << '\\n';`}
+  options={["`8 4`", "`4 2`", "`6 3`", "`4 3`"]}
+  answer={1}
+  feedback={[
+    "pop_back has removed 8 and then 6, so 8 is no longer in the vector.",
+    "After push_back the vector is {2, 4, 6, 8}; two pop_backs leave {2, 4}. The last element is 4 and the size is 2.",
+    "Two elements were removed after the push_back, not one.",
+    "back() is 4, but size() counts the elements that remain: two.",
+  ]}
+/>
+
+## In biological modelling
+
+Almost every simulation on this site stores something in a vector:
+
+- **Trajectories.** One element per time step, as in the program above. Reserve index 0 for the initial state, so that `N[t]` is the state at time *t* and the code matches the notation $N_t$ of the model.
+- **Structured states.** The densities of juveniles, subadults and adults in a stage-structured model form a vector *n*(*t*); a matrix model multiplies it by a projection matrix (<Concept id="nested-vectors" />, <Concept id="matrix-models" />).
+- **Populations of individuals.** In an individual-based model each element describes one individual (<Concept id="individual-representation" />).
+- **Replicates and parameter sweeps.** The final population size of each replicate run, or one result per parameter value, collected for later summary.
+
+Two practical points follow. If you know in advance how many values you will store, create the vector with that size, `std::vector<double> N(T + 1)`, and assign `N[t + 1] = …` inside the loop; this is equivalent to `push_back` but avoids repeated growth (see <Concept id="container-choice" />). And keep the units and the meaning of the index in a comment next to the declaration: `// N[t]: females per hectare in year t`.
+
+## Common mistakes
+
+- **Starting at 1.** The first element is `v[0]`. A loop `for (std::size_t i = 1; i <= v.size(); ++i)` skips the first element and reads one past the last.
+- **Confusing `(n)` and `{n}`.** `std::vector<double> x(5)` has five zeros; `std::vector<double> x{5}` has one element, 5.0.
+- **Indexing an empty vector.** `std::vector<double> N; N[0] = 40.0;` writes to an element that does not exist. Use `push_back`, or create the vector with a size first.
+- **`front()`, `back()` or `pop_back()` on an empty vector.** Undefined behaviour, not a run-time error message. Test `empty()` first.
+- **Mixing signed and unsigned indices.** `for (int i = 0; i < v.size(); ++i)` compiles with a warning. Use `std::size_t` or a range-for.
+
+## Practice
+
+<Practice>
+
+1. A seed bank loses 30 per cent of its seeds each winter and gains 200 new seeds each autumn: $S_{t+1} = 0.7\,S_t + 200$. Starting from $S_0 = 1000$, store 15 years of the trajectory in a vector created with the right size from the start (no `push_back`), and print it. What value does the seed bank approach?
+2. Write a loop that prints the *relative* change $(S_{t+1} - S_t)/S_t$ for every year of the trajectory from exercise 1. Check your loop bounds by also running it with `.at()`.
+3. Without running it, predict what `std::vector<int> v(2, 5); v.push_back(v.size()); ` leaves in `v`. Then explain why the compiler may warn about the `push_back` line.
+
+<details>
+<summary>Hint for exercise 1</summary>
+Create `std::vector<double> S(16)` (15 years after the initial one), set `S[0] = 1000.0`, and inside `for (std::size_t t = 0; t + 1 < S.size(); ++t)` assign `S[t + 1] = 0.7 * S[t] + 200.0;`. The equilibrium satisfies $S^* = 0.7\,S^* + 200$, so $S^* = 200 / 0.3 \approx 666.7$ seeds; the trajectory should approach it from above.
+</details>
+
+<details>
+<summary>Answer to exercise 3</summary>
+`v` starts as {5, 5}; `v.size()` is 2, so after the `push_back` it holds {5, 5, 2}. The value pushed is a `std::size_t` converted to `int`. With `-Wall -Wextra` this particular conversion is usually silent, but `-Wconversion` warns that an unsigned value is being narrowed to a signed type. Writing `v.push_back(static_cast<int>(v.size()))` makes the conversion explicit.
+</details>
+
+</Practice>

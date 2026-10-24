@@ -1,0 +1,219 @@
+---
+title: Choosing a container
+summary: How a vector grows and what insertion costs, a guide to the standard containers, and the fixed-size std::array and std::bitset.
+level: intermediate
+module: 12
+manual: ["M12.3"]
+minutes: 40
+objectives:
+  - Distinguish a vector's size from its capacity and explain what a reallocation costs
+  - Use reserve, or a sized constructor, to avoid repeated reallocation
+  - Explain why inserting or erasing in the middle of a vector is expensive
+  - Choose a standard container from the operations a model performs
+  - Store a fixed number of state variables in std::array and a set of flags in std::bitset
+references:
+  - "cppreference.com: Containers library"
+  - "cppreference.com: std::vector::reserve; std::array; std::bitset"
+---
+
+## What it is
+
+The standard library offers a dozen *containers*: class templates that hold a collection of elements of one type. They differ not in *what* they can store but in *how* they store it, and therefore in which operations are cheap. `std::vector` keeps its elements side by side in one block of memory; `std::list` scatters them and links each to its neighbours; `std::map` keeps them sorted in a tree. Choosing a container means choosing which operations your program will do quickly.
+
+This lesson looks first under the bonnet of `std::vector`, the default choice, and then at the alternatives, including the two fixed-size containers `std::array` and `std::bitset`.
+
+## Why it matters
+
+For a small model any container works. For a large one the choice can decide between a simulation that runs in seconds and one that runs for hours: removing dead individuals from the front of a vector of a million elements, or searching a long vector for a parameter name in every time step, does far more work than necessary. Equally, a container chosen for a speed advantage that never materialises makes code harder to read. Knowing what each container costs lets you pick the simple one with confidence and switch only when there is a reason.
+
+## How it works in C++
+
+### Contiguous storage
+
+A vector stores its elements in one contiguous block. Element *i* sits at a fixed distance from the start: the address of the first element plus *i* times the size of one element. That is why `v[i]` takes the same short time for every *i* (*random access*), and why looping over a vector is fast: the processor reads memory in chunks, and the next element is usually already in the chunk.
+
+The same layout makes two other operations expensive.
+
+### Size, capacity and reallocation
+
+A vector usually holds a little more memory than it needs. `size()` is the number of elements; `capacity()` is the number of elements that fit in the block it currently owns. As long as `size() < capacity()`, `push_back` simply constructs the new element in the spare room. When the block is full, the vector must
+
+1. allocate a new, larger block,
+2. copy (or move) every existing element into it, and
+3. release the old block.
+
+This is a *reallocation*. To keep it rare, standard libraries grow the capacity by a constant factor (GCC's and Clang's libraries double it; Microsoft's multiplies it by 1.5), not by one element at a time. The program below shows what your library does:
+
+<Example file="data/container_growth.cpp" mark="17-21,27" />
+
+With GCC 14 it prints capacities 1, 2, 4, 8, 16 and 32 at sizes 1, 2, 3, 5, 9 and 17: six reallocations for twenty elements. Another library prints different numbers, so there is no fixed expected output for this program.
+
+Why a factor? Each reallocation copies every element present, so growing by one element would copy 1 + 2 + … + (*n* − 1) ≈ *n*²/2 elements to build a vector of *n*. With a constant factor the copies form a geometric series, and their total stays below a small multiple of *n*: on average, each `push_back` costs a constant amount of work (*amortised* constant time).
+
+<Figure id="containers-growth-cost" />
+
+If you know, or can bound, the final size in advance, you can avoid reallocation altogether:
+
+- create the vector with its final size, `std::vector<double> N(T + 1);`, and assign elements by index; or
+- call `v.reserve(n)` first. This allocates room for `n` elements without creating any: `size()` stays 0, `capacity()` becomes at least `n`, and the next `n` `push_back`s cause no reallocation.
+
+`v.shrink_to_fit()` asks the vector to give up unused capacity, and `v.emplace_back(args…)` constructs a new element directly in the vector from constructor arguments instead of copying one in.
+
+<Callout kind="pitfall" title="Reallocation moves the elements">
+After a reallocation the elements live at new addresses. A reference, pointer or iterator to an element obtained *before* a `push_back` may therefore dangle afterwards. This is the most common form of *iterator invalidation* (see <Concept id="iterators" />).
+</Callout>
+
+<Callout kind="manual" title="Copies and moves during reallocation">
+The manual's instrumented demonstration declares its move constructor as `A(const A&&)`. A move constructor takes a *non-const* `A&&` and should be marked `noexcept`; `std::vector` moves elements during reallocation only if their move constructor cannot throw, and copies them otherwise. That rule, not the vector itself, explains the copies in the manual's output. Classes whose members are numbers, strings and vectors get correct `noexcept` moves from the compiler automatically. The growth pattern the manual shows (capacities 1, 2, 4, 8) is that of one particular library.
+</Callout>
+
+### Inserting and erasing in the middle
+
+Because the elements must stay contiguous and in order, `v.insert(position, x)` has to shift every element after `position` one place to the right before it can store `x`, and `v.erase(position)` shifts them one place to the left to close the gap:
+
+```cpp
+std::vector<double> masses{3.1, 2.4, 5.0, 4.2};
+masses.insert(masses.begin() + 1, 2.9);   // shifts 2.4, 5.0, 4.2 to the right
+masses.erase(masses.begin());              // shifts every remaining element left
+```
+
+(`masses.begin() + 1` is the position of element 1; positions are explained in <Concept id="iterators" />.) Inserting or erasing near the front of a vector of *n* elements therefore costs time proportional to *n*. Doing it once is harmless. Doing it for every individual in every time step is not: removing *k* dead individuals one at a time from the front of a population of *n* costs about *k* × *n* element moves. The fix is usually not another container but a better algorithm. Remove all dead individuals in one pass (<Concept id="standard-algorithms" />), or, when order does not matter, overwrite the dead individual with the last one and `pop_back`.
+
+### Which container?
+
+The containers fall into three families. *Sequence containers* keep elements in the order you put them; *associative containers* keep them sorted (or hashed) for fast lookup by value or key; *container adaptors* restrict a sequence to one access pattern.
+
+| Container | Access | Cheap operations | Expensive operations | Typical use in a model |
+|---|---|---|---|---|
+| `std::vector` | random | index, append and remove at the end, traverse | insert or erase elsewhere | trajectories, states, populations of individuals: the default |
+| `std::array` | random | index, traverse (no allocation at all) | cannot change size | a state with a fixed number of variables |
+| `std::deque` | random | add or remove at both ends | insert or erase in the middle | a sliding window of recent states |
+| `std::list` | sequential | insert, erase and move anywhere, given a position | reaching element *i* | rare; splicing groups of individuals |
+| `std::set`, `std::map` | by value or key | find, insert, erase (logarithmic time) | by position | parameters by name, unique identifiers |
+| `std::unordered_map` | by key | find, insert, erase (constant time on average) | ordered traversal | large lookup tables |
+| `std::stack`, `std::queue`, `std::priority_queue` | top or front only | push, pop | everything else | event scheduling, work lists |
+
+A practical decision guide:
+
+1. **Do you need element *i* directly?** Use `std::vector`. If the size is fixed at compile time, `std::array`; for a fixed number of yes/no flags, `std::bitset`. If you add and remove at *both* ends, `std::deque`.
+2. **Do you mainly insert and remove in the middle, at positions you already hold?** Consider `std::list` (or `std::forward_list` if you only move forwards). Measure first: for up to thousands of small elements a vector often still wins, because its traversal is so much faster.
+3. **Do you only ever need the next element in a fixed order?** Use a container adaptor: `std::queue` (first in, first out), `std::stack` (last in, first out) or `std::priority_queue` (largest first).
+4. **Do you look elements up by value or by key?** Use `std::set` or `std::map` (sorted), or their `unordered_` counterparts (hashed, faster on average, unordered). `std::multiset` and `std::multimap` allow duplicate keys.
+
+These containers are the subject of <Concept id="lists-sets-maps" /> and <Concept id="container-adaptors" />. When in doubt, use `std::vector`.
+
+<Anchor id="array-bitset" />
+
+### Fixed size: std::array and std::bitset
+
+Some collections never change size. An SIR model always has three compartments; a landscape in a given model run always has the same patches. For those, the size can be part of the type.
+
+**`std::array<T, N>`**, from `<array>`, holds exactly `N` elements of type `T`. `N` must be known when the program is compiled. It supports `[]` (unchecked), `.at()` (checked), `size()`, `front()`, `back()` and range-for, but nothing that changes the size: no `push_back`, `insert` or `erase`. It needs no dynamic memory, and it is the modern replacement for the C-style array `double x[3]`, which forgets its own size and cannot be copied with `=`.
+
+**`std::bitset<N>`**, from `<bitset>`, holds `N` bits, each `true` or `false`, packed tightly. Its member functions work on single bits or on all of them:
+
+| Call | Effect |
+|---|---|
+| `b.set(i)`, `b.reset(i)`, `b.flip(i)` | set bit *i* to 1, to 0, or invert it (without *i*: all bits) |
+| `b.test(i)`, `b[i]` | read bit *i* (`test` checks the index) |
+| `b.count()`, `b.any()`, `b.none()`, `b.all()` | number of set bits; whether any, none or all are set |
+| `a & b`, `a \| b`, `a ^ b`, `~a` | bitwise and, or, exclusive or, not, on all bits at once |
+| `std::bitset<N>("0110")`, `b.to_string()` | build from, or convert to, a string of 0s and 1s |
+
+<Example file="data/container_array_bitset.cpp" mark="12,15,20,27-28" />
+
+Printed or converted to a string, a bitset shows bit `N − 1` on the left and bit 0 on the right, like the digits of a binary number. The string `"1110011011"` therefore sets patch 9 from its first character and patch 0 from its last. Getting this backwards is the classic `bitset` mistake.
+
+The line `suitable & ~occupied` combines two whole landscapes in one operation: "suitable and not occupied". The same idea, with the bitwise operators of <Concept id="bitwise" />, gives patches that are occupied in both of two years (`year1 & year2`), or that changed state (`year1 ^ year2`).
+
+## Explore it
+
+<Check
+  id="capacity"
+  kind="predict"
+  question="After these lines, which statement is guaranteed by the C++ standard?"
+  code={`std::vector<int> v;
+v.reserve(100);
+v.push_back(7);`}
+  options={[
+    "`v.size()` is 100",
+    "`v.size()` is 1 and `v.capacity()` is at least 100",
+    "`v.size()` is 1 and `v.capacity()` is exactly 1",
+    "`v[50]` is 0",
+  ]}
+  answer={1}
+  feedback={[
+    "reserve allocates room but creates no elements; only push_back adds one.",
+    "reserve(100) guarantees a capacity of at least 100 (the exact value is up to the library), and one element has been added.",
+    "The capacity reserved earlier is kept; push_back does not shrink it.",
+    "Element 50 does not exist (size is 1), so v[50] is undefined behaviour even though the memory has been reserved.",
+  ]}
+/>
+
+<Check
+  id="choose"
+  kind="model"
+  question="An epidemic model keeps, for each of 2,000 hosts, its infection state, and in every time step loops over all hosts to update them by index. Hosts are never added or removed. Which container fits best?"
+  options={["`std::list<Host>`", "`std::vector<Host>` created with 2,000 elements", "`std::map<int, Host>` keyed by host number", "`std::queue<Host>`"]}
+  answer={1}
+  feedback={[
+    "A list gives no access by index, and traversing it is slower than traversing a vector. Its strength, cheap insertion in the middle, is never used.",
+    "A fixed number of hosts, traversed and accessed by index: exactly what a vector does best. Creating it with its final size avoids reallocation. (std::array would also work if 2,000 were a compile-time constant, but 2,000 large objects are better on the heap than in an array on the stack.)",
+    "A map would work, but every lookup costs a tree search to find what a vector finds by arithmetic.",
+    "A queue only offers its front element; the model needs every host in every step.",
+  ]}
+/>
+
+<Check
+  id="bitset"
+  kind="predict"
+  question="What does this print?"
+  code={`std::bitset<4> b;
+b.set(0);
+b.set(2);
+std::cout << b << ' ' << b.count() << '\\n';`}
+  options={["`1010 2`", "`0101 2`", "`0101 4`", "`1010 4`"]}
+  answer={1}
+  feedback={[
+    "Bit 0 is printed on the right, not on the left.",
+    "Bits 0 and 2 are set. Printing starts with bit 3 on the left: 0, 1, 0, 1. count() is the number of set bits.",
+    "count() returns the number of bits that are set (2), not the size of the bitset (4, given by size()).",
+    "Both the order and the count are wrong: bit 3 is printed first, and two bits are set.",
+  ]}
+/>
+
+## In biological modelling
+
+- **Default to `std::vector`**, created with its final size when you know it, or with `reserve` when you know a bound.
+- **Fixed-size states as `std::array`.** `std::array<double, 4>` for an SEIR state documents, and enforces, that there are four compartments; template code can then work for any `std::array<double, N>` (<Concept id="template-parameters" />).
+- **Flags as `std::bitset`.** Occupancy of a fixed set of patches, the presence of a fixed set of alleles or traits, the outcome of a fixed set of tests per individual. Bitwise operations then compare whole sets at once, and `count()` gives the number of occupied patches.
+- **Changing populations.** Births are cheap: `push_back`. Deaths are cheap if you remove them in one pass after the update rather than one by one during it.
+- **Look-ups by name.** Parameter tables and species lists keyed by a string belong in a `std::map` or `std::unordered_map`, not in a vector searched from the start every time.
+
+## Common mistakes
+
+- **Confusing `reserve` and `resize`.** `reserve(n)` allocates room but creates no elements; `resize(n)` creates (or destroys) elements so that `size() == n`. Indexing after `reserve` alone is undefined behaviour.
+- **Keeping references across `push_back`.** A reference to `v[0]` taken before a reallocation refers to released memory afterwards.
+- **Erasing from the front in a loop.** Each `erase(v.begin())` shifts the whole vector.
+- **Reading a bitset string the wrong way round.** The first character of the string is the *highest* bit.
+- **Choosing `std::list` for speed without measuring.** For small elements a vector is often faster even for insertions, because finding the position in a list is slow.
+
+## Practice
+
+<Practice>
+
+1. Run `container_growth.cpp` with your compiler and note the capacities. Change the loop to append 1,000 elements and count the reallocations. How does the count grow when you append 10,000?
+2. A population vector holds 1,000 individuals, each a struct with a `bool alive`. Write two versions of the code that removes the dead: one that calls `erase` for each dead individual as it finds it, and one that copies the survivors into a new vector and then assigns it back. Which does fewer element moves, and why?
+3. Ten ponds are surveyed for a frog species in two years. Store the presence data for each year in a `std::bitset<10>` and print the ponds that were colonised (absent in year 1, present in year 2), the ponds where the species went locally extinct, and the number of ponds occupied in both years.
+
+<details>
+<summary>Hint for exercise 2</summary>
+Each `erase` shifts every later element, so the first version does work proportional to (number of dead) × (population size). The second visits each individual once and copies each survivor once. The idiomatic one-pass version uses `std::remove_if` followed by `erase` (<Concept id="standard-algorithms" />).
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+Colonised: `~year1 & year2`. Extinct: `year1 & ~year2`. Occupied in both: `(year1 & year2).count()`. Remember that the leftmost character of a bitset string is pond 9.
+</details>
+
+</Practice>

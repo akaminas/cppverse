@@ -1,0 +1,212 @@
+---
+title: Lists, sets, maps and queues
+summary: Linked lists for splicing, sets and maps for lookup by value or name, and stacks, queues and priority queues for processing in a fixed order.
+level: intermediate
+module: 12
+manual: ["M12.3"]
+minutes: 40
+optional: true
+objectives:
+  - Insert, remove, splice and sort the elements of a std::list
+  - Keep unique values in a std::set and query it with count and find
+  - Look values up by key in a std::map with find and at, avoiding the inserting operator[]
+  - Know when std::unordered_map is the better choice
+  - Process items in LIFO, FIFO or priority order with std::stack, std::queue and std::priority_queue
+references:
+  - "cppreference.com: std::list, std::set, std::map, std::unordered_map"
+  - "cppreference.com: Container adaptors (std::stack, std::queue, std::priority_queue)"
+---
+
+## What it is
+
+Beyond `std::vector` the standard library offers containers built for particular jobs (see the decision guide in <Concept id="container-choice" />):
+
+- **`std::list`**, a sequence in which every element is linked to its neighbours, so elements can be inserted, removed and moved anywhere without shifting the others.
+- **`std::set`**, a sorted collection of unique values, and **`std::map`**, a sorted collection of *key–value* pairs with unique keys. Their unordered counterparts, `std::unordered_set` and `std::unordered_map`, use hashing instead of sorting.
+- **Container adaptors**: `std::stack`, `std::queue` and `std::priority_queue`, which restrict another container to a single access pattern.
+
+All of them are traversed with iterators (<Concept id="iterators" />), and all can hold any element type.
+
+## Why it matters
+
+Each of these containers turns a task that would need careful code with a vector into a single member function call. A set answers "has this species been recorded?" without a search loop; a map lets a program read parameters by name from a file and look them up without fixing their order; a priority queue always knows which of thousands of scheduled events happens next. Each also has a cost (memory per element, slower traversal than a vector), which is why they are tools for specific jobs and not the default.
+
+## How it works in C++
+
+### std::list
+
+A `std::list` stores each element in its own small block of memory, together with the addresses of the previous and the next element (it is *doubly linked*). Inserting or removing an element only rewires its neighbours' links, so it takes constant time anywhere in the list, once you hold an iterator to the position, and never moves the other elements. The price is *sequential access*: there is no `[]`, and reaching the *k*th element means stepping through *k* links.
+
+<Example file="data/list_splice.cpp" mark="23-25,29,32" />
+
+- `push_front` and `push_back` add at either end.
+- `splice(pos, other)` moves every element of `other` into the list before `pos`. Nothing is copied or allocated: the nodes are simply relinked, and `other` is left empty. Overloads move a single element or a range.
+- `sort()` is a member function, because the general `std::sort` requires random-access iterators, which a list does not have.
+- `remove(value)` erases every element equal to `value`; `remove_if` takes a condition, and `erase(it)` removes one element at a known position (with the idiom `it = l.erase(it)` inside loops).
+
+`std::forward_list` is a singly linked list (forward iterators only), with slightly less memory per element.
+
+### std::set
+
+A `std::set<T>` holds each value at most once and keeps the values sorted. Inserting a value that is already present does nothing. You cannot change an element in place, because that could break the order; to change one, erase it and insert the new value.
+
+<Example file="data/set_species.cpp" mark="13,21-22,25-29" />
+
+- Building a set from a range of sightings removes the duplicates in one step.
+- `count(x)` returns 1 if `x` is present and 0 if not; `find(x)` returns an iterator to `x`, or `end()` if it is absent. Both take logarithmic time: about 20 comparisons for a million elements.
+- Iteration always visits the elements in sorted order.
+
+`std::multiset` allows repeated values, so `count` can exceed 1.
+
+### std::map
+
+A `std::map<Key, Value>` stores pairs whose `first` member is a unique key and whose `second` member is the associated value, sorted by key. Keys cannot be changed (they decide the order); values can.
+
+<Example file="data/map_parameters.cpp" mark="17,19-21,25,30" />
+
+There are three ways to look a key up, and they behave very differently when the key is missing:
+
+| Lookup | If the key exists | If the key is missing |
+|---|---|---|
+| `m.find(k)` | iterator to the pair | `m.end()` |
+| `m.at(k)` | reference to the value | throws `std::out_of_range` |
+| `m[k]` | reference to the value | **inserts** `k` with a default value (0 for numbers) and returns it |
+
+`m[k] = v` is the convenient way to insert or overwrite. For *reading*, `operator[]` is a trap: a misspelt parameter name silently becomes a new entry with value 0, and the model runs with a death rate of zero. Read with `find` or `at`. (For the same reason `operator[]` cannot be used on a `const` map at all.)
+
+<Callout kind="manual" title="Missing keys and operator[]">
+The manual uses `dir[name] = value` to insert and `find` to look up, but does not warn that `operator[]` inserts any key it does not find. When you read from a map, use `find`, `at`, or, in C++20, `contains`.
+</Callout>
+
+The iterator returned by `find` points to a pair, so `it->first` is the key and `it->second` the value. The arrow is shorthand for `(*it).first`; the parentheses are required because `.` binds more tightly than `*`. In a loop, a structured binding names both at once: `for (const auto& [name, value] : parameters)`. `std::multimap` allows repeated keys.
+
+<Callout kind="modern" title="contains (C++20)">
+<Std v="c++20" /> `if (parameters.contains("death"))` asks the question directly; with C++17, write `parameters.find("death") != parameters.end()` or `parameters.count("death") > 0`.
+</Callout>
+
+### std::unordered_map and std::unordered_set
+
+The unordered containers, from `<unordered_map>` and `<unordered_set>`, store their elements in a hash table. On average, insertion, lookup and removal take constant time, independent of the number of elements, which makes them faster than `std::map` and `std::set` for large collections. The interface is almost the same (`find`, `at`, `count`, `operator[]` with the same pitfall), with two differences: the iteration order is unspecified and can change when elements are added, and the key type must be hashable (built-in types and `std::string` are; your own structs need a hash function). Use them for large lookup tables where order does not matter; use the ordered versions when you want sorted output or need the smallest or largest key.
+
+<Anchor id="adaptors" />
+
+### Stacks, queues and priority queues
+
+A *container adaptor* wraps another container and allows only a few operations. That restriction is the point: it states, and enforces, the order in which items are processed.
+
+- **`std::stack`** (last in, first out): `push(x)` puts `x` on top, `top()` reads the top element, `pop()` removes it.
+- **`std::queue`** (first in, first out): `push(x)` adds at the back, `front()` reads the oldest element, `pop()` removes it.
+- **`std::priority_queue`**: `push(x)` adds an element, `top()` reads the *largest* one, `pop()` removes it.
+
+All three also have `empty()` and `size()`. Note that `pop()` returns nothing: read the element with `top()` or `front()` first.
+
+<Example file="data/adaptor_stack_queue.cpp" mark="15,19-20,25,29-30" />
+
+By default `std::stack` and `std::queue` are built on a `std::deque`, and `std::priority_queue` on a `std::vector` organised as a binary *heap*: `push` and `pop` take logarithmic time, and `top` constant time, however many elements are waiting.
+
+A priority queue returns the *largest* element first. To get the *smallest* first, which is what a schedule of future events needs, give it `std::greater` as the comparison. The full declaration then names the element type, the underlying container and the comparison:
+
+```cpp
+std::priority_queue<Event, std::vector<Event>, std::greater<Event>> events;
+```
+
+Pairs compare by their first member, so a queue of (time, event) pairs always hands out the earliest event:
+
+<Example file="data/event_queue.cpp" mark="14,17,23-24,27" />
+
+(The line `using Event = …;` gives the long pair type a short name; type aliases are explained in <Concept id="auto-range-for" />.)
+
+<Callout kind="manual" title="Priority queues are efficient">
+The manual describes `std::priority_queue` as "not particularly efficient". It is a binary heap: insertion and removal of the top element take time proportional to the logarithm of its size, which is as good as general-purpose priority queues get. What it lacks is a way to change or remove an element that is not on top.
+</Callout>
+
+## Explore it
+
+Step through the event loop. Watch the new hatching event slot in between the events that were already waiting:
+
+<Trace id="more-containers-events" />
+
+<Check
+  id="map-bracket"
+  kind="predict"
+  question="What is printed?"
+  code={`std::map<std::string, double> p{{"birth", 0.4}, {"death", 0.1}};
+double d = p["mortality"];
+std::cout << d << ' ' << p.size() << '\\n';`}
+  options={["`0 2`", "`0 3`", "`0.1 2`", "The program throws std::out_of_range"]}
+  answer={1}
+  feedback={[
+    "operator[] does more than read: a missing key is inserted, so the map grows.",
+    "\"mortality\" is not in the map, so operator[] inserts it with the value 0.0 and returns that. The map now has three entries. Use find or at to read.",
+    "Maps match keys exactly; \"mortality\" and \"death\" are different keys.",
+    "Only at() throws for a missing key. operator[] inserts instead.",
+  ]}
+/>
+
+<Check
+  id="set-size"
+  kind="predict"
+  question="How many elements does `s` hold?"
+  code={`std::set<int> s{4, 1, 4, 3};
+s.insert(1);
+s.insert(2);`}
+  options={["`6`", "`4`", "`5`", "`3`"]}
+  answer={1}
+  feedback={[
+    "A set keeps each value at most once, so repeated values are not added again.",
+    "The initial list gives {1, 3, 4} (the second 4 is ignored); inserting 1 changes nothing, inserting 2 adds it: {1, 2, 3, 4}.",
+    "Only one of the two inserts adds a new value; 1 is already present.",
+    "2 is new and is added, so there are four distinct values.",
+  ]}
+/>
+
+<Check
+  id="pq-order"
+  kind="predict"
+  question="A plain `std::priority_queue<int> q;` receives `q.push(3); q.push(8); q.push(5);`. What does `q.top()` return?"
+  options={["`3`, the first element pushed", "`8`, the largest element", "`5`, the last element pushed", "`3`, the smallest element"]}
+  answer={1}
+  feedback={[
+    "That would be a queue (first in, first out). A priority queue orders by value, not by arrival.",
+    "By default the largest element is on top. For an event schedule, where the smallest time must come first, use std::greater as the comparison.",
+    "That would be a stack (last in, first out).",
+    "Only with std::greater<int> as the comparison does the smallest element come first.",
+  ]}
+/>
+
+## In biological modelling
+
+- **Parameters by name.** Read `name value` lines from a parameter file into a `std::map<std::string, double>`, then fetch each one with `at`, so that a missing or misspelt parameter stops the program instead of becoming 0 (<Concept id="parameter-files" />).
+- **Species lists and identifiers.** A `std::set<std::string>` of species codes gives the species richness of a sample as its `size()`; set operations between two sites give shared and unique species. A `std::map<std::string, int>` from species to counts gives the abundance table.
+- **Event-driven simulation.** In continuous-time models, events (births, deaths, arrivals, the end of an infectious period) are scheduled at future times. A priority queue ordered by time always yields the next event, and handling it may schedule further events, as in the program above. This is the core of discrete-event simulation (<Concept id="scheduling" />).
+- **Work lists.** A `std::queue` of patches still to be processed gives breadth-first spread across a landscape; a `std::stack` gives depth-first exploration, for example to find all patches connected to a given one.
+- **Splicing groups.** When groups of individuals merge or split (social groups, colonies), `std::list::splice` moves them without copying. This is a rare need; usually vectors are simpler and faster.
+
+## Common mistakes
+
+- **Reading a map with `[]`.** It inserts missing keys. Use `find`, `at` or `contains`.
+- **Expecting `pop()` to return the element.** Read it with `top()` or `front()` first.
+- **Expecting a priority queue to give the smallest element first.** It gives the largest unless you supply `std::greater`.
+- **Modifying set elements or map keys.** They are `const`; erase and re-insert instead.
+- **Relying on the order of an unordered container.** It is unspecified; sort the keys first if the output must be reproducible.
+- **Calling `std::sort` on a list.** Use the member `l.sort()`.
+
+## Practice
+
+<Practice>
+
+1. Two transects record the bird species seen as vectors of species codes (with repeats). Build a set for each and print the species seen on both transects, on only one, and the total species richness. (Loop over one set and use `count` on the other.)
+2. Read a few `name value` pairs into a `std::map<std::string, double>` and write a function `double getParameter(const std::map<std::string, double>& p, const std::string& name)` that returns the value or stops with a clear error message naming the missing parameter. Why can the function not use `operator[]`?
+3. Extend the event queue so that every "lays eggs" event schedules a hatching 2.5 days later and every hatching schedules a "fledging" 12 days after that. Print the full schedule in time order until day 20.
+
+<details>
+<summary>Hint for exercise 2</summary>
+Use `const auto it = p.find(name);` and test `it == p.end()`, or call `p.at(name)` inside a `try` block. `operator[]` cannot be used on a `const` map, because it might have to insert; the compiler rejects it.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+Inside the loop, test the description of the event just taken from the queue and `push` the follow-up with `next.first + delay`. Stop the loop when `events.top().first > 20.0` (checking `empty()` first).
+</details>
+
+</Practice>

@@ -1,0 +1,173 @@
+---
+title: Building composite types
+summary: Classes that own containers of records and define nested types, with reference and in/out parameters for the functions that work on them.
+level: intermediate
+module: 10
+manual: ["M10.adv"]
+minutes: 30
+optional: true
+objectives:
+  - Write a class whose private data member is a container of records
+  - Define a nested type inside a class and name it from outside as Outer::Inner
+  - Choose between const reference, reference and in/out parameters for functions that use such a class
+  - Return "found or not found" from a lookup safely
+references:
+  - "cppreference.com: Nested classes"
+  - "cppreference.com: std::optional"
+---
+
+## What it is
+
+The members of a class can be of any type: numbers and strings, but also vectors, vectors of vectors, and objects of other classes. A class can also define *types* of its own, inside its body. Combining the two gives *composite types*: a class that owns a whole collection of records and offers a small set of operations on it.
+
+This lesson builds one such class, `Census`, which keeps the counts of every surveyed plot in a private `std::vector` of a nested type `Census::Record`.
+
+## Why it matters
+
+Real model state is rarely a single number. A metapopulation is a collection of patches; a population in an individual-based model is a collection of individuals; a field data set is a collection of records. If the collection is a public vector, any code can add a duplicate plot, remove an individual without updating a running total, or reorder the records that another part of the program relies on. Wrapping the collection in a class lets you decide which operations exist and keep the collection consistent, exactly as <Concept id="classes" /> did for a single number.
+
+## How it works in C++
+
+### A class that owns a container
+
+<Example file="data/composite_census.cpp" mark="14-18,26,33-41" />
+
+The class has three ingredients:
+
+- **A nested type.** `struct Record { … };` is defined *inside* `Census`, under `public:`. Inside the class it is simply `Record`; everywhere else its full name is `Census::Record`, as in `const std::vector<Census::Record> spring` in `main`. The nested name makes clear that a `Record` is a census record and not some other record, and it keeps the name `Record` free for other classes.
+- **A private container.** `std::vector<Record> records_` holds the data. Because it is private, the only ways to change it are the member functions, here only `add`.
+- **Member functions that work on the whole collection.** `add` stores a copy of a record, `find` looks one up, `totalAdults` summarises them, and `size` reports how many there are.
+
+The vector manages its own memory, so the class needs no special code for copying or destruction: copying a `Census` copies its vector and every record in it, and destroying a `Census` destroys them too (see <Concept id="object-semantics" />).
+
+A nested type can also be private, if it is an implementation detail that users should never see. Members of a class can also be other containers: a landscape class might hold a `std::vector<std::vector<double>>` of habitat quality alongside a vector of patches.
+
+<Callout kind="note" title="Nested names in out-of-class definitions">
+In `bool Census::find(const std::string& plot, Record& result) const`, the parameter type can be written as plain `Record`, because everything after `Census::find` is looked up inside the class. A *return type* comes before the qualified name, so it needs the full name: `Census::Record Census::largest() const { … }`.
+</Callout>
+
+### Choosing parameter types
+
+The functions in this program use all three ways of passing an object, each for a reason:
+
+| Parameter | Meaning | Example |
+|---|---|---|
+| `const T&` | read only, no copy | `add(const Record& record)`, `survey` in `addSurvey` |
+| `T&` | the function changes the caller's object | `census` in `addSurvey` |
+| `T&` as an *in/out* parameter | the function writes a result into an object the caller provides | `result` in `find` |
+| `T` (by value) | the function needs its own copy, or `T` is cheap (`int`, `double`) | not used here |
+
+`addSurvey` is a *free* function, not a member, because it only uses the public interface of `Census`. It takes the census by non-const reference, since its whole job is to change it, and the survey by const reference, since it only reads it and a copy of a vector of strings would be wasteful. (References are introduced in <Concept id="references" /> and <Concept id="const-reference" />.)
+
+### Lookups that can fail
+
+`find` must say two things: whether the plot exists, and if so, what its record is. The classic C++ solution, used here, returns a `bool` and writes the record into a reference parameter supplied by the caller. When the plot is missing, `result` is left unchanged. The caller must therefore check the return value *before* reading `result`, which the `if` in `main` does.
+
+<Callout kind="modern" title="std::optional (C++17)">
+`std::optional<Record>`, from `<optional>`, holds either a `Record` or nothing, so a lookup can return both pieces of information at once:
+
+```cpp
+std::optional<Census::Record> Census::lookup(const std::string& plot) const {
+    for (const Record& r : records_) {
+        if (r.plot == plot) return r;
+    }
+    return std::nullopt;   // "no value"
+}
+// use: if (const auto rec = census.lookup("PLOT07")) { std::cout << rec->adults; }
+```
+
+The result cannot be used by accident when it is empty, and the caller no longer needs a placeholder object. For new code, prefer it to an in/out parameter.
+</Callout>
+
+## Explore it
+
+Step through `main` to see the census fill up and the two queries, one successful and one not:
+
+<Trace id="composite-types-census" />
+
+<Check
+  id="nested-name"
+  kind="read"
+  question="In `main`, why must the vector be declared as `std::vector<Census::Record>` rather than `std::vector<Record>`?"
+  options={[
+    "Because Record is private",
+    "Because Record is defined inside Census, so outside the class its name must be qualified with Census::",
+    "Because vectors cannot hold structs without a qualifier",
+    "It need not: both spellings work in main",
+  ]}
+  answer={1}
+  feedback={[
+    "Record is declared under public:, so main may use it; if it were private, even Census::Record would be rejected.",
+    "A nested type belongs to the scope of its class, just as cout belongs to std. Inside Census's member functions the short name works.",
+    "A vector can hold any copyable type, including structs, with or without a qualified name.",
+    "Outside the class there is no type called plain Record, so std::vector<Record> does not compile.",
+  ]}
+/>
+
+<Check
+  id="inout"
+  kind="predict"
+  question="What does this print, given the census filled in the program?"
+  code={`Census::Record r{"x", 1, 2};
+census.find("PLOT99", r);
+std::cout << r.plot << ' ' << r.adults << '\\n';`}
+  options={["`PLOT99 0`", "`x 1`", "Nothing: the program stops", "`PLOT12 17`"]}
+  answer={1}
+  feedback={[
+    "find never invents a record: when no plot matches it returns false and leaves result alone.",
+    "PLOT99 is not in the census, so find returns false without writing to r, which keeps its initial values. Ignoring the return value is exactly the mistake that makes in/out parameters risky.",
+    "A failed lookup is a normal outcome here, reported by the bool return value, not an error.",
+    "find returns as soon as it has checked every record without a match; it does not copy the last record it looked at.",
+  ]}
+/>
+
+<Check
+  id="param"
+  kind="model"
+  question="You add a member function that removes the record of one plot, and a free function `printReport` that prints every record. Which signatures fit best?"
+  options={[
+    "`void remove(const std::string& plot);` and `void printReport(const Census& c);`",
+    "`void remove(std::string plot) const;` and `void printReport(Census c);`",
+    "`void remove(const std::string& plot) const;` and `void printReport(Census& c);`",
+    "`void remove(std::string& plot);` and `void printReport(const Census c);`",
+  ]}
+  answer={0}
+  feedback={[
+    "remove changes the census, so it is not const; it only reads the plot code, so a const reference avoids a copy. printReport only reads the census, so a const reference is right.",
+    "A const member function cannot change records_, so it cannot remove anything; and passing the census by value copies every record just to print it.",
+    "remove must not be const, and printReport does not need permission to change the census.",
+    "A non-const string reference would refuse a literal such as \"PLOT07\", and a const by-value Census still makes a full copy.",
+  ]}
+/>
+
+## In biological modelling
+
+Composite types are the backbone of larger models:
+
+- **Populations of individuals.** `class Population { public: struct Individual { double mass; int age; }; … private: std::vector<Individual> members_; };` with member functions `reproduce`, `applyMortality` and `meanMass`. The vector stays private, so no other code can, for example, remove individuals without updating summary statistics.
+- **Metapopulations.** A `Landscape` class owning a vector of `Patch` objects and a distance matrix, with a member function for dispersal that guarantees individuals are neither created nor lost on the way.
+- **Data sets.** As here: a class that owns the records of a survey and answers questions about them.
+
+Two design rules carry over to all of them. Keep the container private and expose operations that mean something in the model. And let functions that only read take the object by `const&`, so that the compiler checks which parts of the program may change the state.
+
+## Common mistakes
+
+- **Using the result of a failed lookup.** Check the `bool` (or the `std::optional`) first.
+- **Unqualified nested names outside the class**, such as `Record` in `main` or in a return type in front of `Census::`.
+- **Returning a reference to a private element** (`Record& get(std::size_t i)`) and thereby handing out unlimited write access. Return a copy or a `const Record&`, and be aware that a reference into a vector becomes invalid if the vector later grows (see <Concept id="iterators" />).
+- **Passing the whole class by value** to a function that only reads it.
+
+## Practice
+
+<Practice>
+
+1. Add a member function `int totalJuveniles() const` and a member function `bool update(const Record& record)` that replaces the record of an existing plot and returns `false` (changing nothing) if the plot is unknown.
+2. Make `add` refuse a record whose plot is already in the census, and return whether the record was added. Why is this rule easier to guarantee in a class than with a public `std::vector<Record>`?
+3. Rewrite `find` as `lookup`, returning `std::optional<Census::Record>`, and change `main` to use it.
+
+<details>
+<summary>Hint for exercise 2</summary>
+Reuse `find`: `Record existing{"", 0, 0}; if (find(record.plot, existing)) return false;`. Because every change to `records_` passes through `add`, checking there is enough to keep the codes unique for the whole lifetime of the object. With a public vector, any `push_back` anywhere in the program could break the rule.
+</details>
+
+</Practice>

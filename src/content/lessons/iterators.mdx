@@ -1,0 +1,204 @@
+---
+title: Iterators
+summary: Positions in a container, the half-open range from begin() to end(), and how to read, write, move and erase through them safely.
+level: intermediate
+module: 12
+manual: ["M12.3"]
+minutes: 35
+objectives:
+  - Traverse a container with an iterator from begin() to end() and read or write elements with *it
+  - Explain the half-open range [begin, end) and why end() must never be dereferenced
+  - Use const_iterator, cbegin and cend for read-only access
+  - Move iterators with ++, --, std::next, std::advance and std::distance, according to their category
+  - Erase elements during a traversal with it = c.erase(it), and recognise when iterators are invalidated
+references:
+  - "cppreference.com: Iterator library"
+  - "cppreference.com: std::vector::erase (iterator invalidation)"
+---
+
+## What it is
+
+An *iterator* is an object that marks a position in a container. You can ask it for the element at that position, and you can move it to the next position. That is all, and it is enough to visit every element of every standard container, including those that, like `std::list` or `std::set`, have no `[]` operator because their elements are not numbered.
+
+Every container offers two iterators:
+
+- `c.begin()`, the position of the first element;
+- `c.end()`, the position *one past* the last element.
+
+Together they describe a *half-open range*, written $[\,\text{begin}, \text{end})$: begin is included, end is not.
+
+## Why it matters
+
+Indices work for vectors, but they do not work for lists, sets or maps, and they do not say anything about *which container* they belong to. Iterators give all containers one common interface. This is what lets the standard algorithms (sort, find, count, accumulate; see <Concept id="standard-algorithms" />) work with any container: each algorithm takes a pair of iterators and processes the range between them. Container members such as `insert`, `erase` and `splice` also take positions as iterators.
+
+For models, iterators matter most in one situation: removing individuals from a population *while* walking through it. Done naively, this skips individuals or crashes; done with the idiom below, it is short and correct.
+
+## How it works in C++
+
+### A loop with an iterator
+
+The iterator types are nested in each container class, so their full names are long: `std::vector<double>::iterator`. In practice `auto` is used to let the compiler deduce the type from `begin()` (see <Concept id="auto-range-for" />):
+
+```cpp
+for (auto it = masses.begin(); it != masses.end(); ++it) {
+    std::cout << *it << '\n';
+}
+```
+
+Each part has the same role as in a counting loop: start at `begin()`, continue while the position is not `end()`, step with `++it`. The unary `*` *dereferences* the iterator: `*it` is the element at that position (it has nothing to do with multiplication). If the elements are structs, `it->N` reaches a member, short for `(*it).N`; the parentheses are needed because `.` binds more tightly than `*`.
+
+Because `end()` lies one past the last element, the loop condition `it != c.end()` visits every element exactly once, and an empty container (where `begin() == end()`) is handled without a special case. The same convention explains why `v.size()` is the first *invalid* index.
+
+<Example file="data/iterator_basics.cpp" mark="15-17,21,27-29" />
+
+### Reading and writing
+
+Dereferencing an ordinary `iterator` gives access to the element itself, so `*it += 0.5;` changes the element in the container. An iterator is a back door into the container: anyone holding one can modify the elements.
+
+When you only read, use a `const_iterator`, which you get from `cbegin()` and `cend()` (or from `begin()` on a const container). Writing through it does not compile:
+
+<Example file="data/iterator_const_write.cpp" mark="12" />
+
+GCC reports `assignment of read-only location`. As with `const` references, the point is that the compiler checks your intentions: code that should only inspect the population cannot change it by mistake.
+
+### Moving between positions
+
+What an iterator can do depends on its container. There are five *categories*, each adding operations to the one before:
+
+| Category | Moves | Containers |
+|---|---|---|
+| input / output | `++`, single pass | stream iterators |
+| forward | `++`, any number of passes | `std::forward_list`, `std::unordered_map` |
+| bidirectional | `++`, `--` | `std::list`, `std::set`, `std::map` |
+| random access | `++`, `--`, `it + n`, `it - n`, `it[n]`, `it2 - it1`, `<` | `std::vector`, `std::array`, `std::deque`, `std::string` |
+
+A vector iterator can jump: `masses.cbegin() + 2` is the position of element 2, and the difference of two iterators is the number of steps between them. A list iterator can only step, one element at a time. Four functions from `<iterator>` work for every category, and use the fastest method available:
+
+- `std::next(it, n)` returns the position `n` steps after `it` (default 1); `std::prev(it, n)` the one before;
+- `std::advance(it, n)` moves `it` itself by `n` steps (negative `n` only for bidirectional iterators);
+- `std::distance(first, last)` counts the steps from `first` to `last`, which gives the index of a found element in a vector.
+
+An iterator pair can also *build* a container from part of another: `std::vector<double> firstYears(N.begin(), N.begin() + 5);` copies the first five elements of a trajectory.
+
+<Callout kind="note" title="Iterator loops and index loops">
+For a vector, an index loop and an iterator loop do the same work, and optimising compilers generate practically the same machine code for both. Choose whichever reads better. Use iterators when the container has no indices, or when an algorithm or member function needs a position.
+</Callout>
+
+### Erasing while iterating
+
+`c.erase(it)` removes the element at `it`. Afterwards `it` is *invalid*: it no longer refers to any element, and using it, even to step to the next one, is undefined behaviour. Every standard container's `erase` therefore returns a valid iterator to the element that followed the erased one. The idiom is:
+
+```cpp
+for (auto it = c.begin(); it != c.end();) {   // no ++it in the header
+    if (shouldRemove(*it)) {
+        it = c.erase(it);                     // continue at the next element
+    } else {
+        ++it;
+    }
+}
+```
+
+The loop advances in *one* of two ways: by `erase`, or by `++it`, never both. Putting `++it` in the loop header as usual would skip the element after each erased one, and step past `end()` if the last element is erased.
+
+### Iterator invalidation
+
+Operations that change a container's structure can invalidate iterators (and references and pointers to elements) that you obtained earlier. For `std::vector`:
+
+- `push_back`, `insert` and `reserve` invalidate *all* iterators if they cause a reallocation (see <Concept id="container-choice" />), and `insert` invalidates those at and after the insertion point even if they do not;
+- `erase` invalidates iterators at and after the erased element;
+- `clear` invalidates everything.
+
+For `std::list`, `std::set` and `std::map` only iterators to *erased* elements become invalid; inserting never moves the others. When in doubt, get a fresh iterator after modifying a container, and never keep an iterator across a `push_back` on a vector.
+
+## Explore it
+
+Step through the erase loop. The panel shows the vector and the position `it` refers to after every step:
+
+<Trace id="iterators-erase" />
+
+<Check
+  id="end"
+  kind="read"
+  question="For `std::vector<int> v{7, 8, 9};`, what does `v.end()` refer to?"
+  options={["The element 9", "The position just after 9, which holds no element", "The element 7, because iteration wraps around", "A null value that compares equal to 0"]}
+  answer={1}
+  feedback={[
+    "The last element is at std::prev(v.end()), one step before end().",
+    "end() is one past the last element. It marks where the range stops; dereferencing it is undefined behaviour.",
+    "Iterators do not wrap around; stepping past end() is undefined behaviour.",
+    "end() is an ordinary position, not a special null value; it is only meaningful when compared with other iterators of the same container.",
+  ]}
+/>
+
+<Check
+  id="skip"
+  kind="debug"
+  question="This loop is meant to remove every individual aged 4 or more from `ages = {4, 4, 2}`. What goes wrong?"
+  code={`for (auto it = ages.begin(); it != ages.end(); ++it) {
+    if (*it >= 4) {
+        it = ages.erase(it);
+    }
+}`}
+  options={[
+    "Nothing; it leaves {2}",
+    "The second 4 is skipped, because the ++it in the header runs after every erase",
+    "erase cannot be called during a loop",
+    "It removes the 2 as well",
+  ]}
+  answer={1}
+  feedback={[
+    "After erasing the first 4, it already points at the second 4, and the header's ++it then moves past it. The result is {4, 2}.",
+    "erase already returns the next position; incrementing again skips that element. If the last element were erased, ++it would even step past end(). Advance either by erase or by ++it, never both.",
+    "Erasing during a loop is fine, as long as the loop continues from the iterator that erase returns.",
+    "The 2 is never removed: the problem is an element that should be removed but is skipped.",
+  ]}
+/>
+
+<Check
+  id="category"
+  kind="debug"
+  question="Which line does not compile for `std::list<int> ages{1, 3, 2, 5};`?"
+  options={["`auto it = std::next(ages.begin(), 2);`", "`auto it = ages.begin() + 2;`", "`auto it = ages.end(); --it;`", "`auto n = std::distance(ages.begin(), ages.end());`"]}
+  answer={1}
+  feedback={[
+    "std::next works for every category; for a list it simply steps twice.",
+    "A list iterator is bidirectional, not random access: it supports ++ and -- but not + n. Use std::next or std::advance instead.",
+    "Bidirectional iterators can step backwards, so --it gives the last element.",
+    "std::distance works for every category; for a list it counts the steps one by one.",
+  ]}
+/>
+
+## In biological modelling
+
+- **Mortality, emigration and harvesting.** Removing individuals from a population container during a sweep is the erase idiom. For a vector, removing many individuals one by one is slow (each `erase` shifts the rest); the one-pass alternative is `std::remove_if` followed by a single `erase`, or `std::erase_if(population, predicate)` in C++20 (<Concept id="standard-algorithms" />).
+- **Births during a sweep.** Never `push_back` into a vector you are traversing with iterators or references: a reallocation invalidates them. Collect newborns in a separate vector and append them after the sweep, which also keeps newborns from being processed in the step in which they were born.
+- **Positions in lookups.** Searches return iterators: `std::find` returns the position of the first match, or `end()` if there is none. Always compare the result with `end()` before dereferencing it.
+- **Ranges of a trajectory.** Iterator pairs select part of a trajectory, for example to discard a burn-in: `std::vector<double> settled(N.begin() + 100, N.end());`.
+
+## Common mistakes
+
+- **Dereferencing `end()`.** It holds no element. This includes `*c.begin()` on an empty container, where begin and end are equal.
+- **Using an iterator after `erase`.** Continue from the iterator that `erase` returns.
+- **Keeping iterators across a `push_back`.** A reallocation invalidates them all.
+- **Comparing iterators of different containers.** `it != other.end()` compiles, but the comparison is meaningless.
+- **Writing `*it.member`.** That reads as `*(it.member)`. Write `it->member` or `(*it).member`.
+
+## Practice
+
+<Practice>
+
+1. Write an iterator loop over a `std::vector<double>` of daily temperatures that prints the day number (via `std::distance`) and the temperature of every day warmer than the previous one.
+2. A `std::list<int>` holds the ages of individuals. Using the erase idiom, remove every individual older than 6 and, in the same loop, increase the age of every survivor by one. Print the list afterwards.
+3. In a vector of 20 states from a simulation, create a new vector holding only the last 10, using the iterator-pair constructor. Then do the same with `std::prev(v.end(), 10)`. Why does the second form also work for a `std::list`?
+
+<details>
+<summary>Hint for exercise 1</summary>
+Start the loop at `std::next(t.cbegin())`, so that `std::prev(it)` (the previous day) always exists, and compare `*it > *std::prev(it)`. Check that the vector has at least one element before calling `std::next` on `begin()`.
+</details>
+
+<details>
+<summary>Hint for exercise 2</summary>
+In the `else` branch, `++*it;` increases the age and `++it;` moves on. Make sure the increment of the *age* happens before you step the *iterator*.
+</details>
+
+</Practice>

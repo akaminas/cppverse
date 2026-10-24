@@ -1,0 +1,304 @@
+---
+title: Constructors
+summary: Create objects that start in a valid state, with constructors, member initialiser lists, default member initialisers and explicit.
+level: intermediate
+module: 13
+manual: ["M13.2"]
+minutes: 35
+objectives:
+  - Write constructors that check their arguments and throw when the new object would be invalid
+  - Initialise members with a member initialiser list and with default member initialisers
+  - Remove duplicated set-up code with a delegating constructor and prevent silent conversions with explicit
+  - Say which special member functions the compiler writes for you, and apply the rule of zero
+standard: c++17
+references:
+  - "cppreference.com: Constructors and member initializer lists"
+  - "cppreference.com: Default member initializer; explicit specifier"
+  - "cppreference.com: The rule of three/five/zero"
+  - "C++ Core Guidelines: C.40–C.52 (constructors)"
+---
+
+## What it is
+
+A *constructor* is a member function that runs automatically when an object is created. It has the same name as its class and no return type, not even `void`. Its job is to turn a piece of raw memory into a valid object: every member gets a sensible value, and any rule the class promises to keep (its *invariant*) holds from the first moment.
+
+If the arguments make that impossible, a well-written constructor refuses by throwing an exception. Construction then never finishes, and no invalid object ever exists.
+
+You have used constructors all along. `std::vector<double> survival(10, 0.9)` calls the vector constructor that takes a count and a value; `std::vector<double> v{0.1, 0.2}` calls the one that takes a list; copying a vector into a function parameter calls its copy constructor. This lesson is about writing them for your own classes (see <Concept id="classes" /> for classes in general).
+
+## Why it matters
+
+Without a constructor, creating an object is a two-step affair: declare it, then set its members. Between those steps the object exists in an undefined or half-set state, and if a step is forgotten, the model carries on with garbage. A two-step object also cannot be `const`, because the second step changes it.
+
+In a model, invalid objects are worse than crashes. An individual with a negative body mass or a juvenile of age 30 will not stop the program: it will feed a wrong number into a growth function, a fecundity schedule or a census, and the error surfaces, if at all, as an odd pattern in a figure weeks later. A constructor that rejects invalid state at the moment of creation reports the problem where it happened, with a message that says what went wrong.
+
+## How it works in C++
+
+### Declaring a constructor
+
+```cpp
+class Individual {
+public:
+    Individual(int ageYears, Stage stage, double massGrams);  // a declaration
+    // ...
+};
+```
+
+A class may have several constructors, as long as their parameter lists differ (this is ordinary <Concept id="overloading-defaults">function overloading</Concept>). The compiler picks the one whose parameters match the arguments:
+
+```cpp
+const Individual female{3, Stage::adult, 41.5};  // three arguments
+const Individual newborn{2.8};                   // one argument
+```
+
+Brace initialisation, as here, is the safest way to call a constructor: it refuses narrowing conversions (a `double` silently squeezed into an `int`), and it avoids a famous trap described under *Common mistakes*.
+
+### The member initialiser list
+
+There are two places where a constructor can give members their values: the *member initialiser list*, between the colon and the opening brace, and the body.
+
+```cpp
+// Initialisation: each member is created with its value.
+Individual(int ageYears, Stage stage, double massGrams)
+    : ageYears_(ageYears), stage_(stage), massGrams_(massGrams) {}
+
+// Assignment: each member is first created, then overwritten.
+Individual(int ageYears, Stage stage, double massGrams) {
+    ageYears_ = ageYears;
+    stage_ = stage;
+    massGrams_ = massGrams;
+}
+```
+
+Only the first version truly *initialises*. By the time the body runs, every member already exists; the body can only assign new values. For an `int` or a `double` the difference costs nothing, but there are members that cannot be assigned at all, and for them the initialiser list is compulsory:
+
+- `const` members, which can be given a value only when they are created;
+- reference members, which must be bound when they are created;
+- members of a class type that has no default constructor.
+
+```cpp
+class Plot {
+public:
+    Plot(int id, const Landscape& landscape)
+        : id_(id), landscape_(landscape) {}   // the only way to set these two
+private:
+    const int id_;
+    const Landscape& landscape_;
+};
+```
+
+Two rules to remember. First, members are initialised in the order in which the class *declares* them, whatever order you write in the list. If one member's initial value depends on another, declare them in that order; GCC and Clang warn about a mismatched list with `-Wall` (`-Wreorder`). Second, an empty body `{}` is perfectly normal: often the initialiser list does all the work.
+
+<Callout kind="pitfall" title="const data members block assignment">
+A `const` member makes its whole object impossible to assign: `a = b;` no longer compiles. That sounds harmless until you store such objects in a `std::vector` and call `erase`, `std::sort` or `std::remove_if`, all of which move elements around by assignment. To protect a value that never changes, it is usually better to make the member private and simply not provide a function that changes it.
+</Callout>
+
+### Default member initialisers
+
+A member can be given a default value where it is declared:
+
+```cpp
+private:
+    int offspring_ = 0;
+    bool alive_ = true;
+```
+
+Any constructor that does not mention `offspring_` in its initialiser list uses this value. With several constructors this is the simplest way to make sure that all of them leave the object in the same starting state: there is one place to look, and a new constructor cannot forget a member. A constructor that does mention the member in its list overrides the default.
+
+<Callout kind="manual" title="Additions to the course manual">
+The manual introduces constructors and initialiser lists and warns that all constructors of a class should leave the object consistently initialised. Two C++11 features make that easy and are used throughout this site: default member initialisers (above) and delegating constructors (below). The manual also notes that functions defined inside the class are implicitly `inline`; today that matters for the one-definition rule, not for speed, because the compiler decides by itself what to inline.
+</Callout>
+
+### Delegating constructors
+
+When one constructor is a special case of another, let it *delegate*: call the other constructor in its initialiser list.
+
+```cpp
+// A newborn is a juvenile of age 0.
+explicit Individual(double birthMassGrams)
+    : Individual(0, Stage::juvenile, birthMassGrams) {}
+```
+
+The target constructor runs completely, including its checks, and then the delegating constructor's body (empty here) runs. All validation lives in one constructor, so the rules cannot drift apart.
+
+### Default constructors
+
+A *default constructor* is one that can be called with no arguments. The compiler writes one for you only if you declare no constructor at all; as soon as you write any constructor, `Individual x;` stops compiling unless you also ask for a default one:
+
+```cpp
+Individual() = default;   // uses the default member initialisers
+```
+
+Ask yourself whether a default object makes biological sense before you add one. If every individual needs an age, a stage and a mass, leaving the default constructor out is a feature: code that tries to create a blank individual, including `std::vector<Individual> v(100);`, fails to compile instead of producing a hundred meaningless individuals. Use `reserve` and `push_back` (or `emplace_back`) to fill such a vector.
+
+### `explicit`
+
+A constructor that can be called with one argument also acts as an implicit conversion. Without `explicit`, any function that takes an `Individual` would silently accept a `double` and build a newborn from it, even if the number was really a litter mass or a temperature. Mark single-argument constructors `explicit` unless the conversion is genuinely natural:
+
+<Example file="architecture/constructors_explicit_error.cpp" mark="11,25" />
+
+With `explicit`, the intent has to be visible at the call site: `Individual{2.8}`.
+
+### What the compiler writes for you
+
+For every class, the compiler can generate six *special member functions*: the default constructor, the copy constructor, copy assignment, the move constructor, move assignment and the destructor. The generated versions work member by member: copying an `Individual` copies each member, destroying it destroys each member.
+
+For classes whose members are numbers, strings, standard containers and smart pointers, these generated functions are exactly right, and you should not write any of them. This is the **rule of zero**: let members that manage themselves do the managing. A class needs a hand-written destructor, copy and move functions (the "rule of three/five") only if it directly manages a resource such as raw memory or an open C file handle, which model code almost never should (see <Concept id="pointers-ownership" />).
+
+You can also switch a generated function off with `= delete`. In models this is occasionally useful: a `Simulation` object that owns a random number engine should perhaps not be copyable, because a copy would continue the *same* random stream, and two "independent" replicates made from copies would produce identical results.
+
+```cpp
+class Simulation {
+public:
+    Simulation(const Parameters& p, std::uint64_t seed);
+    Simulation(const Simulation&) = delete;             // no accidental copies
+    Simulation& operator=(const Simulation&) = delete;
+    // ...
+private:
+    std::mt19937_64 rng_;
+};
+```
+
+## A minimal example
+
+The program below defines an `Individual` that cannot be created in an invalid state. The full constructor checks age and mass; the newborn constructor delegates to it; the offspring count and the survival flag come from default member initialisers.
+
+<Example file="architecture/constructors_individual.cpp" mark="15-22,33-34" />
+
+Notice the test `!(massGrams > 0.0)` rather than `massGrams <= 0.0`. The two differ for NaN ("not a number", the result of, for example, `0.0 / 0.0`): every comparison with NaN is false, so `NaN <= 0.0` is false and would let a NaN mass through, while `!(NaN > 0.0)` is true and rejects it.
+
+## Explore it
+
+Step through the program to see which constructor runs when, and at which moment each object comes into existence.
+
+<Trace id="constructors-individual" />
+
+<Check
+  id="const-member"
+  kind="debug"
+  question="This class does not compile. Why?"
+  code={`class Seedbank {
+public:
+    explicit Seedbank(double capacity) {
+        capacity_ = capacity;
+    }
+private:
+    const double capacity_;
+};`}
+  options={[
+    "capacity_ must be public to be set in a constructor",
+    "A const member cannot be assigned; it must be initialised in the member initialiser list",
+    "Constructors cannot have a body",
+    "explicit is not allowed on a constructor with a double parameter",
+  ]}
+  answer={1}
+  feedback={[
+    "Constructors are member functions, so they can reach private members. Access is not the problem.",
+    "By the time the body runs, capacity_ already exists and is const, so the assignment is rejected. Write : capacity_(capacity) {} instead.",
+    "Constructors can have bodies; a body is where checks usually go. The problem is what this body tries to do.",
+    "explicit is allowed on any constructor and is recommended on single-argument ones.",
+  ]}
+/>
+
+<Check
+  id="init-order"
+  kind="predict"
+  question="The constructor below computes a condition index from the mass. What does condition_ contain after construction?"
+  code={`class Fish {
+public:
+    Fish(double massGrams, double lengthCm)
+        : massGrams_(massGrams),
+          condition_(massGrams_ / (lengthCm * lengthCm * lengthCm)) {}
+private:
+    double condition_;
+    double massGrams_;
+};`}
+  options={[
+    "The correct condition index, because massGrams_ is listed first",
+    "An indeterminate value, because condition_ is declared first and therefore initialised before massGrams_",
+    "Zero, because doubles start at zero",
+    "The code does not compile because the list is in the wrong order",
+  ]}
+  answer={1}
+  feedback={[
+    "The order of the list does not matter. Members are initialised in the order of their declarations in the class.",
+    "condition_ is declared first, so it is initialised first, reading massGrams_ before it has a value. Reading that indeterminate value is undefined behaviour. GCC and Clang warn about the mismatched order with -Wall; fix it by swapping the declarations or by using the parameter massGrams instead of the member.",
+    "Members of built-in type that are not initialised hold indeterminate values, not zero.",
+    "It compiles, which is what makes it dangerous; with -Wall the compiler at least warns (-Wreorder).",
+  ]}
+/>
+
+<Check
+  id="copied-rng"
+  kind="model"
+  question="A Simulation class holds its own std::mt19937_64 engine and has compiler-generated copy functions. A student creates one Simulation, copies it twice, and runs the two copies as replicates. What happens?"
+  options={[
+    "The copies get fresh random seeds automatically",
+    "Both copies continue the same random stream and produce identical results",
+    "The program does not compile because engines cannot be copied",
+    "The copies share one engine, so their results interleave",
+  ]}
+  answer={1}
+  feedback={[
+    "Nothing reseeds an engine behind your back. A copy is a copy, member by member.",
+    "The generated copy constructor copies the engine's entire internal state, so both replicates draw the same numbers. Delete the copy functions, or construct each replicate from its own recorded seed.",
+    "Standard engines are copyable on purpose (so that a stream can be saved and replayed), so this compiles.",
+    "Copying a member makes an independent duplicate; nothing is shared. That is exactly why the two copies march in lockstep.",
+  ]}
+/>
+
+## In biological modelling
+
+Constructors are where a model's assumptions about valid state become checks. Typical invariants worth enforcing at construction:
+
+- counts and masses are non-negative (and masses usually strictly positive);
+- probabilities and proportions lie between 0 and 1;
+- an individual's stage is consistent with its age or size, if the model links them;
+- parameter sets are internally consistent, for example a maximum age greater than the age at maturity.
+
+For parameters, the same idea applies to the parameter struct: check it once, right after reading it (see <Concept id="parameter-files" />), so that the simulation itself can assume valid values.
+
+When the ways of creating an object multiply (a founder, a newborn, an immigrant with known age), overloaded constructors become hard to tell apart, because they can differ only in their parameter types. A *named constructor* is then clearer: a `static` member function that returns a new object.
+
+```cpp
+class Individual {
+public:
+    static Individual newborn(double birthMassGrams) { return Individual(0, Stage::juvenile, birthMassGrams); }
+    static Individual immigrant(int ageYears, double massGrams) { return Individual(ageYears, Stage::adult, massGrams); }
+    // ...
+};
+const Individual pup = Individual::newborn(2.8);
+```
+
+Validation in a constructor costs almost nothing compared with the rest of a simulation step, and it runs once per object. If a model creates millions of individuals per run and profiling shows the checks matter (it rarely does), switch the inner checks to assertions (see <Concept id="debugging" />), but keep the checks on anything that comes from input.
+
+## Common mistakes
+
+- **Assigning a `const` or reference member in the body.** Use the initialiser list.
+- **A list order that disagrees with the declaration order.** Initialisation follows the declarations; heed `-Wreorder`.
+- **Calling another constructor from the body.** Writing `Individual(0, Stage::juvenile, mass);` *inside* a constructor body does not delegate: it creates and immediately destroys a temporary object, and leaves `*this` untouched. Delegation happens only in the initialiser list.
+- **Losing the default constructor by surprise.** Declaring any constructor removes the implicit default one. Add `= default` if a default object makes sense; otherwise enjoy the compile error.
+- **The most vexing parse.** `Individual ind();` declares a *function* called `ind` that returns an `Individual`. Use `Individual ind;` or `Individual ind{};`.
+- **Forgetting `explicit`** on single-argument constructors, so numbers turn into objects without anyone noticing.
+- **Writing copy functions or a destructor that the compiler would have generated correctly.** Hand-written versions must be kept in step with every new member; generated ones never forget.
+
+## Practice
+
+<Practice>
+
+1. Write a class `Seed` with a mass in milligrams and an age in years since dispersal. The constructor must reject a mass that is not positive and a negative age. Give it a member `germinated_` that starts as `false` in every constructor, and a const accessor for each member. Create one valid seed and try one invalid seed inside a `try` block.
+2. Write a small class `Probability` that holds a `double` between 0 and 1, with an `explicit` constructor that throws otherwise and a `value()` accessor. Then write `double expectedSurvivors(int n, Probability s)`. Explain what goes wrong if the constructor is not `explicit` and someone calls `expectedSurvivors(200, 95)` meaning 95 %.
+3. A colleague's class has the members `double lengthCm_; double massGrams_; const double conditionIndex_;` in that order and computes the index from the other two in the initialiser list. Write the constructor. Does the order of declarations matter here?
+4. For each class, decide whether you need to write a destructor and copy functions yourself: (a) a `Population` with a `std::vector<Individual>` and a `std::mt19937_64`; (b) a `Landscape` holding a `std::unique_ptr<Grid>`; (c) a `Logger` that opens a file with the C function `std::fopen` and stores the `FILE*`.
+
+<details>
+<summary>Hints and worked answers</summary>
+
+1. Use the same pattern as `Individual`: initialise in the list, then check in the body with `if (!(massMg > 0.0)) throw std::invalid_argument("...");`. `bool germinated_ = false;` as a default member initialiser covers every constructor.
+2. Without `explicit`, the `int` 95 is converted to `double` and then, through the constructor, to a `Probability`. The mistake is caught only at run time, when the constructor throws, and only because it checks the range. With `explicit`, the call does not compile, and the caller must write `Probability{0.95}`: the units are visible where the number is typed.
+3. `: lengthCm_(lengthCm), massGrams_(massGrams), conditionIndex_(100.0 * massGrams / (lengthCm * lengthCm * lengthCm))`. Because the index is declared last it would be safe to compute it from the members, but computing it from the *parameters* is safe regardless of the declaration order. (The factor 100 makes Fulton's condition factor come out near 1 for many fish; use whatever definition your study uses.)
+4. (a) No: the rule of zero applies, although you may want to delete copying because of the engine. (b) No destructor; the `unique_ptr` deletes the grid. The class becomes move-only automatically, which is usually what you want. (c) Yes, or better, replace the `FILE*` with a `std::ofstream` member, which closes itself, and the rule of zero applies again.
+
+</details>
+
+</Practice>

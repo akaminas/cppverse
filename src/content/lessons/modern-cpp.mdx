@@ -1,0 +1,293 @@
+---
+title: Modern C++ for modelling
+summary: Selected C++20 and C++23 features that make models safer and clearer, what each needs from the compiler, and why C++17 code remains perfectly good.
+level: seasoned
+module: null
+manual: []
+minutes: 40
+optional: true
+objectives:
+  - Pass sequences to functions with std::span and process them with ranges and views
+  - Format output with std::format and recognise std::print
+  - Constrain templates with concepts and name parameters with designated initialisers
+  - Recognise std::expected and compile-time computation with constexpr
+  - Check which compiler versions support each feature before relying on it
+standard: c++20
+references:
+  - "cppreference.com: C++ compiler support"
+  - "cppreference.com: std::span; Ranges library; std::format; Concepts library; std::expected"
+---
+
+## What it is
+
+C++ is revised every three years. C++20 was the largest revision since C++11, and C++23 added a further set of conveniences. This lesson selects the features that most improve model code, shows each one briefly, and says which compilers support it. Everything here is optional: **the C++17 code used throughout this atlas remains correct, idiomatic and fast**, and nothing in the later lessons requires these features.
+
+Features that need a newer standard carry a badge such as <Std v="c++20" /> or <Std v="c++23" />. To use them, compile with `-std=c++20` or `-std=c++23` (GCC, Clang) or `/std:c++20` or `/std:c++latest` (Visual Studio).
+
+## Why it matters
+
+Each feature below removes a class of mistakes or a piece of boilerplate that models are prone to: passing the wrong length with a pointer, mismatched format codes in output, cryptic template errors, positional parameter lists in which two doubles are swapped. None of them changes what a model computes.
+
+The cost is portability. A university cluster may provide a compiler several years old, and a collaborator may use a different platform. Before adopting a feature, check that every place where the model must run supports it, or keep a C++17 fallback.
+
+## How it works in C++
+
+### Compiler support at a glance
+
+| Feature | Standard | Header | GCC | Clang with libc++ | Visual Studio |
+|---|---|---|---|---|---|
+| designated initialisers | C++20 | (language) | 8 | 10 | 2019 (16.1) |
+| concepts | C++20 | `<concepts>` | 10 | 10 | 2019 (16.10) |
+| `std::span` | C++20 | `<span>` | 10 | 7 | 2019 (16.6) |
+| `std::numbers` | C++20 | `<numbers>` | 10 | 11 | 2019 (16.5) |
+| ranges and views | C++20 | `<ranges>` | 10 | 16 | 2019 (16.10) |
+| `std::format` | C++20 | `<format>` | 13 | 17 | 2019 (16.10) |
+| `std::expected` | C++23 | `<expected>` | 12 | 16 | 2022 (17.3) |
+| `std::print` | C++23 | `<print>` | 14 | 18 | 2022 (17.7) |
+
+The versions are the first releases with usable support and are a guide, not a guarantee; cppreference's compiler support page has the details. Two subtleties. On Linux, Clang normally uses GCC's standard library (libstdc++), so for *library* features the GCC column is the one that counts. And some combinations lag behind both columns: Clang 18 with libstdc++, for example, does not provide `std::expected`.
+
+### `std::span`: a view of contiguous values <Std v="c++20" />
+
+A function that reads a sequence of doubles usually takes `const std::vector<double>&`. That works only for vectors, and only for whole vectors. A `std::span<const double>` accepts any contiguous sequence (a vector, a `std::array`, part of either) without copying:
+
+```cpp
+double mean(std::span<const double> values);
+
+mean(trajectory);                      // a whole vector
+mean(std::span{trajectory}.last(10));  // its last 10 values
+mean(monthlyRainfall);                 // a std::array<double, 12>
+```
+
+A span is two numbers, a pointer and a length, so it is passed by value. It owns nothing: like a reference, it dangles if the underlying vector is destroyed or reallocated while the span is in use. Use spans as function parameters, not as long-lived members.
+
+### Ranges and views <Std v="c++20" />
+
+The `std::ranges` versions of the standard algorithms take a whole container instead of a pair of iterators, and they accept a *projection*, a member or function to compare by:
+
+```cpp
+std::ranges::sort(population, {}, &Individual::massGrams);   // sort by mass
+const auto oldest = std::ranges::max_element(population, {}, &Individual::ageYears);
+```
+
+*Views* are lazy, composable transformations of a range. Nothing is copied or computed until the view is iterated:
+
+```cpp
+// Per-capita growth rates of a trajectory, only where the population exceeds 10.
+auto growth = std::views::iota(std::size_t{1}, N.size())
+            | std::views::filter([&](std::size_t t) { return N[t - 1] > 10.0; })
+            | std::views::transform([&](std::size_t t) { return N[t] / N[t - 1]; });
+for (const double lambda : growth) std::cout << lambda << '\n';
+```
+
+Views are powerful but have sharp edges: they refer to the data they view, so they must not outlive it; some views, such as `filter`, cannot be iterated through a `const` reference; and compiler errors in long pipelines are hard to read. For a simple loop, a plain range-based `for` (see <Concept id="auto-range-for" />) is often clearer.
+
+### `std::format` and `std::print` <Std v="c++20" />
+
+`std::format` builds a string from a *format string* with replacement fields `{}` and a list of arguments, much like Python's f-strings:
+
+```cpp
+std::cout << std::format("{:>4} {:>8.2f}\n", year, N);
+```
+
+The format string is checked at compile time, the result is independent of any stream state (no forgotten `std::fixed` affecting later lines), and the rounding is exact and identical on every platform, which makes output files reproducible (see <Concept id="output-formatting" />). C++23 adds `std::print` <Std v="c++23" />, which formats and writes in one step:
+
+```cpp
+#include <print>                                   // C++23
+std::print("{:>4} {:>8.2f}\n", year, N);           // to standard output
+std::println(file, "{},{:.6g}", t, N);             // to a FILE*, with a newline
+```
+
+If your compiler lacks `<format>`, the open-source `{fmt}` library offers the same interface for C++11 and later; `std::format` was standardised from it.
+
+### `std::numbers` <Std v="c++20" />
+
+Mathematical constants, correctly rounded, with names: `std::numbers::pi`, `std::numbers::e`, `std::numbers::sqrt2`, `std::numbers::ln2`, and versions for other types such as `std::numbers::pi_v<float>`. They replace hand-typed literals and the non-standard `M_PI`.
+
+### Concepts <Std v="c++20" />
+
+A concept is a named requirement on a template parameter (see <Concept id="templates" />). Instead of accepting any type and failing deep inside the function body, a constrained template states what it needs:
+
+```cpp
+template <std::floating_point T>
+T logisticStep(T N, T r, T K) { return N + r * N * (T{1} - N / K); }
+
+logisticStep(10, 1, 100);   // error: int does not satisfy std::floating_point
+```
+
+The error message now names the unmet requirement at the call. You can define your own:
+
+```cpp
+template <typename S>
+concept ModelState = requires(S a, S b, double h) {
+    { a + b } -> std::convertible_to<S>;
+    { h * a } -> std::convertible_to<S>;
+};
+
+template <ModelState S, typename F>
+S eulerStep(const S& s, double h, F rates) { return s + h * rates(s); }
+```
+
+A concept checks *types*, not *values*: it can require that a parameter is a floating-point number, but not that it lies between 0 and 1. Value checks still belong in constructors (see <Concept id="constructors" />).
+
+### Designated initialisers <Std v="c++20" />
+
+Aggregates, such as parameter structs, can be initialised by naming their members:
+
+```cpp
+const Parameters p{.r = 0.9, .K = 400.0, .N0 = 5.0, .years = 12};
+```
+
+Two doubles can no longer be swapped by accident, and the code says what each number is. The designators must appear in the order in which the members are declared, and members you leave out take their default member initialisers. Unlike C, C++ does not allow reordering, nesting designators or mixing named and positional values.
+
+### `std::expected` <Std v="c++23" />
+
+Some failures are expected and should be handled by the caller rather than thrown as exceptions: a missing value in a parameter file, a line that does not parse. A `std::expected<T, E>` holds either a value of type `T` or an error of type `E`:
+
+```cpp
+#include <expected>                                         // C++23
+
+std::expected<double, std::string> parseRate(const std::string& text) {
+    try {
+        const double r = std::stod(text);
+        if (r < 0.0) return std::unexpected("negative rate: " + text);
+        return r;
+    } catch (const std::exception&) {
+        return std::unexpected("not a number: " + text);
+    }
+}
+
+const auto r = parseRate(field);
+if (!r) std::cerr << "error: " << r.error() << '\n';
+else std::cout << "rate " << *r << '\n';
+```
+
+The error travels with the result, and the caller must unwrap the value before using it, which is the natural moment to check for an error. Support is still uneven (see the table), so check your compilers before adopting it; exceptions remain a perfectly good choice for errors that should stop the run (see <Concept id="exceptions" />).
+
+### Computing at compile time: `constexpr` and `consteval`
+
+A `constexpr` function can be evaluated by the compiler when its arguments are known at compile time (this already works in C++17). Combined with `static_assert`, it turns some checks on fixed parameters into compile errors:
+
+```cpp
+constexpr double netReproductiveRate(double fecundity, double survival) { return fecundity * survival; }
+static_assert(netReproductiveRate(2.5, 0.5) > 1.0, "the default parameters must allow growth");
+```
+
+C++20 widened what such functions may do <Std v="c++20" />: they may use `std::vector` and `std::string` internally, and `consteval` marks a function that must run at compile time. This is useful for lookup tables and fixed derived constants. Do not overdo it: most model parameters come from input files at run time.
+
+### Small conveniences worth knowing
+
+- `std::erase_if(v, predicate)` <Std v="c++20" /> removes matching elements from a vector in one call, replacing the erase–remove idiom.
+- `map.contains(key)` <Std v="c++20" /> asks whether a key exists without inserting it, as `operator[]` would.
+- Defaulted comparisons <Std v="c++20" />: `bool operator==(const State&) const = default;` (see <Concept id="operator-overloading" />).
+- `std::views::enumerate` and `std::ranges::to` <Std v="c++23" /> give an index alongside each element, and collect a view into a container.
+
+## A minimal example
+
+The program uses six C++20 features in a small logistic model: a parameter struct initialised with designators, a concept-constrained update, a span over the last five years, a filtered view, `std::format` for output and `std::numbers::pi` for the area of a circular study plot.
+
+<Example file="architecture/modern_logistic_cpp20.cpp" mark="23,34,41,44-51,53" />
+
+## Explore it
+
+Select each part of a format string to see what it controls.
+
+<Anatomy id="modern-cpp-format" />
+
+<Check
+  id="format-precision"
+  kind="predict"
+  question="What does this print (between the quotes)?"
+  code={`std::cout << '"' << std::format("{:>7.3f}", 2.0 / 3.0) << '"';`}
+  options={["\"0.667\"", "\"  0.667\"", "\"0.6666667\"", "\"0.667  \""]}
+  answer={1}
+  feedback={[
+    "The width 7 pads the five characters of 0.667 to seven.",
+    "Three digits after the point give 0.667 (five characters), and > right-aligns it in a field of seven, so two spaces come first.",
+    "The .3 limits the result to three digits after the decimal point.",
+    "> means right-aligned, so the padding goes on the left. < would put it on the right.",
+  ]}
+/>
+
+<Check
+  id="span-dangling"
+  kind="debug"
+  question="This function compiles. What is wrong with it?"
+  code={`std::span<const double> lastYears(const Parameters& p) {
+    const std::vector<double> N = simulate(p);
+    return std::span{N}.last(5);
+}`}
+  options={[
+    "Nothing: the span keeps the vector alive",
+    "The span refers to the local vector N, which is destroyed when the function returns, so the caller gets a dangling view",
+    "last(5) copies the data, so returning it is wasteful",
+    "A span cannot be returned from a function",
+  ]}
+  answer={1}
+  feedback={[
+    "A span owns nothing and cannot extend a lifetime. That is the essential difference from a container.",
+    "Exactly. Return a std::vector (copying the last five values, or the whole trajectory) instead; use spans for parameters, where the caller's data outlives the call.",
+    "last(5) creates a new view of the same data; nothing is copied. That is precisely why it dangles.",
+    "Returning a span is legal and useful when the data it views outlives the function, for example a member of an object that lives on.",
+  ]}
+/>
+
+<Check
+  id="designated-order"
+  kind="read"
+  question="Parameters declares r, K, N0 and years, in that order, each with a default. Which initialisation compiles in C++20?"
+  options={[
+    "Parameters p{.K = 400.0, .r = 0.9};",
+    "Parameters p{.r = 0.9, .years = 12};",
+    "Parameters p{0.9, .K = 400.0};",
+    "Parameters p{.r = 0.9, .r = 0.8};",
+  ]}
+  answer={1}
+  feedback={[
+    "C++ requires the designators in declaration order; r comes before K. (C allows any order; C++ does not.)",
+    "The designators are in declaration order, and the skipped members K and N0 take their default member initialisers.",
+    "C++ does not allow positional and designated initialisers to be mixed in one list.",
+    "Each member may be designated at most once.",
+  ]}
+/>
+
+## In biological modelling
+
+Adopting newer features is a project decision, not a matter of style. Ask:
+
+- **Where must the model compile?** Your laptop, the cluster, a collaborator's machine, a continuous-integration service. The oldest compiler among them sets the limit. Record the required standard in the build files and the README (see <Concept id="testing-reproducibility" />).
+- **Does the feature remove a real risk?** Designated initialisers in parameter structs and `std::format` in output code prevent errors that are easy to make and hard to spot. `std::span` makes function interfaces honest. These are the strongest candidates.
+- **Does it make the model easier or harder to read for your collaborators?** A long view pipeline may impress a C++ expert and baffle the ecologist who has to check the model against its description.
+
+A reasonable policy for many projects: write the model in C++17, and use C++20 features where the whole team's compilers support them and the gain is clear.
+
+## Common mistakes
+
+- **Using a feature that one target compiler lacks**, and finding out on the cluster. Check the table, and compile with the same flags everywhere.
+- **Dangling spans and views.** Neither owns its data; both must not outlive it.
+- **Iterating a `filter` view through a const reference.** It does not compile, because the view caches its first match. Pass views by value or by forwarding reference.
+- **Expecting concepts to check values.** They constrain types only.
+- **Designated initialisers out of order**, or mixed with positional ones.
+- **Treating `std::print` as available wherever `std::format` is.** It is C++23 and needs newer libraries.
+- **Rewriting working C++17 code for the sake of it.** Modernise where it fixes a problem.
+
+## Practice
+
+<Practice>
+
+1. Rewrite a function from one of your own models that takes `const std::vector<double>&` so that it takes `std::span<const double>`. Call it with a whole vector, with the last ten elements, and with a `std::array`.
+2. Using views, print the year and the per-capita growth rate $N_{t+1}/N_t$ of the example's trajectory for the years in which the population is below half of $K$, without storing the rates in a vector.
+3. Define a concept `PopulationSize` that accepts integral and floating-point types but not `bool`. Constrain a function template with it and check which calls compile. Could a concept require the value to be non-negative?
+4. Write `std::expected<Parameters, std::string> readParameters(std::istream& in)` that returns an error message naming the first missing or invalid parameter. If your compiler does not support `<expected>`, write the same function returning `std::optional<Parameters>` and an error string through a reference parameter, and compare the two designs.
+
+<details>
+<summary>Hints and worked answers</summary>
+
+1. Calls: `f(v)`, `f(std::span{v}.last(10))` (check first that `v.size() >= 10`; `last` on a shorter span is undefined behaviour), and `f(arr)`. The function body does not change, because a span supports `size()`, `operator[]` and range-based `for`.
+2. Iterate over `std::views::iota(std::size_t{0}, N.size() - 1)`, filter on `N[t] < p.K / 2`, and print `t` and `N[t + 1] / N[t]` in the loop body. Capture `N` and `p` by reference in the lambda.
+3. `template <typename T> concept PopulationSize = (std::integral<T> || std::floating_point<T>) && !std::same_as<T, bool>;`. A call with `int` or `double` compiles; one with `bool` or `std::string` does not. A concept cannot see run-time values, so "non-negative" must be checked in the function or, better, by a type whose constructor enforces it.
+4. Read each `key value` pair, check it, and return `std::unexpected("missing or invalid value for K")` at the first failure; return the filled `Parameters` at the end. The `std::expected` version keeps value and error in one return value that the caller must inspect; the `std::optional` version needs a second channel for the message, which is easier to forget.
+
+</details>
+
+</Practice>

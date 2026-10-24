@@ -1,0 +1,297 @@
+---
+title: Access, const member functions and static members
+summary: "Decide who may read and change each member: getters and setters, const member functions, static members shared by all objects, mutable and friend."
+level: intermediate
+module: 13
+manual: ["M13.3", "M13.4"]
+minutes: 35
+objectives:
+  - Choose for each data member whether it is public or private, const or modifiable, per object or shared
+  - Write const member functions and explain why const objects and const references can call only those
+  - Replace setters that merely assign with operations that keep the object valid
+  - Define static data members and static member functions in modern C++17 style
+  - Use mutable and friend only where they are justified
+standard: c++17
+references:
+  - "cppreference.com: Access specifiers; static members; cv-qualified member functions"
+  - "cppreference.com: friend declaration; mutable specifier"
+  - "C++ Core Guidelines: C.2, C.9, Con.2"
+---
+
+## What it is
+
+A class decides who may see and change its members. Three keywords control this:
+
+- **`public` and `private`** say *who* may use a member: anyone, or only the class's own member functions (and its friends).
+- **`const`** after a member function's parameter list says that the function only *reads* the object.
+- **`static`** says that a member belongs to the *class*, shared by every object, rather than to each object separately.
+
+Two more keywords are deliberate exceptions to these rules: `mutable` lets a member change inside a const function, and `friend` lets a non-member function see private members. Together they let you design, member by member, how much of an object the rest of the program can touch. This is *encapsulation*, introduced in <Concept id="classes" />.
+
+## Why it matters
+
+A model object usually has rules that its state must obey: a tree's diameter lies between zero and a maximum, the number of hatched eggs never exceeds the clutch size, frequencies sum to one. If any code anywhere can change the state, any code anywhere can break the rules, and a bug could be in any of thousands of lines. If the state is private and only a handful of member functions can change it, those functions are the only place where the rules can be broken, and the only place you need to check.
+
+Reading, by contrast, is harmless. A good class therefore makes reading easy and changing deliberate. `const` lets the compiler enforce the difference: a function that writes model output, given the population by const reference, *cannot* accidentally change it.
+
+## How it works in C++
+
+### Read access: getters
+
+A *getter* (accessor) is a short public function that returns the value of a private member:
+
+```cpp
+double diameterCm() const { return diameterCm_; }
+```
+
+Getters usually cost nothing at run time, because the compiler inlines them, and they leave the class free to change how it stores its data later. A getter can also compute a derived quantity on demand instead of storing it, such as a basal area from a diameter, so the two can never disagree.
+
+### Write access: setters, and something better
+
+There are three common ways to let outside code change a member. Compare them on a tree's diameter:
+
+```cpp
+// (a) set once, at construction, then read only
+explicit Tree(double diameterCm);
+double diameterCm() const;
+
+// (b) a getter and a setter
+double diameterCm() const;
+void setDiameterCm(double d);
+
+// (c) a function that returns a reference to the member
+double& diameterCm();
+```
+
+Option (a) is the safest: if the value never changes after creation, provide no way to change it. Option (c) looks tidy but gives the game away: `tree.diameterCm() = -3.0;` compiles, because the caller holds a reference to the private member itself. It is public access in disguise, and every invariant the class tried to keep is gone.
+
+Option (b) is only better than a public member if the setter does something: checks the new value, or keeps related members consistent. A setter that just assigns adds typing and no safety. Two better choices exist:
+
+- If the members really are independent and any combination is valid, make it a <Concept id="structs">struct</Concept> with public members. A parameter set is often exactly that.
+- Otherwise, replace the setter with an *operation that means something in the model*: `grow(rate)`, `recruit(n)`, `hatch(n)`, `die()`. The operation can enforce the rules because it knows what kind of change is happening.
+
+### `const` member functions
+
+Write `const` after the parameter list of every member function that does not change the object:
+
+```cpp
+class Tree {
+public:
+    double diameterCm() const { return diameterCm_; }   // reads only
+    void grow(double rate);                              // changes the tree
+};
+
+double Tree::basalAreaM2() const { /* ... */ }   // repeat const in an outside definition
+```
+
+Inside a const member function, the members are read-only, and the compiler rejects any attempt to change them. The other half of the deal is what makes `const` so useful: **a const object, or an object reached through a const reference, can only call const member functions.**
+
+```cpp
+void report(const Tree& tree) {
+    std::cout << tree.diameterCm();   // fine: diameterCm() is const
+    tree.grow(0.1);                   // error: grow() is not const
+}
+```
+
+Passing large objects by const reference is the normal way to give functions read-only access without copying (see <Concept id="const-reference" />). That idiom only works if the class has marked its reading functions `const`. A class whose getters lack `const` cannot be used through a const reference at all, so const correctness has to start inside the class.
+
+When a getter returns a large member, such as a vector of seeds, returning by const reference avoids a copy: `const std::vector<Seed>& seeds() const;`. The caller can read but not change it. Return small values (numbers, short strings) by value; it is simpler and cannot dangle.
+
+### Private helper functions
+
+Member functions can be private too. A private helper holds code that several member functions need, such as a validity check used by both the constructor and `grow`, without adding to the public interface. The interface stays short, and the duplicated code disappears.
+
+### Static members: one per class, not one per object
+
+Normally every object has its own copy of every data member. A `static` data member exists once for the whole class, and every object sees the same value; if one object changes it, all objects see the change.
+
+```cpp
+class Tree {
+public:
+    static constexpr double kMaxDiameterCm = 120.0;   // a shared constant
+    static int treesCreated() { return nextId_ - 1; }  // a static member function
+private:
+    inline static int nextId_ = 1;                     // a shared, modifiable counter
+};
+
+std::cout << Tree::kMaxDiameterCm;    // no object needed
+std::cout << Tree::treesCreated();
+```
+
+- `static constexpr` makes a compile-time constant shared by all objects. Since C++17 it is implicitly `inline`, so the line inside the class is a complete definition.
+- `inline static` (C++17) defines a modifiable static member directly in the class.
+- A *static member function* has no object: it cannot use non-static members, only static ones. Call it as `Tree::treesCreated()`.
+
+Static members follow the same access rules as other members: `nextId_` is private, so only `Tree`'s own functions can change it.
+
+<Callout kind="manual" title="Out-of-class definitions are no longer needed">
+The manual explains that a static data member declared in a class must also be defined once outside it, as in `const double Tree::kMaxDiameterCm = 120.0;` in a .cpp file. That was the rule before C++17, apart from integral `static const` members, which could always be initialised in the class. Since C++17, `static constexpr` members and members declared `inline static` are defined by their declaration in the class, and no separate definition is needed. Older code still contains such definitions, so recognise them; in new code, prefer the in-class forms.
+</Callout>
+
+### `mutable`: changing a member in a const function
+
+Sometimes a const function needs to change a member that is *not* part of the object's meaningful state. The usual example is a cache: an expensive derived quantity computed on first request and remembered.
+
+```cpp
+class Colony {
+public:
+    double foodDemand() const {
+        if (cachedDemand_ < 0.0) cachedDemand_ = computeDemand();  // allowed: mutable
+        return cachedDemand_;
+    }
+private:
+    double computeDemand() const;
+    mutable double cachedDemand_ = -1.0;   // negative: not computed yet
+};
+```
+
+`mutable` is a loophole, so keep it narrow. Anything whose value affects the model's results belongs to the real state and must not be `mutable`. A cache must also be invalidated whenever the state it depends on changes, which is a fresh source of bugs; in model code, recomputing is often cheap enough.
+
+### `friend`: privileged outsiders
+
+A class can declare that a particular non-member function may access its private members:
+
+```cpp
+class Colony {
+    friend std::ostream& operator<<(std::ostream& os, const Colony& c);
+    // ...
+};
+```
+
+The friend's definition looks like that of any ordinary function: nothing in it reveals the friendship, and it is not prefixed with `Colony::`. Friends are an exception to the access rules, and every friend is one more function outside the class that depends on its private details. Use them sparingly. Usually a member function, or a non-member that goes through public getters, does the job. The legitimate cases are mostly operators whose left operand is not your class, such as the output operator `<<` (see <Concept id="operator-overloading" />). A member function called as `a.interact(b)` is naturally *asymmetric*, with a focal object and a partner; a free function `interact(a, b)` is symmetric. That difference, rather than access, is the better reason to choose between them.
+
+### Who can do what
+
+| Code that accesses a member | public member | private member |
+|---|---|---|
+| a function outside the class | read and write | no access |
+| a friend function | read and write | read and write |
+| a member function | read and write | read and write |
+| a `const` member function | read only | read only |
+
+Two refinements apply to every row. A `const` data member can be read by anyone with access but written by no one after construction. A `mutable` data member can be written even by a `const` member function.
+
+## A minimal example
+
+The `Tree` below can be read freely but changed only by growing. Its constant maximum diameter and its identifier counter are static, shared by every tree; the check of the initial diameter is a private helper; and `report` takes a const reference, so it can call only const member functions.
+
+<Example file="architecture/access_tree_growth.cpp" mark="15,19-21,27,35,40,45" />
+
+## Explore it
+
+Select the parts of this class declaration to see what each keyword does.
+
+<Anatomy id="access-control-colony" />
+
+<Check
+  id="const-reference-call"
+  kind="debug"
+  question="This function does not compile. Which change to the Nest class fixes it?"
+  code={`class Nest {
+public:
+    explicit Nest(int clutch) : clutch_(clutch) {}
+    int clutch() { return clutch_; }
+private:
+    int clutch_;
+};
+
+void census(const Nest& nest) {
+    std::cout << nest.clutch() << '\\n';
+}`}
+  options={[
+    "Make clutch_ public",
+    "Declare the accessor as int clutch() const",
+    "Pass the nest by value instead",
+    "Make census a friend of Nest",
+  ]}
+  answer={1}
+  feedback={[
+    "That would compile, but it gives up encapsulation to work around a missing const. The accessor is the problem.",
+    "Through a const reference only const member functions can be called, and clutch() only reads, so it should promise that with const.",
+    "Passing a copy would compile, but it hides the bug: the class still cannot be used through const references, which is how most functions receive objects.",
+    "Friendship grants access to private members, but census calls a public function. The const rule applies to friends too.",
+  ]}
+/>
+
+<Check
+  id="reference-accessor"
+  kind="read"
+  question="A class offers double& mass() as its only access to the private member mass_. Which statement is now possible in code outside the class?"
+  options={[
+    "None that changes mass_, because mass_ is private",
+    "ind.mass() = -10.0;",
+    "Only reading: double m = ind.mass();",
+    "Only changes that pass the class's validity checks",
+  ]}
+  answer={1}
+  feedback={[
+    "Private controls the name mass_, but the function hands out a reference to the member itself, which can be assigned through.",
+    "The returned reference is the member, so assigning to it writes mass_ directly, bypassing any check. This is public access in disguise.",
+    "Reading works too, but the reference is not const, so writing works as well.",
+    "No class code runs when the caller assigns through the reference, so no check can run either.",
+  ]}
+/>
+
+<Check
+  id="static-counter"
+  kind="predict"
+  question="Tree hands out identifiers from a static counter, as in the example program. A function plantStand() creates three Tree objects. What does this print?"
+  code={`plantStand();
+plantStand();
+std::cout << Tree::treesCreated() << '\\n';`}
+  options={["3", "6", "0, because the trees were destroyed", "It depends on the order of construction"]}
+  answer={1}
+  feedback={[
+    "Each call creates three trees, but the counter is static: it belongs to the class and keeps counting across calls.",
+    "The counter is shared by all trees and outlives every one of them, so six trees have been created. In a model this is a trap: a second replicate run in the same program continues numbering where the first stopped.",
+    "Destroying the objects does not touch a static member. It lives for the whole run of the program.",
+    "Order changes which tree gets which number, not how many were created.",
+  ]}
+/>
+
+## In biological modelling
+
+Choose, for each data member, along three independent lines:
+
+| Question | Usual answer in models |
+|---|---|
+| public or private? | private for anything with rules (individuals, populations); public for plain parameter sets and small state structs |
+| const or modifiable? | modifiable but private, changed only through meaningful operations; `const` members make objects hard to store in vectors |
+| per object or shared? | per object for state; `static constexpr` only for true constants such as unit conversions |
+
+Static members deserve a warning. They are tempting for parameters ("every tree has the same maximum diameter"), and the manual's own example stores the shared payoff parameters of a game that way. That works as long as there is only ever one value. The moment you want to compare two sites, two species or two parameter sets in one program, or run a <Concept id="sensitivity">sensitivity analysis</Concept>, a static parameter is a global variable with a class name in front. Keep values that might ever vary in a parameter struct that the population or simulation holds and passes on, and reserve `static` for true constants.
+
+The same applies to static counters. A counter that numbers individuals is convenient, but it is shared state that survives from one replicate to the next. A member counter in the `Population` (or `Simulation`) object gives each replicate its own numbering, so a run with a given seed produces the same identifiers every time.
+
+Const correctness pays off in output code. Functions that write a census, a trajectory row or a summary statistic should all take the model by const reference; then the compiler guarantees that observing the model cannot change it (see <Concept id="trajectory-output" />).
+
+## Common mistakes
+
+- **Getters without `const`.** The class then cannot be used through a const reference. Mark every reading function `const` from the start.
+- **Returning a non-const reference to a private member.** It breaks encapsulation exactly as a public member would.
+- **Setters that only assign.** Either make the data public in a struct, or give the class an operation that checks the change.
+- **Mutable state that matters.** If a value changes the model's results, it is not a cache and must not be `mutable`.
+- **Static parameters that later need to vary.** Refactoring them out of a large model is painful; start with a parameter struct.
+- **Friends as a shortcut.** Making a function a friend because "it needs the data" usually means the class is missing a public operation.
+- **Forgetting `const` in an out-of-class definition.** `double Tree::basalAreaM2() const { ... }` must repeat the `const`, or the compiler treats it as a different function and reports that it was never declared.
+
+## Practice
+
+<Practice>
+
+1. Write a class `Nest` with a clutch size and a number of hatched eggs. The constructor checks that the clutch size is positive. Provide const accessors for both numbers and an operation `hatch(int n)` that throws if the total would exceed the clutch. There must be no other way to change either number.
+2. Add a const member function `hatchingSuccess()` to `Nest` that returns the proportion hatched. Then write `void printSummary(const std::vector<Nest>& nests)` that prints the mean hatching success. Which member functions does `printSummary` rely on being const?
+3. A model uses `class Deer { static double mortality; ... };` with `double Deer::mortality = 0.1;` in a .cpp file. A colleague now wants to compare a hunted and an unhunted population in the same run. Sketch a redesign.
+4. Add a mutable cache to `Tree::basalAreaM2()` from the example. Is it worth it? Under what circumstances would a cache be justified in a model?
+
+<details>
+<summary>Hints and worked answers</summary>
+
+1. Members `int clutch_; int hatched_ = 0;`. `hatch` checks `if (n < 0 || hatched_ + n > clutch_) throw std::invalid_argument("...");` and then adds. Only `hatch` writes `hatched_`, so the rule "hatched ≤ clutch" can be broken nowhere else.
+2. `double hatchingSuccess() const { return static_cast<double>(hatched_) / clutch_; }`. Inside `printSummary`, each element of a const vector is a const `Nest`, so `hatchingSuccess()` must be const, and so must anything it calls. Guard the mean against an empty vector.
+3. Put the mortality into a parameter struct, `struct DeerParameters { double mortality = 0.1; };`, give each population its own copy, and pass it to the functions that need it (or store it in the population object). Two populations can then hold different values. Nothing about a single deer needs to change.
+4. Computing the basal area is one division and two multiplications, cheaper than checking a cache, so the cache would add complexity and a risk of stale values for no gain. A cache is justified when the computation is expensive, requested often and its inputs change rarely, for example a landscape-wide resource sum that is read by every individual each step but changes only once per year.
+
+</details>
+
+</Practice>

@@ -1,0 +1,7 @@
+mass after *p += 0.5: 13
+mass after alias *= 2: 26
+*p is now 7, mass is still 26
+density: 3 per ha
+density with no habitat: 0
+habitat is empty: true
+owner's capacity: 300

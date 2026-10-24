@@ -1,0 +1,263 @@
+---
+title: Operator overloading
+summary: Give operators such as +, * and << a meaning for your own types, so that a model's update rule reads like its mathematics.
+level: intermediate
+module: 13
+manual: ["M13.5"]
+minutes: 35
+objectives:
+  - Explain that an operator applied to your own type calls a function named operator@
+  - Choose between member and non-member operators
+  - Implement compound assignment first and build the binary operator from it
+  - Write an output operator that returns std::ostream& and writes to the stream it is given
+  - State the rules that overloading cannot change, and overload only with the conventional meaning
+standard: c++17
+references:
+  - "cppreference.com: operator overloading (canonical implementations)"
+  - "C++ Core Guidelines: C.160–C.170 (overloading)"
+---
+
+## What it is
+
+For built-in types, operators are part of the language: `2.0 * x` multiplies two doubles. For class types, an operator is a call to an ordinary function with a special name. When the compiler sees `a + b` and `a` or `b` has a class type, it looks for a function called `operator+` that accepts them, and calls it.
+
+You have relied on this since your first program. `std::cout << "N = "` calls an `operator<<` from the standard library, and `std::string` concatenation, `first + " " + last`, calls `operator+` for strings. *Operator overloading* means writing such functions for your own types.
+
+## Why it matters
+
+Models are written in mathematics, and the closer the code stays to the mathematics, the easier it is to check. Suppose the state of a predator–prey model is a small struct with two densities. Without operators, one step of a numerical integrator is a thicket of component-wise assignments, each a chance to swap a prey for a predator. With `+`, `+=` and scalar `*` defined for the state, the step is one line that can be compared with the equation symbol for symbol.
+
+The output operator is the other everyday use. Once `operator<<` is defined for a state, the same one line prints it to the console, to a <Concept id="file-streams">file</Concept> or into a <Concept id="string-streams">string stream</Concept>.
+
+## How it works in C++
+
+### Operators are functions
+
+An overloaded operator is declared like a function whose name is the keyword `operator` followed by the symbol:
+
+```cpp
+State operator+(State lhs, const State& rhs);    // non-member: both operands are parameters
+State& State::operator+=(const State& other);    // member: the left operand is *this
+```
+
+The compiler translates the operator syntax into a call:
+
+| You write | The compiler calls (non-member) | or (member) |
+|---|---|---|
+| `a + b` | `operator+(a, b)` | `a.operator+(b)` |
+| `s += t` | `operator+=(s, t)` | `s.operator+=(t)` |
+| `std::cout << s` | `operator<<(std::cout, s)` | not possible: see below |
+
+You could write the call out in full, `operator+(a, b)`; the operator syntax is simply nicer.
+
+### Member or non-member?
+
+A member operator always has your object as its **left** operand. That suits operators that change their left operand, such as `+=`, and it is compulsory for `=`, `[]`, `()` and `->`.
+
+A non-member operator receives both operands as parameters, so it can be used when the left operand is *not* your class: `2.0 * s` (a `double` on the left) or `std::cout << s` (a `std::ostream` on the left, a class you cannot add members to). Non-members are also preferred for symmetric binary operators such as `+` and `==`, because both operands are then treated alike.
+
+| Operator | Usual form | Returns |
+|---|---|---|
+| `+=`, `-=`, `*=` | member | `T&`, a reference to `*this` |
+| `+`, `-`, binary `*` | non-member, built from the compound form | `T`, a new value |
+| `==`, `!=`, `<` | non-member | `bool` |
+| `<<` and `>>` for streams | non-member | the stream, by reference |
+| `=`, `[]`, `()`, `->` | must be members | as appropriate |
+
+### Compound assignment first, then the binary operator
+
+The canonical way to give a type arithmetic is to write the compound assignment as a member that changes the object, and then build the binary operator from it:
+
+```cpp
+struct State {
+    double prey = 0.0;
+    double predators = 0.0;
+
+    State& operator+=(const State& other) {
+        prey += other.prey;
+        predators += other.predators;
+        return *this;                        // allows chains like a += b += c
+    }
+};
+
+State operator+(State lhs, const State& rhs) {   // lhs is a copy we may change
+    lhs += rhs;
+    return lhs;
+}
+```
+
+The component-wise work is written once, in `+=`. `operator+` takes its left operand *by value*, which hands it a private copy to modify and return; the right operand is only read, so it is a const reference. The result is a new `State`, and neither operand changes, exactly as with numbers.
+
+### Scalar multiplication
+
+Multiplying a state by a time step needs an operator whose left operand is a `double`, so it must be a non-member:
+
+```cpp
+State operator*(double k, const State& s) {
+    return {k * s.prey, k * s.predators};
+}
+```
+
+This defines `h * s` but not `s * h`; operators are not automatically commutative. Add the second order too if you want both, preferably by having one call the other.
+
+### The output operator `<<`
+
+```cpp
+std::ostream& operator<<(std::ostream& os, const State& s) {
+    return os << "prey " << s.prey << ", predators " << s.predators;
+}
+```
+
+Three details matter:
+
+- **It is a non-member**, because its left operand is the stream.
+- **It writes to `os`**, the stream it was given, never to `std::cout` directly. Then `outfile << s` writes to the file and `std::cout << s` to the console. An output operator that writes to `std::cout` inside sends file output to the screen.
+- **It returns the stream by reference.** `std::cout << s << '\n'` is evaluated as `operator<<(operator<<(std::cout, s), '\n')`: the inner call must return the stream itself (not a copy, and streams cannot be copied anyway) so that the outer call can continue writing to it.
+
+The object is taken by const reference: printing should neither copy nor change it.
+
+<Callout kind="manual" title="Friend or not">
+The manual presents `operator<<` as a friend of the class, because its version reads private members. A non-member needs to be a friend *only* if it must reach private data. For a plain struct such as `State`, whose members are public, or for a class with suitable const getters, an ordinary non-member function is enough and keeps the class's private details private.
+</Callout>
+
+### What overloading cannot change
+
+Overloading gives an existing operator a new meaning for new types. It cannot change the grammar of the language:
+
+- You cannot invent new operators (there is no `**` for powers), and you cannot change an operator's **precedence**, its **associativity** or its **number of operands**. `a + b * c` always multiplies first, whatever the types. Because the number of operands is fixed, operator functions cannot have default arguments either.
+- At least one operand must be of a class or enumeration type: you cannot redefine `+` for two `int`s.
+- `::`, `.`, `.*`, `?:` and `sizeof` cannot be overloaded at all.
+- Overloaded `&&` and `||` lose their short-circuit evaluation, so in practice do not overload them.
+
+### Overload only with the conventional meaning
+
+An operator is a promise about meaning. Readers assume that `+` adds without side effects, that `a == b` and `b == a` agree, and that `<<` writes to a stream. Overload an operator only when the operation really behaves like the familiar one. If a pairwise interaction between two individuals changes both of them and returns nothing, `a * b` hides all of that behind a symbol; a named function, `interact(a, b)`, says what happens. The rule of thumb: if you have to explain what the operator means, use a function.
+
+<Callout kind="modern" title="Comparisons in C++20">
+Since C++20 <Std v="c++20" /> the compiler can write comparisons for you: declaring `bool operator==(const State&) const = default;` inside the struct compares the members one by one, and `!=` follows automatically. A defaulted three-way comparison, `auto operator<=>(const State&) const = default;`, generates `<`, `<=`, `>` and `>=` as well. With C++17, write `operator==` by hand.
+</Callout>
+
+## A minimal example
+
+The Lotka–Volterra model describes prey $N$ and predators $P$ (both per km²):
+
+$$
+\frac{dN}{dt} = rN - aNP, \qquad \frac{dP}{dt} = e\,aNP - mP,
+$$
+
+with prey growth rate $r$ and predator mortality $m$ (both per year), attack rate $a$ (km² per predator per year) and conversion efficiency $e$ (predators produced per prey eaten). The program below integrates it with Heun's method, a two-stage improvement on Euler's method (see <Concept id="runge-kutta" />). The state type has `+=` as a member and `+`, scalar `*` and `<<` as non-members.
+
+<Example file="architecture/operator_predator_prey.cpp" mark="14-32,54-56" />
+
+The update on lines 54 to 56 reads almost exactly like the equation. The densities cycle around the equilibrium $N^* = m/(ea) = 10$, $P^* = r/a = 10$, with predator peaks lagging behind prey peaks.
+
+## Explore it
+
+Select a term of the equation to see which lines compute it, including the operator functions that each symbol in the update calls.
+
+<MathCode id="operator-overloading-heun" />
+
+<Check
+  id="stream-return"
+  kind="debug"
+  question="A student writes the output operator below. Which statement then fails to compile?"
+  code={`void operator<<(std::ostream& os, const State& s) {
+    os << s.prey << ' ' << s.predators;
+}`}
+  options={[
+    "std::cout << s;",
+    "std::cout << s << '\\n';",
+    "outfile << s; where outfile is a std::ofstream",
+    "None: the return type of an operator does not matter",
+  ]}
+  answer={1}
+  feedback={[
+    "A single insertion works: the call operator<<(std::cout, s) happens, and its result is ignored.",
+    "The chain is evaluated as (std::cout << s) << '\\n'. The inner call returns void, and there is no operator<< with void on the left. Returning std::ostream& (return os;) fixes it.",
+    "This works: std::ofstream is an std::ostream, so it binds to the reference parameter. Only chaining fails.",
+    "The return type is what makes chaining possible. Here it is void, so the second << has nothing to write to.",
+  ]}
+/>
+
+<Check
+  id="scalar-left"
+  kind="read"
+  question="State has a member function State operator*(double k) const. Which expression compiles?"
+  options={[
+    "0.5 * s",
+    "s * 0.5",
+    "Both, because multiplication is commutative",
+    "Neither, because * must be a non-member",
+  ]}
+  answer={1}
+  feedback={[
+    "A member operator always has its own object on the left. With a double on the left, the compiler looks for a non-member operator*(double, State) and finds none.",
+    "s * 0.5 is translated into s.operator*(0.5), which exists.",
+    "The compiler does not know that your operator is commutative; each order of operand types is a separate function.",
+    "Binary * may be a member. It just cannot then have a non-class type on its left.",
+  ]}
+/>
+
+<Check
+  id="precedence"
+  kind="predict"
+  question="With operator+ and operator*(double, const State&) defined as in the example, how is s + h * k evaluated?"
+  options={[
+    "s + (h * k): multiplication first, as for numbers",
+    "(s + h) * k: left to right, because these are function calls",
+    "It depends on which operator was declared first",
+    "It does not compile: mixing user-defined operators needs parentheses",
+  ]}
+  answer={0}
+  feedback={[
+    "Overloading cannot change precedence. h * k calls operator*(double, const State&), then the State result is added to s with operator+.",
+    "Overloaded operators keep the precedence and associativity of the built-in ones, so * still binds more tightly than +.",
+    "Precedence is part of the grammar and is fixed, independent of declarations.",
+    "Overloaded operators combine exactly like built-in ones. Parentheses are only needed to change the grouping.",
+  ]}
+/>
+
+## In biological modelling
+
+Small state types with arithmetic are the main use:
+
+- **State vectors for ODE integrators.** Euler, Heun and Runge–Kutta steps are linear combinations of states; with `+`, `+=` and scalar `*`, one generic step function serves every model whose state supports them (see <Concept id="odes" /> and <Concept id="templates" />).
+- **Frequencies and compositions**, such as genotype or allele frequencies, which are added, scaled and normalised.
+- **Positions and displacements** in spatial models: a `Vec2` with `+`, `-` and scalar `*` makes movement rules readable.
+
+For larger state vectors (dozens to thousands of components), use a `std::vector<double>` or a linear-algebra library such as Eigen, which already provides these operators, rather than writing your own.
+
+Two other operators matter for model code. `operator==` is useful in tests, but compare floating-point states with a tolerance, not exact equality (see <Concept id="testing-reproducibility" />). And resist `operator<` for sorting individuals: there is no single natural order for individuals, and a sort by mass reads better as `std::sort(v.begin(), v.end(), [](const Individual& a, const Individual& b) { return a.mass() < b.mass(); })`, which says what it sorts by (see <Concept id="standard-algorithms" />).
+
+Operator syntax creates temporaries: `s + h * k1` builds two intermediate `State` objects. For small structs of doubles the compiler optimises them away in a release build, so readability costs nothing.
+
+## Common mistakes
+
+- **An output operator that writes to `std::cout`** instead of to its stream parameter. Output meant for a file ends up on the screen.
+- **Returning the stream by value or not at all.** Chaining then fails; return `std::ostream&`.
+- **A binary operator that changes an operand.** `a + b` must leave both alone; changing the left operand is the job of `+=`.
+- **Duplicated arithmetic.** Writing the component-wise sum in both `+` and `+=` invites them to disagree after an edit; build one from the other.
+- **Expecting commutativity.** `h * s` and `s * h` are different functions.
+- **Surprising meanings.** An operator with side effects, or with a meaning unlike the built-in one, makes code harder to read than a named function would.
+- **Exact equality on doubles.** `operator==` on floating-point members is exact; tests usually need a tolerance.
+
+## Practice
+
+<Practice>
+
+1. Add `operator-=` and binary `operator-` to `State`, following the canonical pattern, and use them to print the difference between the state at $t = 10$ and the initial state.
+2. Add `State operator*(const State& s, double k)` so that `s * h` also works. Implement it by calling the existing `operator*(double, const State&)`, so that the arithmetic is written only once.
+3. Write an output operator for the `Tree` class from <Concept id="access-control" /> that prints its identifier and diameter. It should use only the public const getters, so it need not be a friend. Check that it works with `std::cout` and with a `std::ostringstream`.
+4. Replace Heun's step in the example by Euler's method, `s += h * rates(s, p);`, and compare the state at $t = 10$. Why does a predator–prey cycle drift outwards faster with Euler?
+
+<details>
+<summary>Hints and worked answers</summary>
+
+1. `State& operator-=(const State& other) { prey -= other.prey; predators -= other.predators; return *this; }` inside the struct, and `State operator-(State lhs, const State& rhs) { lhs -= rhs; return lhs; }` outside it. Save the initial state in a `const State start = s;` before the loop.
+2. `State operator*(const State& s, double k) { return k * s; }`.
+3. `std::ostream& operator<<(std::ostream& os, const Tree& t) { return os << "tree " << t.id() << " (" << t.diameterCm() << " cm)"; }`. After `std::ostringstream text; text << tree;`, `text.str()` holds the printed text, which is a convenient way to test output operators.
+4. Euler's method follows the tangent at the start of each step. On a closed orbit the tangent always points slightly outwards, so every step spirals out a little and the error accumulates. Heun averages the slope at the start and at the end of the step, which cancels most of that error. See <Concept id="numerical-error" />.
+
+</details>
+
+</Practice>

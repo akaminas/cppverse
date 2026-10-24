@@ -1,0 +1,267 @@
+---
+title: Designing interacting objects
+summary: Represent the actors of a model as objects with clear responsibilities, refine the design while the simulation grows, and know when objects are the wrong tool.
+level: intermediate
+module: 13
+manual: ["M13.1", "M13.6"]
+minutes: 40
+objectives:
+  - Identify the objects of a model and decide what each one knows and does
+  - Choose where parameters, per-object state and population-level state should live
+  - Represent a pairwise interaction as a function of two objects and a set of parameters
+  - Refine a class design as the simulation is built, and test each piece early
+  - Weigh the benefits and costs of object-oriented models against data-oriented alternatives
+standard: c++17
+references:
+  - "Axelrod R (1984) The Evolution of Cooperation. Basic Books"
+  - "Nowak MA (2006) Five rules for the evolution of cooperation. Science 314: 1560–1563"
+  - "C++ Core Guidelines: C.1–C.8 (classes and class hierarchies)"
+---
+
+## What it is
+
+The previous lessons covered the mechanics of a class: <Concept id="constructors" />, <Concept id="access-control">access and const</Concept>, <Concept id="operator-overloading">operators</Concept>. *Object design* is the step before the mechanics: deciding which objects a model consists of, what each one knows (its state), what each one does (its behaviour) and how they interact.
+
+A well-designed object takes care of its own details, so that the code using it can work at the level of the biology: "let these two strategies play", "update the frequencies", rather than "copy the fourth element of this array into that variable". The rest of this lesson builds such a design for a classic question in evolutionary biology, step by step, and then asks when objects help and when they get in the way.
+
+## Why it matters
+
+The first version of any design is wrong in some way. That is not a failure: you learn what a model needs by building it. What matters is that the design makes change cheap. If parameters are scattered through classes, adding a second parameter set means editing every class; if they live in one place, it means editing one line. If each object can be tested on its own, a refactoring can be checked in minutes.
+
+Design decisions also determine which questions a model can answer. A design that stores a strategy's frequency inside the strategy object cannot easily represent two populations using the same strategies; a design that fixes the payoffs as constants cannot easily run a sensitivity analysis. Thinking about responsibilities early saves rewriting later.
+
+## How it works in C++
+
+### The biological question
+
+Cooperation is costly to the cooperator and beneficial to others, so why does it persist under natural selection? One classic framework is the *prisoner's dilemma*. Here it is in its simplest form, the *donation game*: each of two players either cooperates (pays a cost $c$ so that the partner receives a benefit $b$, with $b > c > 0$) or defects (pays nothing, gives nothing).
+
+| | partner cooperates | partner defects |
+|---|---|---|
+| **I cooperate** | $b - c$ | $-c$ |
+| **I defect** | $b$ | $0$ |
+
+Whatever the partner does, defecting pays more, yet two cooperators each earn $b - c > 0$ while two defectors earn nothing. When the same two players meet repeatedly, the *iterated* game, a player can make its move depend on what happened before, and strategies that reward cooperation and punish defection, such as *tit-for-tat*, can do well. Evolutionary tournaments of such strategies are a classic way to study reciprocity.
+
+### Step 1: find the objects
+
+A useful first pass is to list the nouns and verbs in a description of the model:
+
+> Each **strategy** decides its **move** from the previous **round**. Two strategies **play a match** of several rounds under the rules of a **game**, which assign **payoffs**. The **population** consists of strategies at different **frequencies**, which **change** between **generations** according to their mean payoffs.
+
+Candidate objects: a strategy, a game (its parameters and payoff rule), a match result, and a population of frequencies. Candidate operations: a strategy replies to a round, a match is played, the population is updated. Not every noun needs a class; a move is a simple enumeration, and a match is an operation rather than a thing that persists.
+
+### Step 2: represent a strategy
+
+A *memory-one* strategy looks back exactly one round. It is completely described by its first move and by its reply to each of the four possible outcomes of the previous round: both cooperated, I cooperated and my partner defected, and so on. That gives a direct data representation:
+
+```cpp
+enum class Move { cooperate, defect };
+
+struct Strategy {
+    std::string name;
+    Move first;
+    Move afterCC, afterCD, afterDC, afterDD;   // reply to (my move, partner's move)
+    Move reply(Move mine, Move theirs) const;
+};
+```
+
+Three design choices are hidden here. An `enum class` rather than a `bool` makes `Move::defect` impossible to confuse with `true`. The strategy is an *immutable value*: once created it never changes, so it can be copied, stored and shared freely, and a strategy can never be "half updated". And `reply` is `const`, because deciding a move does not change the strategy.
+
+If you later expect to add *stochastic* strategies, which cooperate with some probability, a type alias such as `using Response = double;` for the reply type marks the place where the representation will change. Aliases written with `using` (the modern form of `typedef`) are cheap insurance for that kind of change.
+
+### Step 3: decide where the parameters live
+
+The benefit, the cost and the number of rounds apply to every match. They could be stored in three places:
+
+- as `static` members of `Strategy` (one value for all strategies, as described in <Concept id="access-control" />);
+- as global constants;
+- in a separate `DonationGame` struct that is passed to the function that plays a match.
+
+The first two tie every strategy to one game forever. The third keeps the strategy ignorant of payoffs, which is the truth: a strategy is a rule for choosing moves, and the game decides what the moves are worth. With a parameter struct, comparing $b/c = 2$ with $b/c = 5$ in one program is a matter of creating two structs.
+
+### Step 4: write the interaction
+
+Who should own the code that plays a match? A member function, `a.play(b)`, makes `a` the focal player and `b` its partner: asymmetric, and it suggests that `a` changes. A friend function would need access to private data that strategies do not have. A free function of two strategies and a game is symmetric and says exactly what it needs:
+
+```cpp
+MatchResult play(const Strategy& a, const Strategy& b, const DonationGame& g);
+```
+
+All three parameters are const references: playing a match changes nothing that already exists. It *returns* the result, the mean payoff per round to each player, so the caller decides what to do with it. An operator such as `a * b` would hide the same thing behind a symbol (see <Concept id="operator-overloading" />).
+
+### Step 5: put the population somewhere
+
+The frequency of a strategy is a property of a *population*, not of the strategy: the same tit-for-tat might be common in one population and rare in another. So frequencies belong to a population object, next to the strategies:
+
+```cpp
+struct Population {
+    std::vector<Strategy> strategies;
+    std::vector<double> frequency;     // frequency[i] belongs to strategies[i]
+};
+```
+
+Selection then follows a discrete *replicator equation*. Let $\pi_{ij}$ be the mean payoff to strategy $i$ against strategy $j$ and $x_j$ the frequency of $j$. The fitness of strategy $i$ is a baseline $w_0$ plus its expected payoff, and each frequency grows in proportion to fitness relative to the mean $\bar w$:
+
+$$
+w_i = w_0 + \sum_j x_j\,\pi_{ij}, \qquad x_i' = x_i \,\frac{w_i}{\bar w}, \qquad \bar w = \sum_i x_i\, w_i .
+$$
+
+Dividing by $\bar w$ keeps the frequencies summing to one. The baseline $w_0$ must be large enough to keep every $w_i$ positive.
+
+One more design observation follows from the equation. With deterministic strategies and a fixed number of rounds, $\pi_{ij}$ does not depend on the frequencies, so the payoff matrix can be computed **once**, before the generations start, instead of replaying every match in every generation:
+
+```cpp
+// Sketch: compute the payoff matrix once, then iterate selection on it.
+std::vector<std::vector<double>> payoffMatrix(const std::vector<Strategy>& s, const DonationGame& g);
+void selectionStep(Population& pop, const std::vector<std::vector<double>>& payoff, double baseline);
+```
+
+This separation, interactions in one function and population dynamics in another, makes each piece testable alone.
+
+### Step 6: refine while you build
+
+No design survives contact with the full simulation unchanged. Typical refinements in a model like this one:
+
+- **Something is missing.** Adding *errors*, where a player occasionally makes the opposite move to the one intended, requires random numbers. The strategy should stay a pure rule, so the random engine becomes a parameter of `play`, not a member of `Strategy`. And because matches are now random, the payoff matrix is no longer exact: it must be averaged over replicate matches or computed analytically.
+- **Something is redundant.** If a quantity can be computed from others when needed, storing it as well means keeping two things consistent. Remove it.
+- **Something is in the wrong place.** If a function keeps reaching into another object's data, the function, or the data, probably belongs elsewhere.
+
+Move back and forth between the simulation and the classes, and keep each class able to stand on its own. A strategy class that knows nothing about tournaments can be reused unchanged in a spatial model, where neighbours on a lattice play each other.
+
+**Test early.** Before the population dynamics exist, check pieces whose answers you know: two unconditional defectors earn 0 per round; two tit-for-tat players earn $b - c$; an unconditional cooperator against a defector earns $-c$. A wrong reply table shows up immediately in such checks, and hardly ever in a plot of frequencies.
+
+## A minimal example
+
+The program implements steps 2 to 4 and prints the payoff matrix for four memory-one strategies in a ten-round donation game with $b = 3$ and $c = 1$: an unconditional defector (AllD), tit-for-tat (TFT), the *grim trigger*, which cooperates only after mutual cooperation and so never forgives a defection, and an *alternator*, which switches between C and D whatever its partner does.
+
+<Example file="architecture/design_memory_one_match.cpp" mark="14-23,25-29,40-54" />
+
+Read along a row to see how well that strategy does against each column. TFT and Grim earn $b - c = 2$ with each other and lose only the first round against AllD. Against the alternator they differ: TFT forgives and is exploited every other round (0.90), while Grim stops cooperating for good after the first defection and collects the benefit whenever the alternator cooperates (1.30). Without errors and against these partners, nothing else separates the two.
+
+## Explore it
+
+Step through the first rounds of a match between tit-for-tat and the alternator. Notice why the program needs the temporary `nextA`: both players must reply to the same round, the same issue as <Concept id="update-order">update order</Concept> in any simulation.
+
+<Trace id="object-design-match" />
+
+<Check
+  id="where-cost"
+  kind="model"
+  question="You want to compare the evolution of cooperation for benefit-to-cost ratios of 2 and 5 in a single run of the program. Where should the cost of cooperation be stored?"
+  options={[
+    "As a static data member of Strategy",
+    "As a non-static data member of every Strategy",
+    "In a game parameter struct that is passed to play()",
+    "As a global constant",
+  ]}
+  answer={2}
+  feedback={[
+    "A static member has one value for the whole program, so two ratios cannot coexist.",
+    "Every strategy would carry a copy of a value that has nothing to do with how it chooses moves, and the copies could disagree.",
+    "The cost is a property of the game, not of a strategy. Two DonationGame objects with different costs can be used side by side, and strategies stay unchanged.",
+    "A global constant has the same problem as a static member: one value for the whole program.",
+  ]}
+/>
+
+<Check
+  id="next-move"
+  kind="interpret"
+  question="In play(), the reply of player A is stored in nextA before player B replies. What would go wrong if the code assigned moveA = a.reply(moveA, moveB); directly?"
+  options={[
+    "Nothing: the result is the same",
+    "B would reply to A's new move instead of the move A made in this round",
+    "The program would not compile, because moveA is used on both sides",
+    "A would reply to its own move twice",
+  ]}
+  answer={1}
+  feedback={[
+    "For strategies that ignore their partner the result would be the same, which is exactly why this bug can survive simple tests. For tit-for-tat or the alternator it differs.",
+    "Both players must reply to the same round. Overwriting moveA first lets B see the future, which turns a simultaneous game into a sequential one. This is the update-order problem of simulations in miniature.",
+    "Using a variable on both sides of an assignment is perfectly legal C++.",
+    "A's reply uses the old values of both moves; the problem is what B sees afterwards.",
+  ]}
+/>
+
+<Check
+  id="neutral"
+  kind="interpret"
+  question="Suppose a population contains only TFT and Grim, with the payoffs in the table above. How do their frequencies change under the replicator equation?"
+  options={[
+    "Grim takes over, because it beats TFT against the alternator",
+    "TFT takes over, because it is more forgiving",
+    "They stay where they are, because the two have identical payoffs against each other and against themselves",
+    "They cycle",
+  ]}
+  answer={2}
+  feedback={[
+    "Grim's advantage exists only against the alternator. With no alternators present, it never shows.",
+    "Forgiveness pays only when there are mistakes or exploiters to forgive. Here every match within this population is pure mutual cooperation.",
+    "Both earn exactly b − c in every match within this population, so their fitnesses are equal and the frequencies do not change: the two are neutral. Only drift, errors or a third strategy could separate them.",
+    "Cycles need each strategy to do better when it is rare. Here neither has any advantage.",
+  ]}
+/>
+
+## In biological modelling
+
+### What objects do well
+
+- **Correspondence with the biology.** Strategies, individuals, patches and populations become things in the code with the same names and responsibilities, which makes the program easier to check against the model description (see <Concept id="individual-representation" />).
+- **Invariants in one place.** A class that keeps its state private can guarantee its rules, such as frequencies that sum to one, and no other code can break them.
+- **Pieces that can be tested and reused.** A strategy that knows nothing about tournaments can be tested alone and reused in a different model.
+- **Extension by data.** In this design, a new strategy is a new line of data, not new code.
+
+### Where objects get in the way
+
+- **Scattered model logic.** When the update rule is spread over many small member functions in many classes, the equations of the model are hard to see anywhere. A model is easier to verify when its update rule can be read in one place (see <Concept id="update-rule" />).
+- **Hidden coupling.** Objects that hold pointers to each other form a web where a change in one place has effects far away, and copying or saving the model's state becomes difficult (see <Concept id="pointers-ownership" />).
+- **Over-design.** Class hierarchies, accessors and patterns for a model that a few structs and functions would express more clearly. A procedural design with plain structs, as in <Concept id="procedural-review" />, is often the right choice for a small model.
+- **Performance.** A vector of large objects interleaves every field of every individual in memory. A loop that needs only positions then drags all the other fields through the processor cache as well.
+
+### A data-oriented alternative
+
+For large individual-based models a *data-oriented* layout is common: instead of a vector of objects (an *array of structs*), keep one vector per attribute (a *struct of arrays*), with the same index in every vector for the same individual:
+
+```cpp
+// Array of structs: one object per plant.
+struct Plant { double x, y, mass; int age; };
+std::vector<Plant> plants;
+
+// Struct of arrays: one vector per attribute, plant i is element i of each.
+struct Plants {
+    std::vector<double> x, y, mass;
+    std::vector<int> age;
+};
+```
+
+A neighbour search then reads only `x` and `y`, contiguously, which is fast. The price is that the class no longer protects the rule "all vectors have the same length", and adding or removing an individual means touching every vector. Neither layout is always right; <Concept id="performance" /> shows how to decide by measuring.
+
+## Common mistakes
+
+- **One class that does everything.** A `Simulation` class with fifty members and the whole model in its member functions is a global namespace with extra steps. Split by responsibility.
+- **Population-level quantities stored in individuals.** Frequencies, totals and means belong to the population. Storing them in each object duplicates them and lets the copies disagree.
+- **Parameters as static members or globals.** They work until the day you need two values in one run.
+- **Updating copies by mistake.** `for (Strategy s : strategies)` iterates over *copies*; any change to `s` is lost at the end of the iteration. Use `const Strategy&` to read and `Strategy&` to change (see <Concept id="auto-range-for" />).
+- **Designing everything up front.** Build the smallest working piece, test it, and let the design grow with the model.
+- **Untested pieces.** A reply table with one swapped entry produces plausible but wrong evolution. Check known results before running the full simulation.
+
+## Practice
+
+<Practice>
+
+1. Add *suspicious tit-for-tat*, which opens with D and then copies its partner, to the example. Before running it, predict its payoff against TFT and against itself over ten rounds. Then check.
+2. Write the two functions sketched in step 5: `payoffMatrix`, which plays every pair once (each match fills two cells), and `selectionStep`. Start the four strategies of the example at equal frequencies with $w_0 = 1$ and run 100 generations. Which strategies persist?
+3. Add implementation errors: with probability $\varepsilon$, a player makes the opposite of its intended move. Decide where the random engine and $\varepsilon$ should live, change the signature of `play` accordingly, and explain why the payoff matrix now has to be estimated.
+4. The example stores the strategies in a `std::array` of objects. Sketch a struct-of-arrays version of the same data. Which version would you choose for four strategies, and which for a spatial model with 10⁶ players on a lattice?
+
+<details>
+<summary>Hints and worked answers</summary>
+
+1. Suspicious TFT against TFT: the two copy each other with a one-round offset, so they alternate between (D, C) and (C, D). Over ten rounds suspicious TFT gains $b$ five times and pays $c$ five times, a mean of $(5 \cdot 3 - 5 \cdot 1)/10 = 1.0$, and so does TFT. Against itself it defects for ever: 0.
+2. Fill `payoff[i][j]` and `payoff[j][i]` from one `play(s[i], s[j], g)` for every `i <= j`. In `selectionStep`, compute all fitnesses from the *old* frequencies before changing any of them, then normalise. With the example's matrix, AllD and the alternator die out within a few tens of generations, and TFT and Grim remain. Once they are alone they are neutral (see the third check), so their final proportions depend on the transient, in which Grim gains slightly from exploiting the alternators.
+3. Strategies stay pure rules: `Move reply(Move mine, Move theirs) const` does not change. The error rate belongs to the game, so add `double errorRate` to `DonationGame`, and pass the engine by reference: `play(a, b, g, rng)`. With errors, a match's payoff is a random variable, so the matrix must be averaged over many matches (with recorded seeds; see <Concept id="replicates" />) or computed from the Markov chain of round outcomes.
+4. `struct Strategies { std::vector<std::string> name; std::vector<Move> first, afterCC, afterCD, afterDC, afterDD; };`. For four strategies the objects are clearer, and speed is irrelevant. For a million lattice players, store one small strategy *index* per site in a `std::vector<std::uint8_t>` and keep the few distinct strategies in a separate table: the lattice is then compact and fast to scan.
+
+</details>
+
+</Practice>

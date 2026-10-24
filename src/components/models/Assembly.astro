@@ -1,0 +1,36 @@
+---
+import AssemblyIsland from './AssemblyIsland';
+import { assemblyById } from '../../data/assemblies';
+import { conceptById } from '../../data/concepts';
+import { getExample } from '../../lib/examples';
+import { highlight } from '../../lib/highlight';
+import { hrefFor } from '../../lib/lesson-context';
+import { tex } from '../../lib/tex';
+import { url } from '../../lib/url';
+
+interface Props { id: string }
+const a = assemblyById[Astro.props.id];
+if (!a) throw new Error(`Unknown assembly "${Astro.props.id}"`);
+const ex = getExample(a.file);
+const total = ex.code.replace(/\s+$/, '').split('\n').length;
+const components = a.components.map((c) => {
+  for (const l of c.lines) if (l < 1 || l > total) throw new Error(`assembly ${a.id}/${c.id}: line ${l} outside ${a.file}`);
+  return {
+    id: c.id,
+    title: c.title,
+    role: c.role,
+    mathHtml: c.tex ? tex(c.tex) : undefined,
+    explain: c.explain,
+    lines: c.lines,
+    prerequisites: c.prerequisites.map((p) => {
+      const concept = conceptById[p];
+      if (!concept) throw new Error(`assembly ${a.id}/${c.id}: unknown concept ${p}`);
+      return { id: p, title: concept.title, href: hrefFor(concept) };
+    }),
+    mistakes: c.mistakes,
+    consequence: c.consequence,
+  };
+});
+const codeHtml = await highlight(ex.code);
+---
+<AssemblyIsland client:visible title={a.title} file={a.file} download={url(`/examples/${a.file}`)} codeHtml={codeHtml} components={components} />

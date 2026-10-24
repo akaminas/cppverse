@@ -181,6 +181,12 @@ export default function Atlas({ data, checkCounts }: Props) {
   const fitAll = useCallback(
     (animate = true) => {
       const a = freeArea();
+      if (narrowRef.current) {
+        // Phones: fit the height and start at the western foundations; pan east.
+        const sEff = (a.h - 60) / data.bounds.h;
+        centreOn(data.bounds.x + (a.w / 2 - 12) / sEff, data.bounds.y + data.bounds.h / 2, sEff, animate);
+        return;
+      }
       const sEff = Math.min((a.w - 40) / data.bounds.w, (a.h - 70) / data.bounds.h);
       centreOn(data.bounds.x + data.bounds.w / 2, data.bounds.y + data.bounds.h / 2, sEff, animate);
     },
@@ -352,7 +358,6 @@ export default function Atlas({ data, checkCounts }: Props) {
       (n.optional ? 50 : 0);
     let candidates = [...data.nodes];
     if (semantic === 1) candidates = candidates.filter((n) => n.id === selected);
-    else if (semantic === 2) candidates = candidates.filter((n) => n.kind !== 'concept' || n.deps.length + n.enables.length >= 6 || highlight?.has(n.id) || routeIndex.has(n.id));
     candidates.sort((a, b) => priority(b) - priority(a));
     const overlaps = (r: { x: number; y: number; w: number; h: number }) =>
       placed.some((p) => r.x < p.x + p.w && p.x < r.x + r.w && r.y < p.y + p.h && p.y < r.y + r.h) ||
@@ -427,7 +432,7 @@ export default function Atlas({ data, checkCounts }: Props) {
   const hoverNode = hover && !selected ? byId.get(hover.id) ?? null : null;
 
   return (
-    <div ref={wrapRef} className={`atlas sem-${semantic}${selected ? ' has-selection' : ''}${route ? ' has-route' : ''}`} onKeyDown={onKeyDown}>
+    <div ref={wrapRef} className={`atlas sem-${semantic}${selected ? ' has-selection' : ''}${route ? ' has-route' : ''}${isNarrow ? ' is-narrow' : ''}`} onKeyDown={onKeyDown}>
       <AtlasPanel
         data={data}
         byId={byId}

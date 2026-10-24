@@ -1,0 +1,30 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { capstones } from '../../data/capstones';
+import { conceptById } from '../../data/concepts';
+import { domainById } from '../../data/domains';
+import { capstoneUrl } from '../../lib/url';
+const list = Object.values(capstones).map((c) => ({ c, node: conceptById[c.id] }));
+---
+<BaseLayout title="Capstones" section="capstones" description="Six original capstone projects, one for each modelling destination and one complete computational study.">
+  <div class="wrap">
+    <header class="page-head">
+      <p class="eyebrow">Integration projects</p>
+      <h1>Capstones</h1>
+      <p class="lead">
+        Six original projects that bring the concepts of a destination together in one model. Each states a question, a model,
+        milestones and verification criteria, so that you can check your own work. They are not the Groningen course's graded
+        projects, and no solutions are published.
+      </p>
+    </header>
+    <div class="grid grid-2">
+      {list.map(({ c, node }) => (
+        <a class={`card-link fam-${domainById[node.domain].family}`} href={capstoneUrl(c.id)} style="box-shadow: inset 0 3px 0 var(--fam)">
+          <span class="eyebrow">{node.label} · {domainById[node.domain].title} · {c.level}</span>
+          <h3>{c.title}</h3>
+          <p class="muted">{c.question}</p>
+        </a>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

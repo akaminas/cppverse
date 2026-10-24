@@ -1,0 +1,115 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { concepts, conceptById } from '../data/concepts';
+import { domains, regions } from '../data/domains';
+import { manualSections } from '../data/manual';
+import { dependenciesOf, getGraph, topologicalOrder } from '../lib/graph/graph';
+import { hrefFor } from '../lib/lesson-context';
+import { atlasUrl, url } from '../lib/url';
+import { getCollection } from 'astro:content';
+
+const g = getGraph();
+const lessons = await getCollection('lessons');
+const written = new Set(lessons.map((l) => l.id));
+const LEVEL = { beginner: 'Beginner', intermediate: 'Intermediate', seasoned: 'Seasoned' } as const;
+
+const byRegion = regions.map((r) => ({
+  r,
+  domains: domains
+    .filter((d) => d.region === r.id)
+    .map((d) => ({ d, items: topologicalOrder(g, concepts.filter((c) => c.domain === d.id).map((c) => c.id)).map((id) => conceptById[id]) })),
+}));
+const modules = Array.from({ length: 17 }, (_, i) => i + 1).map((m) => ({
+  m,
+  sections: manualSections.filter((s) => s.module === m && s.kind !== 'excluded'),
+  lessons: [...new Set(concepts.filter((c) => c.lesson && c.manual.some((id) => manualSections.find((s) => s.id === id)?.module === m)).map((c) => c.lesson!))],
+}));
+---
+<BaseLayout title="Curriculum" section="curriculum" description="The complete curriculum as text: every domain, concept, lesson and prerequisite.">
+  <div class="wrap">
+    <header class="page-head">
+      <p class="eyebrow">Curriculum outline</p>
+      <h1>The atlas as text</h1>
+      <p class="lead">
+        Every concept of the <a href={url('/atlas/')}>atlas</a> in prerequisite order, grouped by region and domain, with its lesson,
+        level, Groningen manual sections and direct prerequisites.
+      </p>
+    </header>
+
+    <nav class="outline-toc" aria-label="Regions">
+      {byRegion.map(({ r }) => <a href={`#${r.id}`}>{r.title}</a>)}
+      <a href="#by-module">By manual module</a>
+    </nav>
+
+    {byRegion.map(({ r, domains: ds }) => (
+      <section class="outline-region" id={r.id} aria-labelledby={`h-${r.id}`}>
+        <div class="sec-head"><h2 id={`h-${r.id}`}>{r.title}</h2></div>
+        <p class="muted measure">{r.summary}</p>
+        {ds.map(({ d, items }) => (
+          <section class="outline-domain" aria-labelledby={`h-${d.id}`}>
+            <h3 id={`h-${d.id}`}>
+              {d.title}
+              <span class="muted">{d.modules.length ? ` · Module${d.modules.length > 1 ? 's' : ''} ${d.modules.join(', ')}` : ' · original synthesis'}</span>
+            </h3>
+            <p class="muted measure">{d.summary} <a href={url(`/atlas/?domain=${d.id}`)}>Show in the atlas</a></p>
+            <ol class="outline-list">
+              {items.map((c) => {
+                const deps = dependenciesOf(g, c.id).map((id) => conceptById[id]);
+                const available = c.kind === 'landmark' || c.kind === 'capstone' || (c.lesson && written.has(c.lesson));
+                return (
+                  <li class={`kind-${c.kind}`}>
+                    <div class="ol-head">
+                      {available ? <a href={hrefFor(c)}>{c.title}</a> : <span>{c.title}</span>}
+                      <span class="tag">{c.kind === 'concept' ? LEVEL[c.level] : c.kind === 'landmark' ? 'Destination' : c.kind === 'capstone' ? 'Capstone' : 'Integration'}</span>
+                      {c.optional && <span class="tag">Optional</span>}
+                      {!available && <span class="tag">In preparation</span>}
+                    </div>
+                    <p>{c.summary}</p>
+                    <p class="ol-meta">
+                      {c.manual.length > 0 && <>Manual {c.manual.map((m) => m.replace(/^M/, '')).join(', ')} · </>}
+                      {deps.length > 0 ? <>Needs: {deps.map((dp, i) => (<>{i > 0 && ', '}<a href={hrefFor(dp)}>{dp.title}</a></>))}</> : 'Starting point'}
+                      {' · '}<a href={atlasUrl(c.id)}>atlas</a>
+                    </p>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ))}
+      </section>
+    ))}
+
+    <section class="outline-region" id="by-module" aria-labelledby="h-modules">
+      <div class="sec-head"><h2 id="h-modules">By Groningen manual module</h2><a href={url('/sources/#coverage')}>Full coverage matrix</a></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th scope="col">Module</th><th scope="col">Instructional sections</th><th scope="col">Lessons</th></tr></thead>
+          <tbody>
+            {modules.map(({ m, sections, lessons: ls }) => (
+              <tr>
+                <td>{m}</td>
+                <td>{sections.map((s) => `${s.section === 'advanced' ? '' : `${s.section} `}${s.title}`).join('; ')}</td>
+                <td>{ls.map((slug, i) => (<>{i > 0 && ', '}{written.has(slug) ? <a href={url(`/learn/${slug}/`)}>{slug}</a> : slug}</>))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .outline-toc { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-bottom: 48px; font-size: 0.92rem; }
+  .outline-region { margin: 56px 0 0; }
+  .outline-domain { margin: 34px 0 0; }
+  .outline-domain h3 { font-family: var(--v-font-title); font-weight: 400; font-size: 1.45rem; margin-bottom: 4px; }
+  .outline-domain h3 .muted { font-family: var(--v-font-body); font-size: 0.9rem; }
+  .outline-list { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 2px; counter-reset: c; }
+  .outline-list li { padding: 12px 0 12px 44px; border-top: 1px solid var(--line); position: relative; counter-increment: c; }
+  .outline-list li::before { content: counter(c); position: absolute; left: 0; top: 13px; font-family: var(--v-font-mono); font-size: 0.78rem; color: var(--v-secondary); width: 30px; text-align: right; }
+  .outline-list li.kind-landmark { background: var(--panel); border-radius: 8px; }
+  .ol-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-weight: 700; }
+  .outline-list p { margin: 4px 0 0; max-width: 80ch; font-size: 0.94rem; }
+  .ol-meta { font-size: 0.84rem !important; color: var(--v-secondary); }
+</style>

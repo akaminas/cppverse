@@ -7,6 +7,8 @@
 @import './vellum/vellum.css';
 @import './code.css';
 @import './charts.css';
+@import './labs.css';
+@import './models.css';
 
 @font-face {
   font-family: 'TeX Gyre Pagella';
@@ -182,7 +184,7 @@ summary:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
 }
 
 /* ── Footer ───────────────────────────────────────────────────────────── */
-.site-footer { border-top: 1px solid var(--line); margin-top: 96px; padding: 36px 0 48px; color: var(--v-muted); font-size: var(--t-tiny); }
+.site-footer { border-top: 1px solid var(--line); margin-top: 96px; padding: 36px 0 48px; color: var(--v-secondary); font-size: var(--t-tiny); }
 .site-footer .wrap { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--gutter); }
 .site-footer p { margin: 0 0 6px; max-width: 72ch; }
 .site-footer a { color: var(--v-secondary); }
@@ -191,10 +193,10 @@ summary:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
 
 /* ── Type helpers ─────────────────────────────────────────────────────── */
 .eyebrow, .mono-label {
-  font-family: var(--v-font-mono); font-size: 0.76rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-muted);
+  font-family: var(--v-font-mono); font-size: 0.76rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-secondary);
 }
 .lead { font-size: 1.18rem; color: var(--v-secondary); max-width: 60ch; }
-.muted { color: var(--v-muted); }
+.muted { color: var(--v-secondary); }
 .secondary { color: var(--v-secondary); }
 .serif { font-family: var(--v-font-title); }
 .tabular { font-variant-numeric: lining-nums tabular-nums; }

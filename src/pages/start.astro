@@ -1,0 +1,39 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Onboarding from '../components/progress/Onboarding';
+---
+<BaseLayout title="Start" section="start" description="Choose your level and goals; the atlas will suggest a route.">
+  <div class="wrap-narrow">
+    <header class="page-head">
+      <p class="eyebrow">Two questions</p>
+      <h1>Find your route through the atlas</h1>
+      <p class="lead">Your answers decide which lessons the atlas suggests first. Nothing is locked: you can open any lesson at any time.</p>
+    </header>
+    <Onboarding client:load base={import.meta.env.BASE_URL} />
+  </div>
+</BaseLayout>
+
+<style>
+  :global(.onboarding fieldset) { border: 0; padding: 0; margin: 0 0 44px; }
+  :global(.onboarding legend) { font-family: var(--v-font-title); font-size: 1.5rem; margin-bottom: 16px; display: flex; gap: 12px; align-items: baseline; }
+  :global(.ob-n) { font-family: var(--v-font-mono); font-size: 0.8rem; color: var(--v-secondary); }
+  :global(.ob-levels) { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 760px) { :global(.ob-levels) { grid-template-columns: minmax(0, 1fr); } }
+  :global(.ob-card), :global(.ob-goal) {
+    position: relative; display: grid; gap: 6px; padding: 18px 18px 16px; background: var(--panel); border-radius: var(--radius); cursor: pointer;
+    box-shadow: inset 0 0 0 1px transparent; transition: box-shadow 0.15s;
+  }
+  :global(.ob-card:hover), :global(.ob-goal:hover) { box-shadow: inset 0 0 0 1px var(--v-rule); }
+  :global(.ob-card.is-on), :global(.ob-goal.is-on) { box-shadow: inset 0 0 0 2px var(--v-ink); }
+  :global(.ob-card input) { position: absolute; top: 18px; right: 16px; }
+  :global(.ob-title) { display: block; font-weight: 700; }
+  :global(.ob-text) { display: block; font-size: 0.9rem; color: var(--v-secondary); }
+  :global(.ob-goals) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 620px) { :global(.ob-goals) { grid-template-columns: minmax(0, 1fr); } }
+  :global(.ob-goal) { grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; padding: 14px 16px; }
+  :global(.ob-link) { font: inherit; font-size: 0.9rem; color: var(--link); background: none; border: 0; padding: 0; margin-top: 14px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  :global(.ob-refine) { margin-top: 14px; display: grid; gap: 12px; background: var(--panel); border-radius: var(--radius); padding: 16px 18px; }
+  :global(.ob-row) { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+  :global(.ob-note) { font-size: 0.84rem; color: var(--v-secondary); margin: 8px 0 0; }
+  :global(.ob-preview) { color: var(--v-secondary); }
+</style>

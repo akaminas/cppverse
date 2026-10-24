@@ -101,7 +101,7 @@ export default function AtlasPanel(props: Props) {
   return (
     <aside className={`atlas-panel${selected ? ' is-detail' : ''}${expanded ? ' is-expanded' : ''}`} aria-label="Atlas controls and details">
       <div className="atlas-tools">
-        <div className="atlas-search" role="combobox" aria-expanded={results.length > 0} aria-owns={listId} aria-haspopup="listbox">
+        <div className="atlas-search">
           <label htmlFor="atlas-search" className="sr-only">Search concepts</label>
           <input
             id="atlas-search"
@@ -109,8 +109,10 @@ export default function AtlasPanel(props: Props) {
             placeholder="Search concepts (press /)"
             value={query}
             autoComplete="off"
+            role="combobox"
+            aria-expanded={results.length > 0}
             aria-autocomplete="list"
-            aria-controls={listId}
+            aria-controls={results.length ? listId : undefined}
             aria-activedescendant={results[active] ? `${listId}-${results[active].id}` : undefined}
             onChange={(e) => {
               setQuery(e.target.value);

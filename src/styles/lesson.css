@@ -3,7 +3,7 @@
 .lesson-head { padding: 56px 0 28px; }
 .lesson-head h1 { font-size: clamp(2.2rem, 1.6rem + 2.2vw, 3.2rem); margin: 8px 0 14px; max-width: 22ch; }
 .lesson-head h1::after { content: ''; display: block; width: 56px; height: 2px; background: var(--accent); margin-top: 22px; }
-.lesson-crumbs a { color: var(--v-muted); text-decoration: none; }
+.lesson-crumbs a { color: var(--v-secondary); text-decoration: none; }
 .lesson-crumbs a:hover { color: var(--accent); }
 .lesson-meta { list-style: none; padding: 0; margin: 18px 0 0; display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; font-size: 0.88rem; color: var(--v-secondary); }
 .lesson-dests a { color: var(--v-secondary); }
@@ -24,7 +24,7 @@
 .lesson-objectives { background: var(--panel); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 40px; }
 .lesson-objectives ul { margin: 0; padding-left: 1.2em; }
 .lesson-needs { margin: 14px 0 0; font-size: 0.9rem; color: var(--v-secondary); }
-.lesson-needs > span { font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--v-muted); margin-right: 6px; }
+.lesson-needs > span { font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--v-secondary); margin-right: 6px; }
 
 /* Reading column */
 .prose { font-size: 1.06rem; line-height: 1.7; }
@@ -77,18 +77,18 @@
 @media (max-width: 760px) { .trace-grid { grid-template-columns: minmax(0, 1fr); } }
 .trace-code pre { margin: 0; height: 100%; }
 .trace-state { background: var(--panel); border-radius: var(--radius); padding: 14px 16px; font-size: 0.92rem; }
-.trace-step { font-family: var(--v-font-mono); font-size: 0.76rem; color: var(--v-muted); margin: 0 0 6px; }
+.trace-step { font-family: var(--v-font-mono); font-size: 0.76rem; color: var(--v-secondary); margin: 0 0 6px; }
 .trace-note { min-height: 3.2em; }
 .trace-vars { font-size: 0.85rem; margin-bottom: 12px; }
 .trace-vars td, .trace-vars th { padding: 4px 8px; }
-.trace-out-label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-muted); margin: 0 0 4px; }
+.trace-out-label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-secondary); margin: 0 0 4px; }
 .trace-out { background: var(--bg); margin: 0; padding: 10px 12px; font-size: 0.82rem; min-height: 2.6em; white-space: pre-wrap; }
 .trace-controls { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
 .trace-slider { flex: 1; min-width: 120px; }
 
 /* Code anatomy */
 .anatomy { margin: 2em 0; }
-.anatomy-hint { font-size: 0.86rem; color: var(--v-muted); margin: -4px 0 10px; }
+.anatomy-hint { font-size: 0.86rem; color: var(--v-secondary); margin: -4px 0 10px; }
 .anatomy-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .anatomy-explain { min-height: 11em; }
 .anatomy-code { margin: 0; font-size: 0.95rem; line-height: 2.1; overflow-x: auto; }
@@ -102,7 +102,7 @@
 .anatomy-explain { background: var(--panel); border-radius: var(--radius); padding: 16px 20px; }
 .anatomy-role { font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--v-secondary); font-weight: 700; margin: 0 0 4px; }
 .anatomy-label { font-size: 1.2rem; margin: 0 0 8px; }
-.anatomy-count { font-size: 0.78rem; color: var(--v-muted); margin: 0; }
+.anatomy-count { font-size: 0.78rem; color: var(--v-secondary); margin: 0; }
 
 /* Practice */
 .practice { border-top: 1px solid var(--v-ink); padding-top: 14px; margin: 2.4em 0; }
@@ -152,7 +152,7 @@
 /* Synchronised maths and code */
 .mathcode { margin: 2em 0; }
 .mathcode-title { font-family: var(--v-font-title); font-size: 1.25rem; margin: 0 0 4px; }
-.mathcode-hint { font-size: 0.86rem; color: var(--v-muted); margin: 0 0 8px; }
+.mathcode-hint { font-size: 0.86rem; color: var(--v-secondary); margin: 0 0 8px; }
 .mathcode-math { background: var(--panel); border-radius: var(--radius) var(--radius) 0 0; padding: 18px 12px 8px; font-size: 1.15rem; overflow-x: auto; }
 .mathcode-math .katex-display { margin: 0; }
 .mc-term { cursor: pointer; border-radius: 4px; padding: 0 1px; box-shadow: inset 0 -1px 0 var(--v-rule); }
@@ -164,7 +164,7 @@
 .mathcode-explain { background: var(--panel); padding: 12px 20px 14px; border-top: 1px solid var(--line); font-size: 0.96rem; min-height: 7em; }
 .mathcode-explain p { margin: 0 0 6px; }
 .mathcode-label { font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--v-secondary); font-weight: 700; }
-.mathcode-lines { font-family: var(--v-font-mono); font-size: 0.78rem; color: var(--v-muted); }
+.mathcode-lines { font-family: var(--v-font-mono); font-size: 0.78rem; color: var(--v-secondary); }
 .mathcode-code pre { border-radius: 0 0 var(--radius) var(--radius); margin: 0; border-top: 1px solid var(--line); }
 .mathcode-code .mc-line { cursor: pointer; }
 .mathcode-code .mc-line:hover { background: var(--soft); }

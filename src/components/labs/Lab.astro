@@ -1,22 +1,100 @@
 ---
-// Embeds one of the five interactive model laboratories. Laboratories are
-// hydrated only when scrolled into view.
+// One of the five interactive model laboratories, with its scientific
+// documentation (equations, parameters, assumptions, algorithm, C++
+// implementation, verification, interpretation, limitations). The island is
+// hydrated only when scrolled into view; the documentation is static HTML.
 import DiscreteLab from './DiscreteLab';
 import MatrixLab from './MatrixLab';
 import OdeLab from './OdeLab';
 import GillespieLab from './GillespieLab';
 import IbmLab from './IbmLab';
+import { labDocs } from '../../data/labs';
+import { getExample, buildCommand } from '../../lib/examples';
+import { tex } from '../../lib/tex';
+import { url } from '../../lib/url';
+
 interface Props {
   id: 'discrete' | 'matrix' | 'ode' | 'gillespie' | 'ibm';
-  /** Optional initial tab or preset of the laboratory. */
+  /** Optional initial mode of the laboratory. */
   preset?: string;
+  /** 'open' on destination pages; 'collapsed' (default) inside lessons. */
+  docs?: 'open' | 'collapsed' | 'none';
 }
-const { id, preset } = Astro.props;
+const { id, preset, docs = 'collapsed' } = Astro.props;
+const doc = labDocs[id];
+const open = docs === 'open';
+const examples = doc.cpp.map((f) => getExample(f));
 ---
-<div class="lab-embed" id={`lab-${id}`}>
+<section class="lab-embed" id={`lab-${id}`} aria-labelledby={`lab-${id}-title`}>
+  <header class="lab-head">
+    <p class="eyebrow">Interactive laboratory</p>
+    <h3 id={`lab-${id}-title`} class="lab-title">{doc.title}</h3>
+    <p class="lab-summary">{doc.summary}</p>
+  </header>
+
   {id === 'discrete' && <DiscreteLab client:visible preset={preset} />}
   {id === 'matrix' && <MatrixLab client:visible preset={preset} />}
   {id === 'ode' && <OdeLab client:visible preset={preset} />}
   {id === 'gillespie' && <GillespieLab client:visible preset={preset} />}
   {id === 'ibm' && <IbmLab client:visible preset={preset} />}
-</div>
+
+  <p class="lab-honesty">
+    The laboratory runs TypeScript re-implementations of the models in your browser. It does not compile or execute C++; the
+    equivalent C++ programs are listed below and are compiled and checked against these results in the project’s continuous
+    integration.
+  </p>
+
+  {docs !== 'none' && (
+    <div class="lab-docs">
+      <details open={open}>
+        <summary>The model</summary>
+        <div class="lab-eqs">{doc.equations.map((e) => <div set:html={tex(e)} />)}</div>
+        <p>{doc.modelNote}</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">Symbol</th><th scope="col">Meaning</th><th scope="col">Unit</th><th scope="col">Default</th></tr></thead>
+            <tbody>
+              {doc.parameters.map((p) => (
+                <tr><td set:html={tex(p.symbol, false)} /><td>{p.meaning}</td><td>{p.unit}</td><td>{p.value}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p><strong>Initial conditions.</strong> {doc.initial}</p>
+      </details>
+      <details open={open}>
+        <summary>Assumptions</summary>
+        <ul>{doc.assumptions.map((a) => <li>{a}</li>)}</ul>
+      </details>
+      <details open={open}>
+        <summary>Algorithm</summary>
+        <ol>{doc.algorithm.map((a) => <li>{a}</li>)}</ol>
+      </details>
+      <details open={open}>
+        <summary>C++ implementation</summary>
+        <ul class="lab-cpp">
+          {examples.map((ex) => (
+            <li>
+              <a href={url(`/examples/${ex.file}`)} download={ex.name}><code>{ex.file}</code></a> — {ex.title}
+              <pre><code>{buildCommand(ex)}</code></pre>
+            </li>
+          ))}
+        </ul>
+      </details>
+      <details open={open}>
+        <summary>Verification</summary>
+        <ul>{doc.verification.map((v) => <li>{v}</li>)}</ul>
+      </details>
+      <details open={open}>
+        <summary>Interpretation</summary>
+        <dl class="lab-interp">
+          {doc.interpretation.map((q) => (<><dt>{q.question}</dt><dd>{q.answer}</dd></>))}
+        </dl>
+      </details>
+      <details open={open}>
+        <summary>Known limitations</summary>
+        <ul>{doc.limitations.map((l) => <li>{l}</li>)}</ul>
+      </details>
+    </div>
+  )}
+</section>

@@ -1,0 +1,62 @@
+/* Interactive laboratories */
+.lab-embed { margin: 2.6em 0; padding-top: 18px; border-top: 1px solid var(--v-ink); }
+.lab-head { margin-bottom: 14px; }
+.lab-title { font-family: var(--v-font-title); font-weight: 400; font-size: 1.45rem; margin: 2px 0 6px; }
+.lab-summary { color: var(--v-secondary); margin: 0; max-width: 70ch; }
+.lab { margin-top: 12px; }
+.lab-grid { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .lab-grid { grid-template-columns: minmax(0, 1fr); } }
+.lab-controls { background: var(--panel); border-radius: var(--radius); padding: 16px 16px 12px; display: grid; gap: 14px; font-size: 0.9rem; }
+.lab-output { min-width: 0; display: grid; gap: 8px; }
+.lab-status { margin: 0 0 4px; font-size: 0.9rem; color: var(--v-secondary); min-height: 1.4em; }
+.lab-warning { color: var(--v-terracotta-deep); }
+.lab-warning::before { content: '⚠ '; }
+.lab-slider { display: grid; gap: 4px; }
+.lab-slider label { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.lab-slider-label { color: var(--v-ink); }
+.lab-slider-value { font-variant-numeric: tabular-nums; color: var(--v-secondary); white-space: nowrap; font-size: 0.86rem; }
+.lab-note { font-size: 0.8rem; color: var(--v-secondary); }
+.lab-seg { display: grid; gap: 6px; }
+.lab-seg .seg { flex-wrap: wrap; border-radius: 14px; justify-self: start; }
+.lab-seg-label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-secondary); }
+.lab-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.lab-chips .chip { background: var(--bg); font-size: 0.85rem; padding: 5px 12px; }
+.lab-check { display: flex; gap: 8px; align-items: flex-start; font-size: 0.86rem; color: var(--v-secondary); cursor: pointer; }
+.lab-inline { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: end; }
+.lab-inline label { display: grid; gap: 4px; }
+.lab-inline input[type='number'] { width: 6.5em; background: var(--bg); }
+.lab-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+.lab-buttons .btn { background: var(--bg); }
+.lab-readout { display: grid; gap: 8px; margin: 2px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
+.lab-readout div { display: grid; gap: 1px; }
+.lab-readout dt { font-size: 0.74rem; color: var(--v-secondary); }
+.lab-readout dd { margin: 0; font-variant-numeric: tabular-nums; color: var(--v-ink); }
+.lab-chart .vfig { margin-bottom: 1.2em; }
+.lab-matrix { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: start; margin-bottom: 8px; }
+@media (max-width: 620px) { .lab-matrix { grid-template-columns: minmax(0, 1fr); } }
+.lab-matrix table { width: auto; font-size: 0.86rem; }
+.lab-matrix td { text-align: right; min-width: 4.5em; }
+.lab-matrix td.is-zero { color: var(--v-secondary); }
+.lab-matrix .lab-readout { border-top: 0; padding-top: 0; }
+.lab-log { font-size: 0.86rem; margin-top: 6px; }
+.lab-log summary { color: var(--v-secondary); margin-bottom: 8px; }
+.lab-log table { font-size: 0.8rem; }
+.ibm-top { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .ibm-top { grid-template-columns: minmax(0, 1fr); } }
+.ibm-map canvas { display: block; border-radius: 8px; cursor: crosshair; max-width: 100%; }
+.ibm-map .lab-check { margin-top: 8px; }
+.ibm-side .lab-readout { border-top: 0; padding-top: 0; }
+.ibm-inspect { margin-top: 12px; background: var(--panel); border-radius: 8px; padding: 10px 12px; font-size: 0.88rem; }
+.ibm-inspect p { margin: 0; }
+.lab-honesty { font-size: 0.82rem; color: var(--v-secondary); margin: 10px 0 0; max-width: 80ch; }
+.lab-docs { margin-top: 16px; display: grid; gap: 8px; }
+.lab-docs details { background: var(--panel); border-radius: 10px; padding: 10px 16px; }
+.lab-docs summary { font-weight: 700; font-size: 0.82rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-secondary); }
+.lab-docs details[open] summary { margin-bottom: 8px; }
+.lab-docs table { font-size: 0.86rem; background: var(--bg); }
+.lab-docs ul, .lab-docs ol { padding-left: 1.3em; }
+.lab-eqs .katex-display { margin: 0.6em 0; }
+.lab-cpp { list-style: none; padding: 0 !important; }
+.lab-cpp pre { background: var(--bg); font-size: 0.78rem; padding: 8px 12px; margin: 6px 0 10px; }
+.lab-interp dt { font-weight: 700; margin-top: 8px; }
+.lab-interp dd { margin: 2px 0 0; color: var(--v-secondary); }

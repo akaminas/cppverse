@@ -1,0 +1,67 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Attribution from '../components/site/Attribution.astro';
+import { MANUAL } from '../data/citation';
+import { url } from '../lib/url';
+---
+<BaseLayout title="About" section="about" description="What C++ Atlas is, who it is for, and how it is built.">
+  <div class="wrap-narrow about">
+    <header class="page-head">
+      <p class="eyebrow">About</p>
+      <h1>A course in scientific modelling through C++</h1>
+      <p class="lead">
+        C++ Atlas teaches C++ from the first line of code to the level needed for independent computational research in biology,
+        ecology and evolution.
+      </p>
+    </header>
+    <p>
+      The goal is not to cover every corner of the language. It is to make a scientist able to read a mathematical model in a paper,
+      understand its assumptions, design an algorithm for it, implement that algorithm in C++, verify that the code is correct, run
+      simulation experiments, analyse the output and draw conclusions that say no more than the model supports.
+    </p>
+    <h2>How it is organised</h2>
+    <p>
+      The <a href={url('/atlas/')}>atlas</a> is a map of the curriculum. The foundations of the language lie to the west; the four
+      modelling destinations, Modules 14 to 17 of the Groningen course, rise to the east: algorithm design, numerical integration,
+      stochastic modelling and individual-based modelling. A final region, scientific inference, is original to this site and connects
+      the destinations to experiments, analysis and interpretation.
+    </p>
+    <p>
+      You can travel in both directions: from a construct you have just learned to the models that use it, or from a model you want to
+      build back to everything it requires. The <a href={url('/start/')}>start page</a> asks two questions and suggests a route;
+      nothing is locked.
+    </p>
+    <h2>What is honest about the interactive parts</h2>
+    <p>
+      The laboratories run TypeScript implementations of the models in your browser. They do not compile or execute C++. Every C++
+      program on the site is a real file that the project’s continuous integration compiles with GCC and Clang, runs, and compares with
+      expected output; the model programs are cross-validated against the browser implementations. The code editor lets you edit a copy
+      of a program to take away and compile yourself.
+    </p>
+    <h2>Curriculum source and attribution</h2>
+    <p>
+      The curriculum follows <cite>{MANUAL.title}</cite> by {MANUAL.authors.join(', ')} ({MANUAL.institution}).
+    </p>
+    <div class="key"><Attribution label="Source" /></div>
+    <p>
+      This is an independent project. It is not an official University of Groningen course and implies no endorsement by the
+      University or the authors. Lessons, examples, figures and exercises are written independently, and the manual’s assignments,
+      exercise solutions and graded projects are not reproduced. Full details and the section-by-section coverage are on the
+      <a href={url('/sources/')}>sources page</a>.
+    </p>
+    <h2>Design</h2>
+    <p>
+      Colour, typography and scientific figures follow the <a href="https://akaminas.github.io/vellum/">Vellum</a> design system:
+      claim titles, direct labels, hairline grids, a fixed series order, and colour that never carries meaning on its own.
+    </p>
+    <h2>Your data</h2>
+    <p>
+      There are no accounts and no tracking. Your level, goals, bookmarks and progress are stored only in your browser; the
+      <a href={url('/progress/')}>progress page</a> exports, imports and deletes them.
+    </p>
+  </div>
+</BaseLayout>
+<style>
+  .about h2 { font-size: 1.6rem; margin-top: 1.8em; }
+  .about p { max-width: 68ch; }
+</style>

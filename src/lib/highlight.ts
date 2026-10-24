@@ -46,7 +46,7 @@ export async function highlight(code: string, { lang = 'cpp', mark, lineIds, sta
           if (lineIds?.[line]) node.properties['data-id'] = lineIds[line];
         },
         pre(node) {
-          delete node.properties.tabindex;
+          // Keep Shiki's tabindex="0": horizontally scrollable code must be keyboard-focusable.
           this.addClassToHast(node, 'code-lines');
         },
       },

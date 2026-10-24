@@ -49,7 +49,7 @@ pre code { background: none; padding: 0; white-space: pre; font-size: inherit; }
 .code-figure pre { margin: 0; border-radius: 0; background: transparent !important; }
 .code-head {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding: 10px 14px 10px 20px; border-bottom: 1px solid var(--line); font-size: 0.8rem; color: var(--v-muted);
+  padding: 10px 14px 10px 20px; border-bottom: 1px solid var(--line); font-size: 0.8rem; color: var(--v-secondary);
 }
 .code-head .code-name { font-family: var(--v-font-mono); color: var(--v-secondary); }
 .code-head .code-actions { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; }
@@ -60,13 +60,13 @@ pre code { background: none; padding: 0; white-space: pre; font-size: inherit; }
 .code-head .code-actions button:hover, .code-head .code-actions a:hover { color: var(--accent); background: var(--soft); }
 .code-foot { padding: 10px 20px 14px; border-top: 1px solid var(--line); font-size: 0.82rem; color: var(--v-secondary); }
 .code-foot pre { background: var(--bg) !important; border-radius: 8px; padding: 10px 14px; margin: 6px 0 0; font-size: 0.8rem; }
-.code-foot .label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-muted); }
+.code-foot .label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-secondary); }
 
 /* Line numbers, generated as data-line on .line spans. */
 .code-lines .line { display: inline-block; width: 100%; }
 .code-lines .line::before {
   content: attr(data-line); display: inline-block; width: 2.2em; margin-right: 1.1em;
-  text-align: right; color: var(--v-muted); user-select: none; opacity: 0.8;
+  text-align: right; color: var(--v-secondary); user-select: none; opacity: 0.8;
 }
 .line.is-marked { background: color-mix(in srgb, var(--v-terracotta-tint) 45%, transparent); box-shadow: inset 3px 0 0 var(--v-terracotta); }
 .line.is-dim { opacity: 0.45; }

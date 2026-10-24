@@ -1,0 +1,157 @@
+---
+import 'katex/dist/katex.min.css';
+import '../../styles/lesson.css';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Assembly from '../../components/models/Assembly.astro';
+import PrereqNetwork from '../../components/models/PrereqNetwork.astro';
+import Lab from '../../components/labs/Lab.astro';
+import RouteBox from '../../components/progress/RouteBox';
+import { destinations, workflow, type Destination } from '../../data/destinations';
+import { concepts, conceptById } from '../../data/concepts';
+import { domainById, domains } from '../../data/domains';
+import { manualSectionById } from '../../data/manual';
+import { dependencyClosure, getGraph, topologicalOrder } from '../../lib/graph/graph';
+import { hrefFor } from '../../lib/lesson-context';
+import { lessonCheckCounts } from '../../lib/atlas-data';
+import { atlasUrl, capstoneUrl, url } from '../../lib/url';
+import { getCollection } from 'astro:content';
+
+export function getStaticPaths() {
+  return destinations.map((d) => ({ params: { id: d.id }, props: { dest: d } }));
+}
+interface Props { dest: Destination }
+const { dest } = Astro.props;
+const domain = domainById[dest.id];
+const landmark = conceptById[dest.landmark];
+const g = getGraph();
+
+// Lessons taught in this destination, in prerequisite order.
+const own = topologicalOrder(g, concepts.filter((c) => c.domain === dest.id && c.kind === 'concept').map((c) => c.id));
+const lessonsEntries = await getCollection('lessons');
+const lessonMeta = Object.fromEntries(lessonsEntries.map((e) => [e.id, e.data]));
+const lessonList = [...new Set(own.map((id) => conceptById[id].lesson!))].map((slug) => ({ slug, data: lessonMeta[slug] }));
+
+// Backward learning: everything this destination needs, grouped by domain.
+const closure = dependencyClosure(g, [dest.landmark]);
+const grouped = domains
+  .map((d) => ({ d, items: topologicalOrder(g, [...closure].filter((id) => conceptById[id].domain === d.id)) }))
+  .filter((x) => x.items.length > 0);
+const manual = [...new Set(landmark.manual)].map((m) => manualSectionById[m]).filter(Boolean);
+const checkCounts = lessonCheckCounts();
+---
+<BaseLayout title={domain.title} section="models" description={dest.capability}>
+  <div class={`wrap fam-${domain.family ?? 'none'}`}>
+    <header class="dest-hero">
+      <p class="eyebrow"><a href={url('/models/')}>Destinations</a> · {dest.eyebrow}</p>
+      <h1>{domain.title}</h1>
+      <p class="lead">{dest.capability}</p>
+      <div class="measure">{dest.intro.map((p) => <p>{p}</p>)}</div>
+      <div class="cta-row">
+        <a class="btn-solid" href={atlasUrl(dest.landmark)}>See it in the atlas</a>
+        {lessonList[0] && <a class="btn-outline" href={url(`/learn/${lessonList[0].slug}/`)}>Start with {lessonList[0].data?.title ?? 'the first lesson'}</a>}
+      </div>
+    </header>
+
+    <section class="dest-section" aria-labelledby="capabilities">
+      <div class="sec-head"><h2 id="capabilities">What you will be able to do</h2></div>
+      <ul class="dest-goals">
+        {own.flatMap((id) => conceptById[id].goals).map((goal) => <li>{goal}</li>)}
+      </ul>
+    </section>
+
+    {dest.assemblies.length > 0 && (
+      <section class="dest-section" aria-labelledby="assembly">
+        <div class="sec-head"><h2 id="assembly">Model assembly</h2></div>
+        <p class="measure">
+          How a complete model is built from programming concepts. Select a component to see its mathematics, its role in the
+          algorithm, the C++ lines that implement it, the lessons it builds on, and what goes wrong when it is implemented incorrectly.
+          You can also select highlighted lines of code.
+        </p>
+        {dest.assemblies.map((a) => <Assembly id={a} />)}
+      </section>
+    )}
+
+    {dest.id === 'inference' && (
+      <section class="dest-section" aria-labelledby="workflow">
+        <div class="sec-head"><h2 id="workflow">A complete computational research workflow</h2></div>
+        <ol class="workflow">
+          {workflow.map((w) => (
+            <li>
+              <h3>{w.title}</h3>
+              <p>{w.text}</p>
+              <a href={hrefFor(conceptById[w.concept])}>{conceptById[w.concept].title}</a>
+            </li>
+          ))}
+        </ol>
+      </section>
+    )}
+
+    {dest.lab && (
+      <section class="dest-section" aria-labelledby="laboratory">
+        <div class="sec-head"><h2 id="laboratory">Laboratory</h2></div>
+        <Lab id={dest.lab} docs="open" />
+        {dest.id === 'algorithms' && <Lab id="matrix" docs="open" />}
+      </section>
+    )}
+
+    <section class="dest-section" aria-labelledby="lessons">
+      <div class="sec-head"><h2 id="lessons">Lessons in this destination</h2></div>
+      <div class="grid grid-3">
+        {lessonList.map(({ slug, data }) => (
+          <a class="card-link" href={url(`/learn/${slug}/`)}>
+            <span class="eyebrow">{data ? `${data.level}${data.optional ? ' · optional' : ''}` : 'in preparation'}</span>
+            <h3>{data?.title ?? slug}</h3>
+            {data && <p class="muted">{data.summary}</p>}
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section class="dest-section" aria-labelledby="needs">
+      <div class="sec-head">
+        <h2 id="needs">Everything this destination builds on</h2>
+        <a href={`${atlasUrl(dest.landmark)}`}>Open in the atlas</a>
+      </div>
+      <p class="measure">
+        Backward learning: the {closure.size} concepts that {domain.title.toLowerCase()} depends on, drawn at their places in the atlas.
+        Your personal route skips what your level and your progress already cover.
+      </p>
+      <RouteBox client:idle targets={[dest.landmark]} base={import.meta.env.BASE_URL} checkCounts={checkCounts} />
+      <PrereqNetwork target={dest.landmark} />
+      <div class="prereq-groups">
+        {grouped.map(({ d, items }) => (
+          <div>
+            <h3>{d.title}</h3>
+            <ul>{items.map((id) => <li><a href={hrefFor(conceptById[id])}>{conceptById[id].title}</a></li>)}</ul>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    {dest.capstones.length > 0 && (
+      <section class="dest-section" aria-labelledby="capstones">
+        <div class="sec-head"><h2 id="capstones">Capstone{dest.capstones.length > 1 ? 's' : ''}</h2><a href={url('/capstones/')}>All capstones</a></div>
+        <div class="grid grid-2">
+          {dest.capstones.map((id) => (
+            <a class="card-link" href={capstoneUrl(id)}>
+              <span class="eyebrow">Original project</span>
+              <h3>{conceptById[id].title}</h3>
+              <p class="muted">{conceptById[id].summary}</p>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <section class="dest-section lesson-source" aria-label="Source">
+      {manual.length > 0 ? (
+        <p>
+          This destination corresponds to Module {dest.module} of the Groningen course manual:{' '}
+          {manual.map((m, i) => (<>{i > 0 && '; '}§{m.section} {m.title}</>))}. Lessons, examples and laboratories are original.
+        </p>
+      ) : (
+        <p>This synthesis is original material of this site and is not part of the Groningen course.</p>
+      )}
+    </section>
+  </div>
+</BaseLayout>

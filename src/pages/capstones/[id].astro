@@ -1,0 +1,71 @@
+---
+import 'katex/dist/katex.min.css';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { capstones, type Capstone } from '../../data/capstones';
+import { conceptById } from '../../data/concepts';
+import { domainById } from '../../data/domains';
+import { dependenciesOf, dependencyClosure, getGraph, topologicalOrder } from '../../lib/graph/graph';
+import { hrefFor } from '../../lib/lesson-context';
+import { tex } from '../../lib/tex';
+import { atlasUrl, modelUrl, url } from '../../lib/url';
+
+export function getStaticPaths() {
+  return Object.values(capstones).map((c) => ({ params: { id: c.id }, props: { cap: c } }));
+}
+interface Props { cap: Capstone }
+const { cap } = Astro.props;
+const g = getGraph();
+const node = conceptById[cap.id];
+const domain = domainById[node.domain];
+const direct = dependenciesOf(g, cap.id).map((id) => conceptById[id]);
+const all = topologicalOrder(g, [...dependencyClosure(g, [cap.id])]).map((id) => conceptById[id]).filter((c) => c.kind === 'concept' || c.kind === 'integration');
+---
+<BaseLayout title={cap.title} section="capstones" description={cap.question}>
+  <article class={`wrap-narrow capstone fam-${domain.family}`}>
+    <header class="page-head">
+      <p class="eyebrow"><a href={url('/capstones/')}>Capstones</a> · {node.label} · <a href={modelUrl(node.domain)}>{domain.title}</a> · {cap.level}</p>
+      <h1>{cap.title}</h1>
+      <p class="lead">{cap.question}</p>
+    </header>
+    <p>{cap.context}</p>
+
+    <h2>The model</h2>
+    <ul>{cap.model.map((m) => <li>{m}</li>)}</ul>
+    {cap.equations.map((e) => <div set:html={tex(e)} />)}
+
+    <h2>Milestones</h2>
+    <ol class="cap-steps">
+      {cap.milestones.map((m) => (<li><strong>{m.title}.</strong> {m.text}</li>))}
+    </ol>
+
+    <h2>How you will know it works</h2>
+    <ul>{cap.verification.map((v) => <li>{v}</li>)}</ul>
+
+    <h2>Deliverables</h2>
+    <ul>{cap.deliverables.map((d) => <li>{d}</li>)}</ul>
+
+    <h2>Going further</h2>
+    <ul>{cap.extensions.map((x) => <li>{x}</li>)}</ul>
+
+    <h2>Concepts this capstone integrates</h2>
+    <p>
+      Directly: {direct.map((c, i) => (<>{i > 0 && ', '}<a href={hrefFor(c)}>{c.title}</a></>))}.
+      <a href={atlasUrl(cap.id)}>Show the capstone in the atlas</a>.
+    </p>
+    <details>
+      <summary>All {all.length} concepts it builds on, in learning order</summary>
+      <ol class="cap-all">{all.map((c) => <li><a href={hrefFor(c)}>{c.title}</a></li>)}</ol>
+    </details>
+    <p class="muted" style="margin-top: 40px">
+      This project is original to C++ Atlas. It is not an assignment or project of the Groningen course, and no solution is published.
+    </p>
+  </article>
+</BaseLayout>
+
+<style>
+  .capstone h2 { font-size: 1.5rem; margin-top: 2em; }
+  .capstone li + li { margin-top: 0.4em; }
+  .cap-all { columns: 2; column-gap: 32px; font-size: 0.92rem; }
+  @media (max-width: 620px) { .cap-all { columns: 1; } }
+  .page-head h1::after { background: var(--fam); }
+</style>

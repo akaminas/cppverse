@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProgressDashboard from '../components/progress/ProgressDashboard';
+import { getCollection } from 'astro:content';
+import { concepts } from '../data/concepts';
+import { domainById, domains } from '../data/domains';
+import { lessonCheckCounts } from '../lib/atlas-data';
+
+const entries = await getCollection('lessons');
+const checks = lessonCheckCounts();
+const lessonDomain = (slug: string) => concepts.find((c) => c.lesson === slug && !c.anchor)?.domain ?? concepts.find((c) => c.lesson === slug)!.domain;
+const order = (d: string) => domains.findIndex((x) => x.id === d);
+const lessons = entries
+  .map((e) => ({ slug: e.id, title: e.data.title, domain: lessonDomain(e.id), domainTitle: domainById[lessonDomain(e.id)].title, checks: checks[e.id] ?? 0 }))
+  .sort((a, b) => order(a.domain) - order(b.domain) || a.title.localeCompare(b.title));
+---
+<BaseLayout title="Progress" section="progress" description="Your locally stored progress, bookmarks and settings.">
+  <div class="wrap-narrow">
+    <header class="page-head">
+      <p class="eyebrow">Progress</p>
+      <h1>Where you have been</h1>
+      <p class="lead">A record of your learning, kept only in this browser.</p>
+    </header>
+    <ProgressDashboard client:load lessons={lessons} base={import.meta.env.BASE_URL} />
+  </div>
+</BaseLayout>
+
+<style>
+  :global(.pg-block) { margin: 0 0 48px; }
+  :global(.pg-block h2) { font-size: 1.5rem; }
+  :global(.pg-counts) { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+  @media (max-width: 620px) { :global(.pg-counts) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  :global(.pg-counts div) { background: var(--panel); border-radius: var(--radius); padding: 14px 16px; }
+  :global(.pg-counts dt) { font-size: 0.78rem; color: var(--v-secondary); }
+  :global(.pg-counts dd) { margin: 4px 0 0; font-family: var(--v-font-title); font-size: 1.8rem; }
+  :global(.pg-counts dd .muted) { font-family: var(--v-font-body); font-size: 0.85rem; }
+  :global(.pg-domain) { border-top: 1px solid var(--line); padding: 10px 0; }
+  :global(.pg-domain ul) { list-style: none; padding: 0; display: grid; gap: 6px; margin: 10px 0 4px; font-size: 0.94rem; }
+  :global(.pg-studied), :global(.pg-demonstrated) { background: color-mix(in srgb, var(--v-moss-tint) 60%, transparent); color: var(--v-moss-deep); }
+</style>

@@ -1,0 +1,77 @@
+---
+// The prerequisite network of a destination: every concept it depends on,
+// drawn at its atlas position with the dependency edges between them.
+// Static SVG computed at build time; labels are placed greedily and dropped
+// when they would collide (Vellum network labelling).
+import { domainById } from '../../data/domains';
+import { dependencyClosure, getGraph, isDependency } from '../../lib/graph/graph';
+import { computeLayout } from '../../lib/graph/layout';
+import { edgePath, labelWidthPx } from '../atlas/atlasData';
+import { atlasUrl } from '../../lib/url';
+
+interface Props { target: string; width?: number }
+const { target, width = 1100 } = Astro.props;
+const g = getGraph();
+const layout = computeLayout(g);
+const ids = new Set([...dependencyClosure(g, [target]), target]);
+const nodes = [...ids].map((id) => ({ ...layout.nodes[id], c: g.byId.get(id)! }));
+const pad = 60;
+const minX = Math.min(...nodes.map((n) => n.x)) - pad - 150;
+const maxX = Math.max(...nodes.map((n) => n.x)) + pad + 260;
+const minY = Math.min(...nodes.map((n) => n.y)) - pad;
+const maxY = Math.max(...nodes.map((n) => n.y)) + pad;
+const W = maxX - minX;
+const H = maxY - minY;
+const scale = width / W; // px per world unit at full width
+const fontWorld = 11.5 / scale;
+const edges = g.edges.filter((e) => isDependency(e) && ids.has(e.from) && ids.has(e.to));
+const domains = [...new Set(nodes.map((n) => n.domain))].map((d) => ({ d: domainById[d], box: layout.domains[d] }));
+
+// Greedy label placement (right of the node, else left), dropping collisions.
+const placed: { x: number; y: number; w: number; h: number }[] = [];
+const labels: { x: number; y: number; text: string; anchor: 'start' | 'end'; strong: boolean }[] = [];
+const order = [...nodes].sort((a, b) => (a.c.id === target ? -1 : b.c.id === target ? 1 : (g.outgoing.get(b.c.id)?.length ?? 0) - (g.outgoing.get(a.c.id)?.length ?? 0)));
+for (const n of order) {
+  const text = n.c.kind === 'landmark' ? n.c.title : n.c.label ?? n.c.title;
+  const w = (labelWidthPx(text) * 11.5) / 12.5 / scale;
+  const h = fontWorld * 1.3;
+  for (const [x, anchor] of [[n.x + n.r + 4 / scale, 'start'], [n.x - n.r - 4 / scale, 'end']] as const) {
+    const rect = { x: anchor === 'start' ? x : x - w, y: n.y - h / 2, w, h };
+    const hit = placed.some((p) => rect.x < p.x + p.w && p.x < rect.x + rect.w && rect.y < p.y + p.h && p.y < rect.y + rect.h);
+    const hitsNode = nodes.some((m) => m !== n && m.x > rect.x - m.r && m.x < rect.x + rect.w + m.r && m.y > rect.y - m.r && m.y < rect.y + rect.h + m.r);
+    if (!hit && !hitsNode) {
+      placed.push(rect);
+      labels.push({ x, y: n.y, text, anchor, strong: n.c.id === target });
+      break;
+    }
+  }
+}
+const fill = (c: (typeof nodes)[number]['c']) => {
+  const fam = domainById[c.domain].family;
+  return fam ? `var(--v-${fam})` : 'var(--v-muted)';
+};
+---
+<figure class="prereq-net">
+  <svg viewBox={`${minX} ${minY} ${W} ${H}`} role="group" aria-label={`Prerequisite network: ${ids.size - 1} concepts lead to ${g.byId.get(target)!.title}.`}>
+    {domains.map(({ d, box }) => (
+      <g>
+        <rect x={box.x} y={box.y} width={box.w} height={box.h} rx="30" class="pn-domain" />
+        <text x={box.x + 24} y={box.y + 36} class="pn-domain-label" style={`font-size:${10 / scale}px`}>{d.short}</text>
+      </g>
+    ))}
+    {edges.map((e) => <path d={edgePath(layout.nodes[e.from] as any, layout.nodes[e.to] as any, layout.nodes[e.from].domain === layout.nodes[e.to].domain)} class="pn-edge" />)}
+    {nodes.map((n) => (
+      <a href={atlasUrl(n.c.id)}>
+        <circle cx={n.x} cy={n.y} r={n.c.id === target ? n.r : Math.max(n.r, 5 / scale)} fill={n.c.id === target ? 'var(--v-terracotta)' : fill(n.c)} class="pn-node">
+          <title>{n.c.title}</title>
+        </circle>
+      </a>
+    ))}
+    {labels.map((l) => (
+      <text x={l.x} y={l.y} dy="0.35em" text-anchor={l.anchor} class="pn-label" style={`font-size:${(l.strong ? 14 : 11.5) / scale}px; stroke-width:${3 / scale}px;${l.strong ? 'font-weight:700' : ''}`}>{l.text}</text>
+    ))}
+  </svg>
+  <figcaption class="vfig-foot">
+    Deterministic atlas layout; dependency edges only. Labels that would overlap are omitted; every concept is listed below.
+  </figcaption>
+</figure>

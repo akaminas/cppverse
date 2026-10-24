@@ -1,0 +1,60 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { destinations } from '../../data/destinations';
+import { concepts } from '../../data/concepts';
+import { domainById } from '../../data/domains';
+import { dependencyClosure, getGraph } from '../../lib/graph/graph';
+import { modelUrl, url } from '../../lib/url';
+
+const g = getGraph();
+const cards = destinations.map((d) => ({
+  d,
+  domain: domainById[d.id],
+  lessons: new Set(concepts.filter((c) => c.domain === d.id && c.lesson).map((c) => c.lesson)).size,
+  needs: dependencyClosure(g, [d.landmark]).size,
+}));
+---
+<BaseLayout title="Destinations" section="models" description="The four modelling destinations of the Groningen curriculum and the scientific-inference synthesis.">
+  <div class="wrap">
+    <header class="page-head">
+      <p class="eyebrow">Modelling destinations</p>
+      <h1>Where the language leads</h1>
+      <p class="lead">
+        Modules 1–13 of the Groningen manual teach C++. Modules 14–17 are where it is used: four ways of turning biology into
+        computation. Scientific inference, original to this site, brings them together.
+      </p>
+    </header>
+    <div class="dest-cards">
+      {cards.map(({ d, domain, lessons, needs }) => (
+        <a class={`dest-card fam-${domain.family}`} href={modelUrl(d.id)}>
+          <span class="eyebrow">{d.eyebrow}</span>
+          <h2>{domain.title}</h2>
+          <p>{d.capability}</p>
+          <span class="dest-meta">
+            {lessons} lessons · builds on {needs} concepts{d.lab ? ' · interactive laboratory' : ''}{d.assemblies.length ? ' · model assembly' : ''}
+          </span>
+        </a>
+      ))}
+    </div>
+    <p class="measure muted" style="margin-top: 40px">
+      Each destination page shows the complete prerequisite network, a model assembly view that maps mathematics to C++ line by
+      line, the laboratory, the lessons and an original capstone project. The <a href={url('/atlas/')}>atlas</a> shows all of this
+      spatially.
+    </p>
+  </div>
+</BaseLayout>
+
+<style>
+  .dest-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
+  @media (max-width: 760px) { .dest-cards { grid-template-columns: minmax(0, 1fr); } }
+  .dest-card {
+    display: grid; gap: 8px; text-decoration: none; color: inherit; background: var(--panel); border-radius: var(--radius);
+    padding: 26px 28px 24px; box-shadow: inset 0 3px 0 var(--fam); transition: background 0.2s;
+  }
+  .dest-card:hover { background: var(--soft); }
+  .dest-card h2 { margin: 0; font-size: 1.9rem; }
+  .dest-card:hover h2 { color: var(--accent); }
+  .dest-card p { margin: 0; color: var(--v-secondary); }
+  .dest-meta { font-size: 0.84rem; color: var(--v-secondary); }
+  .dest-card:last-child { grid-column: 1 / -1; }
+</style>

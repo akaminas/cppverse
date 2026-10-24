@@ -25,6 +25,8 @@ export interface Series {
   endLabel?: boolean;
   /** Dashed line for an exact/analytical solution drawn beneath numerical ones. */
   dashed?: boolean;
+  /** Draw as a step function (piecewise constant), e.g. stochastic member paths. */
+  step?: boolean;
 }
 
 export interface Band {
@@ -125,7 +127,7 @@ export default function Chart({
   const pathFor = (s: Series) => {
     const pts = s.points.filter(([px, py]) => Number.isFinite(px) && Number.isFinite(py) && (ys.type !== 'log' || py > 0) && (xs.type !== 'log' || px > 0));
     if (!pts.length) return '';
-    if (s.kind === 'step') {
+    if (s.kind === 'step' || s.step) {
       let d = `M${xs(pts[0][0])},${clampY(pts[0][1])}`;
       for (let i = 1; i < pts.length; i++) d += `H${xs(pts[i][0])}V${clampY(pts[i][1])}`;
       return d;
@@ -170,7 +172,7 @@ export default function Chart({
     setHover(xValues[best]);
   };
   const valueAt = (s: Series, xv: number) => {
-    if (s.kind === 'step') {
+    if (s.kind === 'step' || s.step) {
       let v: number | undefined;
       for (const [px, py] of s.points) if (px <= xv) v = py;
       return v;

@@ -1,0 +1,267 @@
+---
+title: Ordinary differential equations
+summary: Rates of change as functions of the state, the vocabulary used to classify ODE models, and how to write a model down in C++.
+level: intermediate
+module: 15
+manual: ["M15.1"]
+minutes: 35
+objectives:
+  - Read an ODE model as a rule that gives the rate of change of every state variable
+  - Classify an equation by order, linearity and autonomy
+  - Rewrite a higher-order equation as a system of first-order equations
+  - Represent the state and the right-hand side of a model in C++
+  - Distinguish the biological model from the numerical method that approximates it
+references:
+  - "Hairer, Nørsett and Wanner (1993). Solving Ordinary Differential Equations I: Nonstiff Problems. Springer."
+  - "Keeling and Rohani (2008). Modeling Infectious Diseases in Humans and Animals. Princeton University Press."
+---
+
+## What it is
+
+A discrete-time model says what the state will be *next generation* (see <Concept id="discrete-time" />). An ordinary differential equation (ODE) says something different: how fast the state is changing *at this instant*, given what the state is now. The best-known example in ecology is logistic growth:
+
+$$
+\frac{dN}{dt} = r\,N\left(1 - \frac{N}{K}\right)
+$$
+
+Here $N(t)$ is the population size (individuals) at time $t$ (days), $dN/dt$ is its rate of change (individuals per day), $r$ is the maximum per-capita growth rate (per day) and $K$ is the carrying capacity (individuals). Read the equation as a rule: tell me $N$ and I will tell you the slope of the trajectory. At $N = 50$ with $r = 0.8$ and $K = 100$ the population grows by 20 individuals per day; at $N = K$ it does not grow at all; above $K$ it shrinks.
+
+The word *ordinary* means that every derivative is taken with respect to a single variable, almost always time. When derivatives with respect to several variables appear, for example time and position in a model of a population spreading along a river, the equation is a *partial* differential equation (PDE). This site deals with ODEs only.
+
+### Solutions and initial values
+
+A *solution* of the ODE is a function $N(t)$ whose derivative equals the right-hand side at every moment. The equation alone admits infinitely many solutions, one for each starting point, so a model is completed by an *initial condition* $N(0) = N_0$. An ODE together with its initial condition is an *initial value problem*, and every numerical method in this module solves one: given where the system starts and how fast it changes, construct the trajectory.
+
+### Classifying equations
+
+Three distinctions tell you what to expect from an equation and which tools apply.
+
+- **Order** is the highest derivative that appears. The logistic equation contains only $dN/dt$, so it is *first order*. An equation with an acceleration $d^2z/dt^2$ is second order.
+- **Linear or nonlinear.** An equation is linear when the unknown function and its derivatives appear only to the first power and are not multiplied together. First-order elimination of a drug from plasma, $dC/dt = -kC$, is linear. The logistic equation is nonlinear because $N(1 - N/K)$ contains $N^2$; the SIR model below is nonlinear because it contains the product $SI$.
+- **Autonomous or non-autonomous.** An equation is autonomous when time does not appear explicitly on the right-hand side: the rate depends on the state alone. The logistic equation is autonomous. Make the transmission rate of an infection follow the seasons, $\beta(t) = \beta_0\,[1 + a\cos(2\pi t / 365)]$, and the model becomes non-autonomous, because the same state now changes at different rates in January and in July.
+
+### Systems of equations
+
+Most biological models have several state variables that change together. The SIR model of an epidemic follows the proportions of a population that are susceptible ($S$), infectious ($I$) and recovered ($R$):
+
+$$
+\frac{dS}{dt} = -\beta S I, \qquad
+\frac{dI}{dt} = \beta S I - \gamma I, \qquad
+\frac{dR}{dt} = \gamma I
+$$
+
+with transmission rate $\beta$ and recovery rate $\gamma$, both per day. Each rate depends on the whole state, not only on its own variable. In general, a system of $n$ first-order equations has the form
+
+$$
+\frac{dx_i}{dt} = f_i\bigl(t, x_1, x_2, \dots, x_n\bigr), \qquad i = 1, \dots, n,
+$$
+
+or, collecting the variables into a state vector $\mathbf{x}$, simply $d\mathbf{x}/dt = \mathbf{f}(t, \mathbf{x})$. The functions $f_i$ may depend on every variable and on time, in any way, provided they are smooth enough (no jumps or kinks, at least within an integration step). Autonomous systems are the special case in which $\mathbf{f}$ ignores $t$. All the methods in the following lessons are written for this general form.
+
+<Anchor id="first-order-systems" />
+
+### From higher order to first order
+
+Numerical methods are built for first-order systems, so a higher-order equation is rewritten as one. The recipe: introduce a new variable for every derivative below the highest, and write one first-order equation per variable.
+
+As an example, take a seed falling through still air. Its height $z$ (metres) obeys Newton's second law with gravity and air resistance that grows with the square of the speed:
+
+$$
+\frac{d^2 z}{dt^2} = -g - c\,\frac{dz}{dt}\left|\frac{dz}{dt}\right|
+$$
+
+where $g = 9.81\ \mathrm{m\,s^{-2}}$ is the gravitational acceleration, $c$ (per metre) measures drag relative to the seed's mass, and the product of the velocity with its absolute value makes the drag always oppose the motion. The equation is second order, nonlinear and autonomous. Introduce the vertical velocity $v = dz/dt$ (metres per second, positive upwards) and the single second-order equation becomes two first-order ones:
+
+$$
+\frac{dz}{dt} = v, \qquad \frac{dv}{dt} = -g - c\,v\,|v|
+$$
+
+The state is now the pair $(z, v)$, and the system has exactly the general form above. The trick works for any equation that can be solved for its highest derivative. Setting $dv/dt = 0$ gives the terminal velocity, $v = -\sqrt{g/c}$, a useful check on any simulation of the model.
+
+## Why it matters
+
+### Closed-form solutions are the exception
+
+Sometimes the solution can be written down as a formula. Linear equations with constant coefficients always have one: elimination gives $C(t) = C_0 e^{-kt}$. The logistic equation is one of the few nonlinear equations that can be solved too:
+
+$$
+N(t) = \frac{K N_0\, e^{rt}}{K + N_0\left(e^{rt} - 1\right)}
+$$
+
+One way to see why: the reciprocal $u = 1/N$ satisfies $du/dt = -\dot N/N^2 = -r\,(u - 1/K)$, which is linear, so $u - 1/K$ decays exponentially from $1/N_0 - 1/K$. Rearranging gives the formula. You can also check it directly by differentiating $N(t)$ and substituting into the equation.
+
+Most models of interest have no such formula. The SIR model has none for $S(t)$, $I(t)$ and $R(t)$, and neither do models of competing species, gene-regulatory circuits or within-host dynamics. Their behaviour must be explored with numerical methods that compute an *approximate* trajectory step by step. Closed forms remain valuable even then: they are the benchmarks against which those methods are tested. The SIR model offers a partial one, the *final-size relation*, which predicts how many individuals escape infection altogether; the lesson on <Concept id="numerical-error" /> uses it to check an integrator.
+
+<Anchor id="model-versus-method" />
+
+### The model is not the method
+
+Keep two things apart from the start:
+
+1. **The biological model** is the right-hand side $\mathbf{f}(t, \mathbf{x})$ with its parameters. It encodes your assumptions: logistic density dependence, mass-action transmission, first-order elimination.
+2. **The numerical method** (Euler, Runge–Kutta, an adaptive solver) is a recipe for turning that right-hand side into an approximate trajectory. It knows nothing about biology, and it introduces errors of its own.
+
+A good program mirrors this separation. The model lives in one function that only computes rates; the method lives in another that only advances time. You can then change the method without touching the biology, and vice versa. It also tells you how to interpret a surprising result: if a pattern appears with one step size or method and disappears with another, it is a property of the method, not of the model.
+
+## How it works in C++
+
+Two decisions turn a model into code: how to store the state, and how to write the right-hand side.
+
+**The state** is a list of numbers, one per variable. A `std::vector<double>` (see <Concept id="std-vector" />) is the flexible choice: its size is set at run time, so one stepper can serve models with one, three or thirty variables. A `std::array<double, 3>` (see <Concept id="array-bitset" />) fixes the size at compile time, which suits a program built around a single model.
+
+**The right-hand side** is a function that takes the current time and state and returns the vector of rates. It reads the state and changes nothing. Parameters either travel in a `struct` passed by `const` reference or are captured by a lambda, as later lessons show. A convenient shared signature is
+
+```cpp
+using State = std::vector<double>;
+State rates(double t, const State& x);   // returns dx/dt, one entry per variable
+```
+
+Even an autonomous model accepts `t`, simply ignoring it, so that autonomous and non-autonomous models fit the same numerical methods.
+
+## A minimal example
+
+The program below writes the logistic and SIR models as functions and evaluates them at a few states. Nothing is integrated yet: this is the biological half of the program, ready to be handed to a numerical method.
+
+<Example file="ode/ode_right_hand_sides.cpp" mark="18-20,30-34" />
+
+The output is a small slope table. The logistic rate is zero at $N = 0$ and at $N = K$, peaks at $N = K/2$ and is negative above the carrying capacity. For the SIR model, the three rates sum to zero: individuals move between compartments but none are created or lost, so $S + I + R$ stays constant. That conservation law is a property of the model, and a correct numerical method must respect it.
+
+The seed model fits the same mould. Written with the shared signature, with $c$ passed in, its right-hand side is
+
+```cpp
+State seedRates(double /*t*/, const State& x, double c) {
+    const double g = 9.81;      // gravitational acceleration (m s^-2)
+    const double v = x[1];      // x[0] is the height z (m), x[1] the velocity v (m/s)
+    return {v, -g - c * v * std::abs(v)};
+}
+```
+
+## Explore it
+
+<Check
+  id="classify"
+  kind="model"
+  question="A drug is infused into a patient at a rate D(t) (mg per hour) that is switched on and off by a pump, and eliminated at rate k: dC/dt = D(t)/V − k C, with V the volume of distribution. How is this equation classified?"
+  options={[
+    "First order, nonlinear, autonomous",
+    "First order, linear, non-autonomous",
+    "Second order, linear, autonomous",
+    "First order, linear, autonomous, because k and V are constants",
+  ]}
+  answer={1}
+  feedback={[
+    "C appears only to the first power and is not multiplied by itself, so the equation is linear. And D(t) makes the rate depend explicitly on time.",
+    "Only dC/dt appears (first order), C enters linearly, and the dosing schedule D(t) makes the right-hand side depend on time directly (non-autonomous).",
+    "There is no second derivative: the highest derivative is dC/dt.",
+    "Constant parameters are not enough. The pump schedule D(t) depends on time itself, so the same concentration changes at different rates at different times.",
+  ]}
+/>
+
+<Check
+  id="pure-rhs"
+  kind="debug"
+  question="This right-hand side for the SIR model compiles. Why does it break the program that uses it?"
+  code={`State sirRates(double t, State& x) {
+    x[0] -= beta * x[0] * x[1];   // remove new infections from S
+    return {-beta * x[0] * x[1],
+            beta * x[0] * x[1] - gamma * x[1],
+            gamma * x[1]};
+}`}
+  options={[
+    "It does not: subtracting infections from S is exactly what the model says",
+    "It changes the state it is meant to read, so the rates are computed from a modified S and the caller's state is corrupted",
+    "It is only wrong because the parameter t is unused",
+    "It is wrong because a function cannot return a braced list",
+  ]}
+  answer={1}
+  feedback={[
+    "The model gives the rate dS/dt; moving the state forward is the job of the numerical method. A right-hand side that changes the state does part of the integration itself, with no step size.",
+    "A right-hand side should only compute rates from the state it receives (hence const State&). Here S is altered before the rates are computed, and the caller's state is silently changed, mixing the model with an improvised update.",
+    "Ignoring t is normal for an autonomous model; the problem is that the function writes to x.",
+    "Returning {…} constructs a State from the braced list, which is valid C++.",
+  ]}
+/>
+
+<Check
+  id="model-or-method"
+  kind="interpret"
+  question="A colleague simulates the SIR model with a fixed step and finds that halving the step moves the epidemic peak two days earlier. What should they conclude?"
+  options={[
+    "The epidemic peaks earlier in reality when it is observed more often",
+    "Their parameter values must be wrong",
+    "The numerical solution has not converged: they should keep reducing the step until the peak no longer moves, and report that value",
+    "ODE models are unreliable for epidemics, and a stochastic model is needed",
+  ]}
+  answer={2}
+  feedback={[
+    "The step size is a choice made by the method, not a feature of the epidemic or of how it is observed. The model has a single trajectory for given parameters.",
+    "The parameters have not changed between the two runs; only the method's step has.",
+    "The model has one exact trajectory; a result that changes with h shows the approximation error of the method. Refining the step until results agree is the standard check.",
+    "Nothing here concerns the model's assumptions. The discrepancy comes from the numerical method and disappears as the step shrinks.",
+  ]}
+/>
+
+## In biological modelling
+
+The ODE lessons on this site return to three models, chosen because each has a known answer to test methods against:
+
+| Model | Equations | Parameters | Benchmark |
+|---|---|---|---|
+| Logistic growth | $dN/dt = rN(1 - N/K)$ | $r$ = 0.8 per day, $K$ = 100 individuals | closed-form solution |
+| First-order elimination | $dC/dt = -kC$ | $k$ = 0.5 per hour | $C_0 e^{-kt}$ |
+| SIR epidemic | as above | $\beta$ = 0.5, $\gamma$ = 0.2 per day | $S + I + R = 1$; final-size relation |
+
+The parameter values are illustrative, not estimates for a particular species, drug or pathogen.
+
+When you build your own model, write its right-hand side first and check it before integrating anything: evaluate it at states where you know the answer (an equilibrium should give zero rates, an empty population should not grow), and check any conservation law, as the example program does. Many errors that look like numerical problems later are typing errors in the right-hand side.
+
+## Common mistakes
+
+- **Mixing the update into the model.** The right-hand side returns rates; it should never change the state or advance time. Take the state by `const` reference so the compiler enforces this.
+- **Forgetting units.** Rates have units of state per unit time. If $\beta$ is per day and the step is in hours, every result is wrong by a factor of 24. Write the units of each parameter next to its declaration.
+- **Dropping the time argument.** A model written as `rates(x)` cannot later become seasonal without changing every numerical method. Accept `t` from the start.
+- **Losing a variable when reducing the order.** A second-order equation becomes *two* first-order equations; a third-order one becomes three. The state vector must hold each new variable.
+- **Treating a closed form as the rule.** That the logistic equation can be solved is a fortunate exception. Expect to integrate numerically, and keep closed forms for testing.
+
+## Practice
+
+<Practice>
+
+1. Classify each equation by order, linearity and autonomy. (a) Gompertz growth of a tumour, $dN/dt = rN\ln(K/N)$. (b) Body temperature of a lizard basking in a daily light cycle, $dT/dt = -a(T - T_{\mathrm{air}}) + b\,\max\bigl(0, \sin(2\pi t/24)\bigr)$, with $t$ in hours. (c) $d^2x/dt^2 + 0.3\,dx/dt + 4x^3 = 0$.
+2. Rewrite equation (c) of exercise 1 as a first-order system and write its right-hand side as a C++ function with the signature `State rates(double t, const State& x)`.
+3. A drug taken by mouth moves from the gut ($A$, mg) into plasma ($C$, mg per litre) at rate $k_a$ and is eliminated from plasma at rate $k_e$: $dA/dt = -k_a A$, $dC/dt = k_a A / V - k_e C$, where $V$ (litres) is the volume of distribution. Write the right-hand side, with the parameters in a `struct`, and print the rates at $A = 100$, $C = 0$ for $k_a = 1.2$ per hour, $k_e = 0.15$ per hour and $V = 40$ litres. Which rates do you expect before running it?
+4. Check the logistic closed form numerically: write a program that computes $N(t)$ from the formula at $t = 3$ days and compares the central difference $\bigl(N(t + \delta) - N(t - \delta)\bigr)/(2\delta)$ with $rN(1 - N/K)$ for $\delta = 10^{-3}$ and $10^{-5}$.
+
+<details>
+<summary>Answers to exercise 1</summary>
+
+(a) First order, nonlinear (because of $N\ln N$), autonomous. (b) First order, linear in $T$, non-autonomous: the heating term depends on time directly. (c) Second order, nonlinear (because of $x^3$), autonomous.
+</details>
+
+<details>
+<summary>Worked answer to exercise 2</summary>
+
+Introduce $y = dx/dt$. Then $dx/dt = y$ and $dy/dt = -0.3\,y - 4x^3$.
+
+```cpp
+State rates(double /*t*/, const State& s) {
+    const double x = s[0];
+    const double y = s[1];
+    return {y, -0.3 * y - 4.0 * x * x * x};
+}
+```
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+
+At $A = 100$ and $C = 0$, the gut loses $k_a A = 120$ mg per hour, and plasma concentration rises at $k_a A / V = 3$ mg per litre per hour. Nothing is eliminated yet because $C = 0$. Note that the amount lost from the gut and the concentration gained in plasma have different units, which is why $V$ appears.
+</details>
+
+<details>
+<summary>Hint for exercise 4</summary>
+
+The central difference approaches the true derivative as $\delta$ shrinks, with an error proportional to $\delta^2$, until rounding in the subtraction $N(t+\delta) - N(t-\delta)$ takes over. With $\delta = 10^{-3}$ the two numbers should agree to about six significant digits.
+</details>
+
+</Practice>

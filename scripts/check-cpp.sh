@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # Compiles and runs every C++ example in cpp-examples/.
-#  (Programs marked "// Expect: compile-error" must fail even with -Werror
-#  enabled, so warnings can also be demonstrated.)
 #  - Programs are compiled with -Wall -Wextra -Wpedantic -Werror at the
 #    language standard named in their "// Standard:" header line.
-#  - Programs marked "// Expect: compile-error" must FAIL to compile.
+#  - Programs marked "// Expect: compile-error" must FAIL to compile with the
+#    same flags (so a warning promoted by -Werror also counts as the error).
 #  - If <name>.out exists, standard output must match it exactly.
 #  - <name>.in is fed to standard input; <name>.args gives arguments.
 # Executables and outputs go to cpp-build/ for the benchmark comparison.

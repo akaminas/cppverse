@@ -126,7 +126,7 @@ test.describe('lessons, models and laboratories', () => {
 });
 
 test.describe('accessibility', () => {
-  for (const path of ['./', 'atlas/', 'learn/hello-world/', 'models/algorithms/', 'curriculum/', 'start/']) {
+  for (const path of ['./', 'atlas/', 'learn/hello-world/', 'models/algorithms/', 'curriculum/', 'start/', 'learn/vectors/', 'learn/gillespie/', 'models/ibm/']) {
     test(`no serious accessibility violations on ${path}`, async ({ page }) => {
       await page.goto(path);
       await page.waitForLoadState('networkidle');

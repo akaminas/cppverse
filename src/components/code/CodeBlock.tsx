@@ -109,13 +109,13 @@ export default function CodeBlock({ html, code, name, title, standard, download,
           {build && (
             <details>
               <summary className="label">Build and run it yourself</summary>
-              <pre>
+              <pre tabIndex={0}>
                 <code>{build}</code>
               </pre>
               {stdin && (
                 <>
                   <span className="label">Input typed by the user</span>
-                  <pre>
+                  <pre tabIndex={0}>
                     <code>{stdin}</code>
                   </pre>
                 </>
@@ -126,7 +126,7 @@ export default function CodeBlock({ html, code, name, title, standard, download,
           {expected && (
             <details>
               <summary className="label">Expected output</summary>
-              <pre>
+              <pre tabIndex={0}>
                 <code>{expected}</code>
               </pre>
             </details>

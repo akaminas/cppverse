@@ -2,7 +2,7 @@
 import katex from 'katex';
 
 export function tex(source: string, display = true): string {
-  return katex.renderToString(source, {
+  const html = katex.renderToString(source, {
     displayMode: display,
     throwOnError: true,
     strict: 'ignore',
@@ -10,4 +10,6 @@ export function tex(source: string, display = true): string {
     trust: (ctx: { command: string }) => ctx.command === '\\htmlClass',
     output: 'html',
   });
+  // Wide display maths scrolls on narrow screens, so it must be keyboard-focusable.
+  return display ? html.replace('<span class="katex-display">', '<span class="katex-display" tabindex="0">') : html;
 }

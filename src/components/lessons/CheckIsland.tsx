@@ -56,8 +56,9 @@ export default function CheckIsland({ id, lesson, kind = 'read', question, code,
         {passedBefore && <span className="status status-good"> answered correctly before</span>}
       </p>
       <p className="check-q" id={`${uid}-q`}>{inline(question)}</p>
+      {/* Focusable so keyboard users can scroll long lines on narrow screens. */}
       {code && (
-        <pre className="check-code">
+        <pre className="check-code" tabIndex={0} aria-label="Code for this question">
           <code>{code}</code>
         </pre>
       )}

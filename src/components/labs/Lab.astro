@@ -76,7 +76,7 @@ const examples = doc.cpp.map((f) => getExample(f));
           {examples.map((ex) => (
             <li>
               <a href={url(`/examples/${ex.file}`)} download={ex.name}><code>{ex.file}</code></a> — {ex.title}
-              <pre><code>{buildCommand(ex)}</code></pre>
+              <pre tabindex="0"><code>{buildCommand(ex)}</code></pre>
             </li>
           ))}
         </ul>

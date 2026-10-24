@@ -7,4 +7,9 @@ describe('server-side KaTeX', () => {
     expect(html).toContain('mc-rate');
     expect(html).not.toContain('htmlClass');
   });
+
+  it('makes display maths keyboard-focusable, since it may scroll on narrow screens', () => {
+    expect(tex('N_{t+1} = R N_t')).toContain('<span class="katex-display" tabindex="0">');
+    expect(tex('x', false)).not.toContain('tabindex');
+  });
 });

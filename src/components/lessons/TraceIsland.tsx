@@ -69,7 +69,7 @@ export default function TraceIsland({ html, title, steps }: Props) {
             </tbody>
           </table>
           <p className="trace-out-label">Output so far</p>
-          <pre className="trace-out" aria-label="Program output so far">{output || ' '}</pre>
+          <pre className="trace-out" role="log" tabIndex={0} aria-label="Program output so far">{output || ' '}</pre>
         </div>
       </div>
       <div className="trace-controls" role="group" aria-label="Step through the program">

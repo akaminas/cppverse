@@ -6,6 +6,7 @@ import { unified } from '@astrojs/markdown-remark';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { rehypeBaseLinks } from './src/lib/markdown/rehype-base-links.mjs';
+import { rehypeFocusableMath } from './src/lib/markdown/rehype-focusable-math.mjs';
 import { vellumCodeTheme } from './src/lib/markdown/code-theme.mjs';
 
 // The site is a GitHub Pages *project* site for github.com/akaminas/cppverse,
@@ -25,7 +26,7 @@ export default defineConfig({
   markdown: {
     processor: unified({
       remarkPlugins: [remarkMath],
-      rehypePlugins: [[rehypeKatex, { strict: 'ignore' }], [rehypeBaseLinks, { base }]],
+      rehypePlugins: [[rehypeKatex, { strict: 'ignore' }], rehypeFocusableMath, [rehypeBaseLinks, { base }]],
     }),
     shikiConfig: {
       theme: vellumCodeTheme,

@@ -6,9 +6,9 @@
 #include <iostream>
 
 int main() {
-    const int nests_a = 8;          // nests found in plot A
+    int nests_a = 8;                // nests found in plot A (normally read from data)
     const double eggs_a = 30.0;     // eggs counted in those nests
-    const int nests_b = 0;          // no nests found in plot B
+    int nests_b = 0;                // no nests found in plot B
     const double eggs_b = 0.0;
 
     if (nests_a > 0 && eggs_a / nests_a > 3.0) {

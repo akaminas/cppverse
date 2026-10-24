@@ -50,7 +50,7 @@ describe('distributions', () => {
     expect(Math.abs(Math.sqrt(v) - 0.5)).toBeLessThan(0.01);
   });
   it('bernoulli and uniformInt have the right frequencies', () => {
-    const hits = Array.from({ length: N }, () => (bernoulli(r, 0.3) ? 1 : 0)).reduce((s, x) => s + x, 0);
+    const hits = Array.from({ length: N }, () => (bernoulli(r, 0.3) ? 1 : 0)).reduce((s: number, x) => s + x, 0);
     expect(Math.abs(hits / N - 0.3)).toBeLessThan(0.005);
     const counts = [0, 0, 0, 0, 0, 0];
     for (let i = 0; i < N; i++) counts[uniformInt(r, 1, 6) - 1]++;

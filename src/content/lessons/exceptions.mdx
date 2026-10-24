@@ -1,0 +1,280 @@
+---
+title: Exceptions
+summary: Signal errors that must be handled in every build with throw, try and catch, use the std::exception hierarchy, and stop a program cleanly.
+level: intermediate
+module: 14
+manual: ["M14.2"]
+minutes: 40
+objectives:
+  - Throw, propagate and catch exceptions, and say where execution continues after a handler
+  - Choose between std::invalid_argument, std::out_of_range, std::runtime_error and the other standard exception types
+  - Validate model parameters on input, rejecting a recoverable case locally and reporting a fatal one in main
+  - Explain the difference between returning from main, std::exit and std::abort
+references:
+  - "cppreference.com: Exceptions; std::exception; <stdexcept>"
+  - "Stroustrup, B. (2013) The C++ Programming Language, 4th edn, chapter 13. Boston: Addison-Wesley."
+---
+
+## What it is
+
+An *exception* is an object that a function *throws* when it cannot do its job. Throwing abandons the rest of the function, and of every function that called it, until the program reaches a matching *handler*:
+
+```cpp
+double survivalProbability(int survivors, int marked) {
+    if (marked <= 0) throw std::invalid_argument("no individuals were marked");
+    if (survivors < 0 || survivors > marked) {
+        throw std::invalid_argument("survivors must lie between 0 and the number marked");
+    }
+    return static_cast<double>(survivors) / marked;
+}
+
+try {
+    const double s = survivalProbability(31, 0);
+    std::cout << "survival " << s << '\n';        // skipped
+} catch (const std::invalid_argument& e) {
+    std::cerr << "cannot estimate survival: " << e.what() << '\n';
+}
+```
+
+The `try` block contains the code that might fail. The `catch` block that follows handles one type of exception; `e.what()` returns the message given when it was thrown. If nothing goes wrong, the handler is skipped.
+
+## Why it matters
+
+The checks in <Concept id="debugging" /> catch mistakes made by the *programmer*, and they vanish from release builds. Many errors are not programming mistakes at all: a parameter file with a missing value, a survival probability typed as 1.3, a data file that does not exist, a numerical method that fails to converge. They can occur in any run, so the checks must be active in every build.
+
+Exceptions also separate *detecting* an error from *deciding what to do about it*. The function that reads a parameter knows that the value is impossible, but not whether the right response is to skip one scenario of a sensitivity analysis or to stop the whole run. The caller knows. An exception carries the information up to the code that can decide, and unlike a returned error code it cannot be silently ignored.
+
+## How it works in C++
+
+### Throwing, propagating and catching
+
+The rules, in the order they apply:
+
+1. `throw expression;` creates an exception object and leaves the current function immediately. The statements after the `throw` do not run.
+2. The exception passes up the chain of calls (it *propagates*) until it reaches a `try` block with a handler for its type. On the way, every local object is destroyed, in reverse order of construction. This is called *stack unwinding*.
+3. The handlers after a `try` block are tried in order, and the first whose type matches runs. A handler for a base class also matches derived classes.
+4. After the handler finishes, execution continues *after the whole try–catch construct*, not after the `throw`. There is no way back into the function that threw.
+5. If no handler matches anywhere, the program calls `std::terminate`, which by default aborts it.
+
+### The standard exception types
+
+The standard library defines a family of exception classes, all derived from `std::exception` (in `<exception>`). The ones you will throw yourself are declared in `<stdexcept>`:
+
+| Class | Use it for | Thrown by the library, for example |
+|---|---|---|
+| `std::logic_error` | Errors that the program could in principle have prevented: a violated precondition | |
+| └ `std::invalid_argument` | An argument that has an impossible value: $R_0 < 0$, a probability of 1.3 | `std::stod("abc")` |
+| └ `std::out_of_range` | An index or key outside the valid range | `std::vector::at`, `std::map::at` |
+| └ `std::domain_error`, `std::length_error` | A value outside a function's mathematical domain; a size that is too large | `std::vector::reserve` (`length_error`) |
+| `std::runtime_error` | Errors that can only be detected while running: a missing file, malformed input, no convergence | |
+| └ `std::range_error`, `std::overflow_error`, `std::underflow_error` | Results that cannot be represented | |
+
+`std::bad_alloc` (from `<new>`) is thrown when memory runs out. Every class has a constructor that takes a message as a `std::string`, and every one provides `what()`.
+
+Two rules about catching:
+
+- **Catch by `const&`.** `catch (const std::exception& e)` binds to the thrown object without copying it. Catching by value, `catch (std::exception e)`, copies only the base-class part (the object is *sliced*), so a `std::invalid_argument` loses its type and, typically, its message.
+- **Order handlers from specific to general.** `catch (const std::invalid_argument&)` must come before `catch (const std::exception&)`, or the general handler would always win. A final `catch (...)` catches anything at all, including types that are not exceptions, but it cannot tell you what was thrown.
+
+<Callout kind="manual" title="Throw exception classes, not strings">
+The course manual throws `std::string` messages and catches them by non-const reference. That works, but it does not fit the standard hierarchy: a `catch (const std::exception&)` in `main` will not catch a string. Throw a class derived from `std::exception`, catch by `const&`, and include `<stdexcept>` for `std::logic_error`, `std::runtime_error` and their relatives.
+</Callout>
+
+### Recoverable and fatal errors
+
+The program below reads a list of scenarios for a Beverton–Holt model (see <Concept id="discrete-time" />): a name, $R_0$, $M$ and $N_0$ on each line. Its input file is
+
+```text
+heathland 1.8 40 5
+meadow -1.5 40 5
+dune 0.7 25 10
+saltmarsh 2.5 0 5
+woodland 3.0 60 -2
+```
+
+<Example file="algorithms/parameter_checks.cpp" mark="22-28,45-52,55-61" />
+
+There are two levels of handling:
+
+- **Recoverable, handled locally.** `validate` (lines 22–28) throws `std::invalid_argument` with a message that names the parameter, the rule and the offending value. The inner `try` (lines 45–52) catches it, records the rejection and moves on to the next scenario. One impossible scenario should not end a sensitivity analysis of a hundred.
+- **Fatal, handled in `main`.** If a line cannot be read at all, `readScenario` throws `std::runtime_error` (line 34), which the inner handler does not catch, because it is not an `invalid_argument`. It propagates to the outer handlers (lines 55–61), which print the message to `std::cerr` and end the program with `EXIT_FAILURE`, so that a calling script knows the run failed. A line such as `grassland 2.0 forty 5` would stop the program with `fatal error: scenario 'grassland': expected three numbers`.
+
+Notice also what is *not* treated as an error: a scenario with $R_0 < 1$ is valid and simply predicts extinction. An exception means "this computation cannot be carried out", not "the result is biologically interesting".
+
+### Validating model parameters on input
+
+Parameters arrive from files, command lines and other people's scripts, so check them where they enter the program, before any simulation runs. Good checks:
+
+- test the biological constraint, not just the type: probabilities in $[0, 1]$, rates and carrying capacities positive, survival out of a stage at most 1 (see <Concept id="matrix-models" />);
+- write `!(x > 0.0)` rather than `x <= 0.0` when a NaN must be rejected too, since every comparison with NaN is false;
+- say in the message which parameter, which value and which rule;
+- add context when you translate a library exception. `std::stod` reports only `stod` as its message; catch it and throw a message that names the parameter:
+
+```cpp
+double parseParameter(const std::string& name, const std::string& text) {
+    try {
+        std::size_t used = 0;
+        const double value = std::stod(text, &used);
+        if (used == text.size()) return value;
+    } catch (const std::exception&) {
+        // std::invalid_argument or std::out_of_range from std::stod
+    }
+    throw std::invalid_argument("parameter " + name + ": '" + text + "' is not a number");
+}
+```
+
+The check `used == text.size()` rejects input such as `2.5x`, which `std::stod` would otherwise read as 2.5 without complaint.
+
+### Ending a program: return, std::exit and std::abort
+
+There are three ways to stop a C++ program, and they differ in what is cleaned up:
+
+- **Returning from `main`** ends the program normally. All local objects are destroyed, open files are flushed and closed, and the return value becomes the exit status (`EXIT_SUCCESS` or `EXIT_FAILURE` from `<cstdlib>`).
+- **`std::exit(status)`** ends the program from anywhere. It destroys objects with static storage duration and flushes the C streams, but it does **not** unwind the stack: local objects of the functions still running are never destroyed. A local `std::ofstream` that still holds buffered output can lose it.
+- **`std::abort()`** ends the program immediately and abnormally, with no clean-up at all. A failed `assert` calls it, and so does `std::terminate` for an uncaught exception.
+
+The program below makes the difference visible. A small `Announcer` object prints a line when it is destroyed:
+
+<Example file="algorithms/exit_versus_throw.cpp" />
+
+The thrown exception destroys both local objects on its way to the handler, innermost first, before the handler runs. After `std::exit`, neither the object in `failByExiting` nor the one in `main` announces anything: they were never destroyed. (The program exits with status 0 only so that it can be run as a test.) The practical rule: in a function, throw; in `main`, catch and `return EXIT_FAILURE`. Reserve `std::exit` for small programs with nothing to clean up, and `std::abort` for situations in which continuing would do harm.
+
+<Callout kind="manual" title="std::exit does not unwind the stack">
+The course manual describes `exit()` as a normal termination that clears all variables. Static objects are indeed destroyed, but local (automatic) objects are not, as the program above shows. Returning from `main` is the clean way to end a program with an error status.
+</Callout>
+
+## Explore it
+
+<Check
+  id="handler-order"
+  kind="predict"
+  question="validate throws std::invalid_argument. Which handler runs?"
+  code={`try {
+    validate(scenario);
+} catch (const std::runtime_error& e) {
+    std::cerr << "A: " << e.what() << '\\n';
+} catch (const std::logic_error& e) {
+    std::cerr << "B: " << e.what() << '\\n';
+} catch (...) {
+    std::cerr << "C\\n";
+}`}
+  options={["A", "B", "C", "None: the exception is not caught and the program terminates"]}
+  answer={1}
+  feedback={[
+    "std::invalid_argument is not derived from std::runtime_error, so this handler does not match.",
+    "std::invalid_argument derives from std::logic_error, and a handler for a base class catches derived classes. It is the first matching handler, so it runs and the others are skipped.",
+    "catch (...) matches anything, but only if no earlier handler matched.",
+    "The logic_error handler matches, so the exception is caught.",
+  ]}
+/>
+
+<Check
+  id="resume"
+  kind="predict"
+  question="What does this fragment print?"
+  code={`try {
+    std::cout << "a ";
+    throw std::runtime_error("no convergence");
+    std::cout << "b ";
+} catch (const std::exception& e) {
+    std::cout << "c ";
+}
+std::cout << "d\\n";`}
+  options={["a b c d", "a c d", "a c b d", "a c"]}
+  answer={1}
+  feedback={[
+    "The statement after throw never runs: the try block is abandoned at the throw.",
+    "a is printed, the throw skips b, the handler prints c, and execution continues after the try–catch construct with d.",
+    "After a handler, execution never returns to the point of the throw.",
+    "The handler does not end the program. Unless it returns or throws again, execution continues after the handlers.",
+  ]}
+/>
+
+<Check
+  id="extinction"
+  kind="model"
+  question="A stochastic simulation of a small population sometimes reaches zero individuals. How should the program treat this?"
+  options={[
+    "Throw std::runtime_error, because a population of zero is an error",
+    "Call std::abort so that the run stops at once",
+    "Treat extinction as a valid outcome: record when it happened and stop or continue that replicate as the experiment requires",
+    "Use assert(N > 0) so that the problem is caught during development",
+  ]}
+  answer={2}
+  feedback={[
+    "Extinction is a result the model is meant to predict, often the very quantity of interest. Exceptions are for computations that cannot be carried out.",
+    "Aborting would discard every other replicate and give no explanation. It is never the right response to a valid outcome.",
+    "The extinction time is data: the fraction of replicates extinct by a given year is a standard model output. Code that depends on a positive population, such as a per-capita rate, should check for zero explicitly.",
+    "An assertion claims that something can never happen in a correct program. Here it can, so the assertion would be wrong, and it would disappear in release builds anyway.",
+  ]}
+/>
+
+<Check
+  id="slicing"
+  kind="debug"
+  question={'validate throws std::invalid_argument("R0 must be positive (got -1.5)"). What is wrong with this handler?'}
+  code={`catch (std::exception e) {
+    std::cerr << "rejected: " << e.what() << '\\n';
+}`}
+  options={[
+    "Nothing: it catches every standard exception and prints its message",
+    "It catches by value, so the exception is sliced to a plain std::exception and the message is usually lost",
+    "std::exception has no what() function",
+    "It should be catch (std::invalid_argument e) to compile",
+  ]}
+  answer={1}
+  feedback={[
+    "It does catch it, but only a copy of the std::exception part. With GCC's library it then prints 'std::exception' instead of the message.",
+    "Copying a derived object into a base-class variable keeps only the base part. Catch by const reference, catch (const std::exception& e), and what() returns the original message.",
+    "what() is a virtual member of std::exception, so every standard exception has it.",
+    "The code compiles as it is. Catching a more specific type by value would keep the message here, but const& is the right habit for every handler.",
+  ]}
+/>
+
+## In biological modelling
+
+A typical simulation program has three layers of error handling:
+
+1. **At the boundary**, where parameters and data enter: validate everything, and throw `std::invalid_argument` or `std::runtime_error` with a precise message.
+2. **In the numerical core**: throw when a method cannot produce an answer, for example when the power method for a projection matrix does not converge within its iteration cap (see <Concept id="power-iteration" />) or a stochastic simulation finds that no event can occur (see <Concept id="gillespie" />).
+3. **In `main`**: catch `const std::exception&`, then `...`, report to `std::cerr` and return `EXIT_FAILURE`.
+
+In between, most code does not need any `try` at all. Exceptions pass through it, and stack unwinding releases what it held.
+
+For a batch of scenarios, decide in advance which errors end the batch and which skip one scenario, and make the program report both. A results file that silently omits the scenarios that failed is itself a silent error.
+
+## Common mistakes
+
+- **Using `assert` for input checks.** It disappears with `NDEBUG`; input can be wrong in any build.
+- **Throwing strings or integers.** They are not caught by `catch (const std::exception&)` and carry no type information.
+- **Catching by value**, which slices the exception.
+- **A general handler before a specific one.** `catch (const std::exception&)` first means `catch (const std::invalid_argument&)` after it never runs.
+- **Swallowing exceptions.** `catch (...) {}` with an empty body hides every error, including the ones you did not anticipate.
+- **Using exceptions for expected outcomes**, such as extinction or reaching the end of a file. Use ordinary control flow for those.
+- **Calling `std::exit` deep inside a program.** Local objects are not destroyed and their buffered output can be lost; throw instead.
+- **Forgetting the message.** "error" helps nobody; "survival out of vegetative exceeds 1" tells the user what to fix.
+
+## Practice
+
+<Practice>
+
+1. The canonical `beverton_holt.cpp` (in <Concept id="discrete-time" />) converts its command-line arguments with `std::stod` and `std::stoi` without catching anything. Predict what happens when it is run as `./beverton_holt two`, then add handling so that the program reports which argument is wrong and returns `EXIT_FAILURE`.
+2. Extend `parameter_checks.cpp` with a *warning*: a scenario with $R_0 > 50$ is biologically possible but suspicious. It should be accepted, with a warning written to `std::clog`. Should this be an exception? Justify your answer.
+3. Write a function `std::size_t stageIndex(const std::string& name)` that returns 0, 1 or 2 for "seedling", "vegetative" and "flowering" and throws `std::out_of_range` for any other name. In `main`, catch the exception and print the list of valid names.
+
+<details>
+<summary>Worked answer for exercise 1</summary>
+`std::stod("two")` throws `std::invalid_argument`. Nothing catches it, so `std::terminate` ends the program with a message such as `terminate called after throwing an instance of 'std::invalid_argument'  what(): stod`, which does not say which argument was wrong. Wrap the conversions in a `try` block, catch `const std::exception&`, and print, for example, `error: R0 ('two') is not a number`. Converting each argument with a helper like `parseParameter` above gives each message its parameter name.
+</details>
+
+<details>
+<summary>Worked answer for exercise 2</summary>
+A warning is not an exception, because nothing has gone wrong: the computation can be carried out, and the user may well mean it. Check the value after `validate`, write `warning: heathland: R0 = 60 is unusually large` to `std::clog`, and continue. An exception would force every caller to handle a situation that needs no handling.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+Compare `name` with each label in turn and return the index of the match; after the loop, `throw std::out_of_range("unknown stage '" + name + "'");`. In `main`, catch `const std::out_of_range&` specifically, so that other errors still reach the general handler.
+</details>
+
+</Practice>

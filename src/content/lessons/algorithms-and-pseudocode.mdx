@@ -1,0 +1,303 @@
+---
+title: Algorithms, decomposition and pseudocode
+summary: Turn a biological question into steps precise enough to code, write them down as pseudocode, and only then translate them into C++.
+level: beginner
+module: 14
+manual: ["M14.1"]
+minutes: 35
+objectives:
+  - Decompose a simulation into named steps until every step can be written as a few statements
+  - Write pseudocode for a model update and translate it line by line into C++
+  - Find the peak of a simulated trajectory with a linear scan
+  - Recognise recurring building blocks (extremes, sums, counts, weighted choice) inside larger models
+references:
+  - "Grimm, V. et al. (2020) The ODD protocol for describing agent-based and other simulation models: a second update. Journal of Artificial Societies and Social Simulation 23(2), 7."
+  - "cppreference.com: std::max_element"
+---
+
+## What it is
+
+An *algorithm* is a finite sequence of unambiguous steps that turns some input into the output you want. "Find the week in which an outbreak peaks" is a question; "look at the weeks one by one and remember the largest count seen so far" is an algorithm that answers it. A C++ program is one particular way of writing that algorithm down so that a computer can carry it out.
+
+It helps to keep three things apart (see <Concept id="programs-and-algorithms" />):
+
+- the **model**: the biological assumptions, usually as equations;
+- the **algorithm**: the procedure that computes what the model predicts;
+- the **implementation**: the code that carries out the procedure.
+
+A model can be computed by several algorithms, and an algorithm can be implemented in any language. This lesson is about the middle layer, and about designing it before you open an editor.
+
+## Why it matters
+
+A computer does exactly what it is told, so every step has to be specified, including the ones that seem too obvious to mention: where the simulation starts, in which order events happen within a year, what happens when a population reaches zero. Writing the algorithm first forces those decisions into the open while they are still cheap to change. A design error found after the code is written is expensive, because other parts of the program have been built on it.
+
+A written algorithm is also something you can discuss. A co-author who does not read C++ can check numbered steps against the biology. A reviewer can check them against the methods section. You can check the code against them, line by line.
+
+## How it works in C++
+
+Designing an algorithm and translating it are two separate activities. The design is done on paper or in plain text. The translation into C++ starts only when every step is clear.
+
+### Decomposition
+
+The core technique is *decomposition*: break the task into a few large steps, then break each step into smaller ones, and stop when every step is either a few lines of code or a standard building block that you already know how to write.
+
+Take an annual plant with a seed bank, censused each spring. Some seeds in the soil germinate; the others stay dormant. A small fraction of seedlings survive to flower, each flowering plant sets seed, and the seed bank (old and new seeds together) loses some seeds over winter. The task "simulate this plant for eight years" decomposes like this:
+
+1. Set the parameters and the initial number of seeds.
+2. Repeat for each year:
+   1. Germination: split the seed bank into seedlings and dormant seeds.
+   2. Establishment: keep the seedlings that survive to flower.
+   3. Seed set: each flowering plant adds new seeds to the bank.
+   4. Winter: old and new seeds survive with the same probability.
+   5. Record the year's numbers.
+
+Each sub-step of step 2 is now a single multiplication. That is the signal to stop decomposing. The *order* of the sub-steps is part of the model: if winter came before seed set, new seeds would escape winter mortality, and the plant would grow faster.
+
+<Anchor id="pseudocode" />
+
+### Pseudocode and flowcharts
+
+*Pseudocode* writes an algorithm in a form halfway between prose and a programming language. It has no compiler and no fixed syntax, but a few conventions keep it readable: name the inputs and outputs, use `←` for "becomes", indent the body of every loop and decision, and use the names of the model's symbols. The seed-bank decomposition in pseudocode:
+
+```text
+Input:  germination fraction g, establishment fraction e,
+        seeds per flowering plant f, winter survival w,
+        initial seed bank S, number of years T
+Output: seedlings, flowering plants and seed bank in every year
+
+for year ← 1 to T do
+    seedlings ← g × S
+    dormant   ← S − seedlings
+    flowering ← e × seedlings
+    newSeeds  ← f × flowering
+    S         ← w × (dormant + newSeeds)
+    record year, seedlings, flowering, S
+```
+
+A *flowchart* draws the same information as boxes for actions, diamonds for decisions and arrows for the flow of control. Flowcharts are clearest for algorithms with branches and loops that exit early; for straight-line arithmetic, pseudocode is shorter. Here is the flowchart of the peak-finding algorithm used later in this lesson:
+
+<figure class="flowchart">
+  <svg viewBox="0 0 400 362" role="img" aria-label="Flowchart: set best to 0 and t to 1. If t is at most T, test whether x[t] is larger than x[best]; if so set best to t. Then increase t by 1 and return to the test of t. When t exceeds T, return best." style={{ width: '100%', maxWidth: '440px', height: 'auto', display: 'block', margin: '0 auto' }}>
+    <defs>
+      <marker id="flow-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L8,4 L0,8 z" fill="currentColor" />
+      </marker>
+    </defs>
+    <g fill="none" stroke="currentColor" strokeWidth="1.3">
+      <rect x="110" y="20" width="140" height="34" rx="4" />
+      <polygon points="180,82 240,112 180,142 120,112" />
+      <rect x="290" y="95" width="100" height="34" rx="17" />
+      <polygon points="180,170 262,202 180,234 98,202" />
+      <rect x="125" y="262" width="110" height="32" rx="4" />
+      <rect x="125" y="320" width="110" height="32" rx="4" />
+      <line x1="180" y1="54" x2="180" y2="81" markerEnd="url(#flow-arrow)" />
+      <line x1="240" y1="112" x2="289" y2="112" markerEnd="url(#flow-arrow)" />
+      <line x1="180" y1="142" x2="180" y2="169" markerEnd="url(#flow-arrow)" />
+      <line x1="180" y1="234" x2="180" y2="261" markerEnd="url(#flow-arrow)" />
+      <line x1="180" y1="294" x2="180" y2="319" markerEnd="url(#flow-arrow)" />
+      <polyline points="262,202 300,202 300,336 236,336" markerEnd="url(#flow-arrow)" />
+      <polyline points="125,336 60,336 60,112 119,112" markerEnd="url(#flow-arrow)" />
+    </g>
+    <g fill="currentColor" fontSize="13" textAnchor="middle" fontFamily="inherit">
+      <text x="180" y="42">best ← 0,  t ← 1</text>
+      <text x="180" y="116">t ≤ T ?</text>
+      <text x="340" y="116">return best</text>
+      <text x="180" y="206" fontSize="12">x[t] &gt; x[best] ?</text>
+      <text x="180" y="282">best ← t</text>
+      <text x="180" y="340">t ← t + 1</text>
+      <text x="264" y="105" fontSize="11">no</text>
+      <text x="194" y="160" fontSize="11">yes</text>
+      <text x="194" y="252" fontSize="11">yes</text>
+      <text x="281" y="195" fontSize="11">no</text>
+    </g>
+  </svg>
+  <figcaption>The linear scan as a flowchart: one decision controls the loop, the other updates the best candidate.</figcaption>
+</figure>
+
+Neither form is better in general. Use whichever lets you, and the people you work with, see the whole algorithm at once.
+
+### From pseudocode to C++
+
+When the pseudocode is complete, the translation is almost mechanical. Each line becomes one statement, `←` becomes `=`, and the loop becomes a `for` loop (see <Concept id="for-loop" />). Comments in the code carry the step names, so the program can be checked against the design:
+
+<Example file="algorithms/seed_bank_cycle.cpp" mark="20-30" />
+
+Every density is an *expected* number per square metre, so fractional plants such as 3.1 flowering plants per square metre are meaningful averages, not errors.
+
+### The whole workflow
+
+The program above is the end of a chain that every model in this atlas follows:
+
+1. **Biological hypothesis.** A seed bank lets the plant carry on although only 5% of its seedlings survive to flower.
+2. **Equations.** Combining the four steps of one year gives the seed bank next spring,
+
+   $$
+   S_{t+1} = w\,\bigl[(1-g)\,S_t + f\,e\,g\,S_t\bigr] = \lambda\,S_t,
+   \qquad \lambda = w\,\bigl[(1-g) + f\,e\,g\bigr],
+   $$
+
+   where $S_t$ is the number of seeds per square metre in spring of year $t$, $g$ the fraction that germinate, $e$ the fraction of seedlings that survive to flower, $f$ the seeds set per flowering plant, and $w$ the fraction of banked seeds that survive the winter. $\lambda$ is the factor by which the seed bank changes each year (dimensionless).
+3. **Algorithm.** The pseudocode above.
+4. **C++ code.** `seed_bank_cycle.cpp`.
+5. **Output.** With $g = 0.3$, $e = 0.05$, $f = 40$ and $w = 0.8$, the equation predicts $\lambda = 0.8 \times (0.7 + 0.6) = 1.04$. The program's seed bank goes from 200 to 208.0 to 216.3: a 4% increase each year, as predicted.
+
+The last comparison matters. A program whose output agrees with a result worked out by hand is far more trustworthy than one that has merely run without errors.
+
+## A minimal example
+
+Many questions about a simulation are questions about its trajectory: when does it peak, when does it fall below a threshold, what is its average? The most common is finding an extreme value. The algorithm is a *linear scan*: pass through the values once, and remember the position of the largest value seen so far.
+
+```text
+Input:  a trajectory x[0], x[1], …, x[T] with at least one value
+Output: the index (time step) of the largest value
+
+best ← 0
+for t ← 1 to T do
+    if x[t] > x[best] then best ← t
+return best
+```
+
+The program below applies it to a simulated outbreak. Each week, $\beta S_t I_t / H$ hosts become infected and a fraction $\gamma$ of the infected recover, where $S_t$ and $I_t$ are the numbers of susceptible and infected hosts in week $t$, $H = 500$ is the (constant) number of hosts, $\beta = 0.9$ is the number of infections one infected host causes per week in a fully susceptible population, and $\gamma = 0.4$ is the fraction of infected hosts that recover each week.
+
+<Example file="algorithms/outbreak_peak.cpp" mark="29-37" />
+
+The function `indexOfMaximum` returns the *index*, which here is the week, rather than the number of infected hosts. The size is then `infected[peak]`. The comment states a precondition: an empty trajectory has no peak, and `values[best]` would read outside the vector. A careful program checks this (see <Concept id="debugging" />).
+
+Sorting the trajectory and taking the last element would also find the largest value, but it does more work than needed and destroys the information you wanted: after sorting, the position of the peak in time is lost.
+
+<Callout kind="tip" title="The standard library version">
+`std::max_element` from `<algorithm>` performs the same scan and returns an iterator to the largest element. `std::distance(v.begin(), std::max_element(v.begin(), v.end()))` gives the index. Writing the loop yourself once is the best way to understand what it does; see <Concept id="standard-algorithms" /> for the library versions.
+</Callout>
+
+### Recurring building blocks
+
+Decomposition keeps arriving at the same small problems. Most of them have a well-known, efficient algorithm that you can reuse:
+
+- **Extremes**: largest or smallest value and where it occurs (the scan above). Peak abundance, the generation of minimum genetic diversity, the hottest day.
+- **Sums and means**: one pass with a running total. Total population over all stages, mean final size over replicates.
+- **Counting with a condition**: one pass with a counter. The number of generations in which the population was below a threshold.
+- **First occurrence**: a scan that stops early. The first year of quasi-extinction.
+- **Weighted choice**: pick an item with probability proportional to its weight, for example a parent in proportion to its fitness. This needs running sums of the weights and a random number; see <Concept id="weighted-lottery" />.
+
+When a step of your design turns out to be one of these, you can stop decomposing it.
+
+## Explore it
+
+Step through the scan on a five-generation trajectory. Watch `best` change only when a larger value appears.
+
+<Trace id="algorithms-and-pseudocode-scan" />
+
+<Check
+  id="ties"
+  kind="predict"
+  question="The comparison in the scan is changed from > to >=. Which index is returned for this trajectory?"
+  code={`const std::vector<double> N{5.0, 9.0, 9.0, 4.0};
+std::size_t best = 0;
+for (std::size_t i = 1; i < N.size(); ++i) {
+    if (N[i] >= N[best]) best = i;
+}`}
+  options={["1", "2", "3", "The loop does not compile with >="]}
+  answer={1}
+  feedback={[
+    "That is what > returns: it keeps the first of several equal maxima. With >= an equal value also replaces the candidate.",
+    "With >=, the tied value at index 2 replaces index 1. The scan now reports the last of several equal maxima. Decide which one your question needs, and write it down in the pseudocode.",
+    "N[3] = 4.0 is smaller than N[best] = 9.0, so it never becomes the candidate.",
+    ">= is an ordinary comparison operator; the code compiles and runs.",
+  ]}
+/>
+
+<Check
+  id="germinate-all"
+  kind="model"
+  question="In the seed-bank model, all seeds germinate in their first spring (g = 1) and every other parameter is unchanged (e = 0.05, f = 40, w = 0.8). What is the annual growth factor λ?"
+  options={["1.04, as before", "1.6", "0.8", "0.56"]}
+  answer={1}
+  feedback={[
+    "λ depends on g: with g = 1 there are no dormant seeds, and every seed takes the gamble of germinating.",
+    "λ = w [(1 − g) + f e g] = 0.8 × (0 + 40 × 0.05 × 1) = 1.6. In a constant environment dormancy lowers growth, because dormant seeds pay winter mortality without reproducing. Its benefit appears only when some years are bad for seedlings, which this deterministic model does not contain. The algorithm made that assumption explicit.",
+    "0.8 is the winter survival w alone. It leaves out the seeds produced by the plants that grew from germinating seeds.",
+    "0.56 = 0.8 × 0.7 is the contribution of dormant seeds when g = 0.3. With g = 1 there are no dormant seeds.",
+  ]}
+/>
+
+<Check
+  id="decompose"
+  kind="read"
+  question="You are designing a grazing step for a plant population. Which of these steps still needs to be decomposed before it can be coded?"
+  options={[
+    "eaten ← grazing fraction × rosettes",
+    "rosettes ← rosettes − eaten",
+    "Choose which individual plants the deer eat, taller plants being more likely to be chosen",
+    "record year, rosettes",
+  ]}
+  answer={2}
+  feedback={[
+    "This is a single multiplication: it can be written as one C++ statement.",
+    "One subtraction, ready to code. (Whether it should come before or after reproduction is a modelling decision, but the step itself is clear.)",
+    "This is a weighted choice without replacement. It decomposes into: compute a weight for each plant from its height, draw a random number, find the plant whose share of the running total contains it, remove that plant, and repeat for as many plants as are eaten.",
+    "Recording output is one output statement.",
+  ]}
+/>
+
+## In biological modelling
+
+Write the pseudocode of a model before writing its code, and keep it. It belongs in the methods section, in the supplementary material, or in an ODD protocol (Overview, Design concepts, Details), the standard way of describing individual-based models. Use the same names in the pseudocode, the code and the paper, so that a reader can follow a symbol from one to the next.
+
+Pay most attention to the *order* of steps within a time step. Whether mortality comes before or after reproduction, or whether all individuals update at once or one by one, changes the predictions of a model, sometimes qualitatively. The lessons on <Concept id="update-rule" /> and <Concept id="update-order" /> return to this.
+
+Decompose until each step is a few statements or a known building block, and no further. The seed-bank program needs only one level of decomposition; an individual-based model may need three or four, and each level often becomes a function.
+
+## Common mistakes
+
+- **Coding before the algorithm is clear.** If you cannot write the step in one sentence of pseudocode, you are not ready to write it in C++.
+- **Ambiguous steps.** "Update the population" hides decisions: which individuals, in which order, using which state? Write the decision down.
+- **Ignoring the edge cases.** What should the scan return for an empty trajectory? What does the model do when a population reaches zero? Decide in the design, not when the program crashes.
+- **Off-by-one counts.** A run of $T$ generations has $T + 1$ states, $x_0$ to $x_T$. The scan starts its comparisons at index 1 because index 0 is the initial candidate.
+- **Doing more work than the question needs.** Sorting to find a maximum, or storing every value when only a running total is needed.
+
+## Practice
+
+<Practice>
+
+1. Write pseudocode for a function that returns the first generation in which a trajectory falls below a quasi-extinction threshold $N_c$, and reports when that never happens. Then translate it into a C++ function.
+2. Seed predation: rodents eat a fraction $p$ of the newly set seeds before they enter the seed bank. Add the step to the pseudocode and to `seed_bank_cycle.cpp`. Derive the new $\lambda$ by hand for $p = 0.25$, then check it against the program's output.
+3. Decompose the task "estimate the average peak week of an outbreak over 200 replicate stochastic simulations" until every step is either one or two statements or one of the building blocks in this lesson. Which building blocks appear?
+
+<details>
+<summary>Worked answer for exercise 1</summary>
+
+```text
+Input:  trajectory x[0], …, x[T]; threshold Nc
+Output: the first t with x[t] < Nc, or "none"
+
+for t ← 0 to T do
+    if x[t] < Nc then return t
+return "none"
+```
+
+In C++, "none" needs a value that cannot be a generation. One option is to return `x.size()`, which is one past the last valid index:
+
+```cpp
+std::size_t firstBelow(const std::vector<double>& x, double threshold) {
+    for (std::size_t t = 0; t < x.size(); ++t) {
+        if (x[t] < threshold) return t;
+    }
+    return x.size();  // never fell below the threshold
+}
+```
+
+The scan stops at the first match, so unlike the maximum it does not always visit every value.
+</details>
+
+<details>
+<summary>Worked answer for exercise 2</summary>
+
+The new step comes between seed set and winter: `newSeeds ← (1 − p) × f × flowering`. Then $\lambda = w\,[(1 - g) + (1 - p)\,f\,e\,g] = 0.8 \times (0.7 + 0.75 \times 0.6) = 0.8 \times 1.15 = 0.92$. The seed bank now shrinks by 8% a year: 200, 184.0, 169.3 and so on. A modest loss of new seed is enough to turn growth into decline.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+At the top level: repeat 200 times (simulate one outbreak; find its peak week), then average. "Find its peak week" is the linear scan; "average" is a running sum divided by the count. The simulation itself needs random numbers and an explicit seed: see <Concept id="random-seeds" />.
+</details>
+
+</Practice>

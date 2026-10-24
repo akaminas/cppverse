@@ -1,0 +1,5 @@
+1. throw
+  destroyed: local object in failByThrowing
+  destroyed: local object in the try block
+  caught: parameter file is incomplete
+2. std::exit

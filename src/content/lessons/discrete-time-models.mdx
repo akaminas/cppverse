@@ -1,0 +1,290 @@
+---
+title: Discrete-time population models
+summary: From a hypothesis about crowding to the Beverton–Holt equation, its update rule, a simulation loop and a trajectory you can verify.
+level: beginner
+module: 14
+manual: ["M14.3", "M5.1"]
+minutes: 50
+objectives:
+  - Distinguish state variables, parameters and initial conditions in a model
+  - Implement a recurrence as an update-rule function
+  - Write a simulation loop that stores the whole trajectory in a std::vector
+  - Verify a simulation against a closed-form solution and interpret its long-run behaviour
+lab: discrete
+references:
+  - "Beverton, R. J. H. and Holt, S. J. (1957) On the Dynamics of Exploited Fish Populations. Fishery Investigations, Series II, 19. London: HMSO."
+  - "May, R. M. (1976) Simple mathematical models with very complicated dynamics. Nature 261, 459–467."
+  - "cppreference.com: std::vector"
+---
+
+## What it is
+
+Many organisms reproduce in a single season each year: annual plants, univoltine insects, salmon, temperate songbirds. For such populations it is natural to count individuals once per generation, at the same point of the life cycle, and to ask how this year's count determines next year's. A *discrete-time model* answers with a rule of the form
+
+$$
+N_{t+1} = f(N_t),
+$$
+
+where $N_t$ is the population size at the census of generation $t$ ($t = 0, 1, 2, \dots$, a whole number) and $f$ summarises everything that happens between two censuses: reproduction, mortality, competition. An equation that gives the next value from the current one is called a *recurrence* or *difference equation*.
+
+The recurrence **is** the model. It is not an approximation of a continuous-time model with a step size of one generation, and there is nothing to make more accurate by taking smaller steps: the model only claims to describe the population at the census. This is different from numerical integration of a differential equation (see <Concept id="odes" />), where a step size is a property of the approximation and not of the biology.
+
+## Why it matters
+
+A discrete-time model is the smallest complete simulation. It has a state that changes, a rule that changes it, and a loop that applies the rule repeatedly, and every model in this atlas is built from the same three parts. In a matrix model the state is a vector of stages; in an individual-based model it is a collection of individuals; in a stochastic model the rule draws random numbers. If you can write, check and interpret the program in this lesson, you can follow every later one.
+
+## How it works in C++
+
+### From a hypothesis to an equation
+
+Start with a hypothesis about the biology. When a population is sparse, each individual leaves on average $R_0$ offspring that survive to the next census. As density rises, individuals compete for food or nest sites, and the number of offspring per individual falls. Competition is *compensatory*: more parents never produce fewer offspring in total; the total levels off at high density.
+
+A simple equation with exactly these properties was proposed for fish stocks by Beverton and Holt:
+
+$$
+N_{t+1} = \frac{R_0\,N_t}{1 + N_t/M}.
+$$
+
+- $N_t$: population size in generation $t$ (individuals, or individuals per unit area).
+- $R_0$: number of surviving offspring per individual at very low density, per generation (dimensionless, $R_0 > 0$).
+- $M$: the density at which the number of offspring per individual is halved (same units as $N$, $M > 0$).
+
+The per-capita growth factor is $R_0 / (1 + N_t/M)$. It equals $R_0$ when $N_t$ is near zero, $R_0/2$ when $N_t = M$, and keeps falling as $N_t$ grows, while the total $N_{t+1}$ approaches $R_0 M$ but never exceeds it. If $R_0 > 1$, the population settles at the equilibrium where the growth factor is exactly 1:
+
+$$
+\frac{R_0}{1 + K/M} = 1 \quad\Longrightarrow\quad K = (R_0 - 1)\,M.
+$$
+
+If $R_0 \le 1$, even a sparse population fails to replace itself and declines to zero.
+
+<Anchor id="state" />
+
+### State, parameters and initial conditions
+
+Before writing code, sort every quantity in the model into one of three roles:
+
+| Role | Meaning | In this model |
+|---|---|---|
+| **State variable** | What changes over time and must be remembered from one step to the next | $N_t$ |
+| **Parameter** | Fixed during a run; describes the biology or the environment | $R_0$, $M$ |
+| **Initial condition** | The value of the state at $t = 0$ | $N_0$ |
+
+The number of generations to simulate, $T$, is a setting of the experiment rather than part of the biology.
+
+The test for a state variable is: *do I need to know this to compute the next generation, and does it change?* If next year's population depended on last year's as well, or on the age of each individual, those quantities would be part of the state too, and the state would become a vector (see <Concept id="matrix-models" />).
+
+In C++ the distinction becomes visible. Parameters are `const`: the compiler then refuses any attempt to change them. The state is an ordinary variable that the loop overwrites. Here is the whole model in its simplest form:
+
+<Example file="algorithms/bh_first_simulation.cpp" mark="9-12" />
+
+Step through it to see the state change while the parameters stay put:
+
+<Trace id="discrete-time-models-first" />
+
+<Anchor id="update-rule" />
+
+### The update rule
+
+The line `N = R0 * N / (1.0 + N / M);` is the model. In a program that will grow, it deserves a name of its own. An *update rule* is a function that takes the current state and the parameters and returns the next state:
+
+<Example file="algorithms/beverton_holt.cpp" mark="14-24" />
+
+Lines 14–19 gather the parameters in a <Concept id="structs">struct</Concept> with default values, so that they travel together and the function signature stays short. Lines 21–24 are the update rule. It is a direct transcription of the equation, it changes nothing outside itself, and it returns the new state. That has practical consequences:
+
+- **You can test it alone.** With $N = M$ the growth factor must be $R_0/2$, so `nextGeneration(40.0, p)` must return $2.2 \times 40 / 2 = 44$.
+- **You can check it against the paper.** The equation lives in exactly one place.
+- **You can replace it.** A different hypothesis about density dependence means a different function, and the rest of the program stays as it is.
+
+The state is passed by value (a `double` is cheap to copy) and the parameters by `const&` (see <Concept id="const-reference" />). The parentheses in `(1.0 + N / p.M)` matter: without them, C++ would divide by 1 and then add `N / p.M`.
+
+<Anchor id="simulation-loop" />
+
+### The simulation loop
+
+The rule is applied repeatedly in `simulate` (lines 26–37). In pseudocode:
+
+```text
+N ← N0
+store N
+for t ← 0 to T − 1 do
+    N ← nextGeneration(N)
+    store N
+```
+
+Each pass of the `for` loop is one generation (see <Concept id="for-loop" />). The trajectory is kept in a `std::vector<double>` (see <Concept id="std-vector" />): `push_back` appends one state per generation, so after $T$ generations the vector holds the $T + 1$ states $N_0, N_1, \dots, N_T$. `reserve` (line 29) only tells the vector how much room to set aside; it does not change its contents.
+
+Storing the whole trajectory, rather than printing as you go, separates *running* the model from *analysing* it. The finished trajectory can be scanned for its peak, compared with a closed form, or written to a file (see <Concept id="trajectory-output" />). `main` does exactly that: it reads optional parameters from the command line (lines 41–44, see <Concept id="command-line" />), refuses impossible values (lines 46–49), runs the simulation and prints a CSV table. With the default parameters the output begins
+
+```text
+generation,N
+0,5
+1,9.77777777778
+2,17.2857142857
+3,26.5536159601
+```
+
+and, by generation 30, reads `47.999999978`: the population has all but reached $K = (2.2 - 1) \times 40 = 48$.
+
+## Explore it
+
+Select a term of the equation to see the code that implements it, or a line of code to see which part of the model it is.
+
+<MathCode id="discrete-time-models-bh" />
+
+### Verification against the exact solution
+
+Before trusting a simulation, compare it with something known independently. For the Beverton–Holt model, the substitution $x_t = 1/N_t$ turns the recurrence into a linear one, $x_{t+1} = x_t / R_0 + 1/(R_0 M)$, which can be solved by hand. For $R_0 \ne 1$ the result is
+
+$$
+N_t = \frac{K\,N_0}{N_0 + (K - N_0)\,R_0^{-t}}, \qquad K = (R_0 - 1)\,M.
+$$
+
+The simulation and the formula agree to within rounding error:
+
+<Figure id="bh-verification" />
+
+Agreement here does not prove the program correct for every model you will write, but it does show that the update rule, the loop and the storage work together as intended. That is worth knowing before you change the rule to one without a closed form.
+
+### Qualitative behaviour
+
+Whatever the starting size, a Beverton–Holt population approaches its equilibrium smoothly, without overshooting, or declines to zero if $R_0 < 1$:
+
+<Figure id="bh-trajectories" />
+
+The smooth approach is a consequence of compensation: because $N_{t+1}$ increases with $N_t$, a population below $K$ can never jump above it. Change the hypothesis, and the dynamics change. If crowding is so severe that a dense population produces *fewer* offspring than a moderate one (overcompensation), the rule becomes hump-shaped. The best-known example is the discrete logistic map, $x_{t+1} = r\,x_t\,(1 - x_t)$, where $x_t$ is density scaled so that $x = 1$ means no offspring survive, and $r$ (dimensionless) is the maximum growth factor. With the same loop and a different update rule, it settles to a steady state, alternates in a two-generation cycle, or fluctuates without ever repeating:
+
+<Figure id="logistic-map-regimes" />
+
+May (1976) used this example to show that very simple deterministic models can produce apparently random fluctuations. For a modeller, the lesson is practical: the long-run behaviour of a discrete-time model depends on the shape of its update rule, so look at trajectories before reporting an equilibrium.
+
+### The laboratory
+
+Change $R_0$, $M$ and $N_0$ and watch the trajectory respond. Predict the equilibrium before each run, and check it against $K = (R_0 - 1)\,M$.
+
+<Lab id="discrete" />
+
+<Check
+  id="state-role"
+  kind="model"
+  question="A model of a harvested fish stock has the number of adults N(t), the spawning success R0, the fraction h of adults harvested each year, and the number of years T to simulate. Which of these must the program store and update from one year to the next?"
+  options={["N(t) and h", "N(t) only", "N(t), R0 and h", "Nothing: the update rule recomputes everything from the parameters"]}
+  answer={1}
+  feedback={[
+    "h is a parameter: it is the same in every year of the run. If the harvest rate changed from year to year according to a rule of its own, it would become a state variable.",
+    "Only the population size changes and is needed to compute the next year. R0 and h are parameters; T is a setting of the run.",
+    "R0 and h describe the biology and the management, but they do not change during the run. Making them const turns an accidental change into a compiler error.",
+    "The update rule needs the current state as input. Without N(t) there is nothing to compute N(t+1) from.",
+  ]}
+/>
+
+<Check
+  id="equilibrium"
+  kind="predict"
+  question="With R0 = 3 and M = 20, at what size does a Beverton–Holt population with N0 = 1 eventually settle?"
+  options={["20", "40", "60", "It grows without bound, because R0 > 1"]}
+  answer={1}
+  feedback={[
+    "20 is M, the density at which the per-capita growth factor is halved to 1.5. The population still grows there.",
+    "At equilibrium the growth factor R0 / (1 + K/M) equals 1, so K = (R0 − 1) M = 2 × 20 = 40.",
+    "60 = R0 × M is the ceiling that N(t+1) approaches for very large N(t). A population starting below K never gets there.",
+    "R0 > 1 means a sparse population grows. Density dependence then reduces the growth factor until it reaches 1.",
+  ]}
+/>
+
+<Check
+  id="vector-size"
+  kind="predict"
+  question="How many values does this vector hold when T = 30?"
+  code={`std::vector<double> trajectory{N0};
+double N = N0;
+for (int t = 0; t <= T; ++t) {
+    N = nextGeneration(N, p);
+    trajectory.push_back(N);
+}`}
+  options={["30", "31", "32", "It depends on the parameters"]}
+  answer={2}
+  feedback={[
+    "The vector starts with one element, N0, before the loop adds anything.",
+    "31 values (N0 to N30) is what the model intends, and what a loop condition of t < T would give. With <= the loop runs once more.",
+    "N0 plus 31 passes of the loop (t = 0, 1, …, 30): an off-by-one error that silently simulates one generation too many.",
+    "The number of passes depends only on the loop header, not on R0, M or N0.",
+  ]}
+/>
+
+<Check
+  id="not-ode"
+  kind="interpret"
+  question="A colleague suggests running the Beverton–Holt program with 'half-generation steps' to make it more accurate. What is the best reply?"
+  options={[
+    "Agreed: like Euler's method, the error shrinks with the step size",
+    "The recurrence is the model of a population censused once per generation, so a half-generation step has no meaning in it",
+    "It would be more accurate, but twice as slow",
+    "Only if R0 is close to 1",
+  ]}
+  answer={1}
+  feedback={[
+    "That reasoning applies to a numerical approximation of a differential equation. Here there is no underlying continuous equation being approximated.",
+    "The model makes claims only about successive censuses. Applying 'half' of the rule twice is a different model, not a more accurate version of this one. If reproduction is continuous, a differential equation is the right model to begin with.",
+    "There is no approximation error to reduce: the program already computes the model's prediction exactly, up to rounding.",
+    "The value of R0 does not change what the model means.",
+  ]}
+/>
+
+## In biological modelling
+
+A discrete-time model fits populations that breed in distinct seasons with little overlap between generations, censused at the same point of each cycle. It fits less well when reproduction and death go on all the time, as in many microbes or in humans, where a differential equation is the natural description. The census point is part of the model: counting before breeding or after breeding changes what $N_t$ and $R_0$ mean, and therefore how they are estimated from data.
+
+The program structure carries over to every later model:
+
+- a **state** (here one number; later a vector of stages or a list of individuals);
+- **parameters**, gathered in a struct and treated as `const`;
+- an **update rule**, one function that maps the state at $t$ to the state at $t+1$;
+- a **loop** that applies the rule and stores the trajectory;
+- **output** of the trajectory for analysis, separate from the simulation.
+
+Keep verification in the workflow from the start. A closed-form solution exists here; in models without one, check the equilibrium, a special case ($R_0 = 1$ gives $N_t = N_0 / (1 + N_0 t / M)$), or conservation laws. The lesson on <Concept id="verification" /> develops this.
+
+## Common mistakes
+
+- **Storing a density in an `int`.** `int N` truncates every generation, and `N / M` with two integers is integer division. Both run without complaint and give wrong trajectories (see <Concept id="integer-division" />).
+- **Changing a parameter inside the loop.** If $R_0$ is modified by accident, every later generation uses the wrong model. Declare parameters `const` and let the compiler guard them.
+- **Off-by-one runs.** $T$ generations give $T + 1$ states. Decide whether the loop counts generations simulated or states stored, and test it with $T = 0$ and $T = 1$.
+- **Missing parentheses.** `R0 * N / 1.0 + N / M` is $(R_0 N / 1) + N/M$, a different model that grows without bound.
+- **Overwriting the state too early.** With one state variable this cannot happen; with two or more, updating one before the other has used its old value changes the model. See <Concept id="update-order" />.
+- **Reporting an equilibrium from one short run.** Look at the whole trajectory: a slowly approached equilibrium, a cycle and chaos can look alike over a few generations.
+
+## Practice
+
+<Practice>
+
+1. **A different hypothesis.** The Ricker model, $N_{t+1} = N_t \exp[r(1 - N_t/K)]$, describes overcompensating density dependence ($r$: dimensionless growth parameter; $K$: equilibrium density). Write `nextGenerationRicker` and run it with $K = 100$, $N_0 = 10$ for $r = 0.8$, $1.8$, $2.3$ and $2.9$. Describe each trajectory after 50 generations.
+2. **Built-in verification.** Extend `beverton_holt.cpp` so that it also prints the closed-form value for every generation and, at the end, the largest absolute difference between simulation and formula. Then make the program handle $R_0 = 1$ correctly.
+3. **Harvesting.** A fraction $h$ of the offspring is harvested every year before the census, so $N_{t+1} = (1 - h)\,R_0 N_t / (1 + N_t/M)$. Derive the new equilibrium and the largest harvest fraction the population can sustain. Check both with a simulation for $R_0 = 2.2$, $M = 40$.
+
+<details>
+<summary>Hint for exercise 1</summary>
+Only the update rule changes; `simulate` and the output stay the same, which is the point of writing the rule as a function. Use `std::exp` from `<cmath>`. Expect a monotone approach to 100, damped oscillations around 100, a two-generation cycle, and irregular fluctuations, in that order.
+</details>
+
+<details>
+<summary>Worked answer for exercise 2</summary>
+
+Add a function for the closed form and compare inside the output loop:
+
+```cpp
+double exactSolution(double t, const Parameters& p) {
+    if (p.R0 == 1.0) return p.N0 / (1.0 + p.N0 * t / p.M);
+    const double K = (p.R0 - 1.0) * p.M;
+    return K * p.N0 / (p.N0 + (K - p.N0) * std::pow(p.R0, -t));
+}
+```
+
+Track `std::max(worst, std::abs(N[t] - exactSolution(t, p)))` over all generations. With the defaults the largest difference is about $10^{-14}$ individuals, which is rounding error in the last bits of a `double`. Comparing `p.R0 == 1.0` exactly is acceptable here because the value is either typed as 1 or not; it would not be for a computed value.
+</details>
+
+<details>
+<summary>Worked answer for exercise 3</summary>
+Harvesting multiplies $R_0$ by $(1 - h)$, so the equilibrium becomes $K_h = [(1 - h)R_0 - 1]\,M$. The population persists only if $(1 - h) R_0 > 1$, that is $h < 1 - 1/R_0$. For $R_0 = 2.2$ this is $h < 0.545$; with $h = 0.3$ the equilibrium is $(0.7 \times 2.2 - 1) \times 40 = 21.6$. A simulation with $h = 0.6$ declines towards zero.
+</details>
+
+</Practice>

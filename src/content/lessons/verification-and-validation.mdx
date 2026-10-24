@@ -1,0 +1,236 @@
+---
+title: Verification and validation
+summary: Does the code implement the model, and does the model describe the system? Benchmarks, invariants, convergence and statistical tests, then data.
+level: intermediate
+module: null
+manual: []
+minutes: 45
+objectives:
+  - Distinguish verification (code against model) from validation (model against nature)
+  - Verify simulations against closed-form solutions, invariants, convergence orders and exact statistical results
+  - Write a self-checking test program and interpret a statistical test of a stochastic simulation
+  - Describe how models are validated against data, and what validation can and cannot establish
+standard: c++17
+references:
+  - "Oberkampf, W. L. & Roy, C. J. (2010). Verification and Validation in Scientific Computing. Cambridge University Press."
+  - "Grimm, V. et al. (2005). Pattern-oriented modeling of agent-based complex systems: lessons from ecology. Science 310: 987–991."
+  - "Burnham, K. P. & Anderson, D. R. (2002). Model Selection and Multimodel Inference, 2nd ed. Springer."
+  - "Kendall, D. G. (1948). On the generalized ‘birth-and-death’ process. Annals of Mathematical Statistics 19: 1–15."
+---
+
+## What it is
+
+Two different questions stand between a simulation and a scientific claim:
+
+- **Verification**: does the code implement the model correctly? This is a question about mathematics and software. It can be answered without any data from nature.
+- **Validation**: does the model describe the biological system well enough for its purpose? This is a question about nature, and only data can answer it.
+
+A common shorthand is that verification asks "are we solving the equations right?" and validation asks "are we solving the right equations?". The order matters. A model cannot be validated with code that does not implement it: if a simulation disagrees with data, you need to know that the disagreement comes from the model, not from a bug.
+
+## Why it matters
+
+Simulation code fails silently. A program with a wrong sign, a sequential update where a simultaneous one was intended, or a step size that is too large still produces plausible-looking curves. The host–parasitoid example of <Concept id="update-order" /> is the cautionary tale: one reordered line turns persistent cycles into a stable equilibrium, and nothing in the output looks wrong.
+
+Verification is how you earn the right to interpret the output. It also protects against a subtler failure: a bug that pushes results towards what you expected is far less likely to be found than one that does the opposite, because nobody investigates a result they like.
+
+## How it works in C++
+
+Every verification test compares the simulation with something known *independently of the code*. There are five main kinds.
+
+### Closed-form benchmarks
+
+Some models, or special cases of them, have exact solutions. The Beverton–Holt recurrence $N_{t+1} = R_0 N_t / (1 + N_t/M)$ has one:
+
+$$
+N_t = \frac{K N_0}{N_0 + (K - N_0)\,R_0^{-t}}, \qquad K = (R_0 - 1)\,M ,
+$$
+
+where $N_t$ is the population in generation $t$, $R_0$ the growth factor at low density, $M$ the density at which that factor is halved, and $K$ the equilibrium. A correct implementation agrees with it to rounding error, about $10^{-15}$ relative:
+
+<Figure id="bh-verification" />
+
+The logistic ODE, $dN/dt = rN(1 - N/K)$, has the exact solution $N(t) = K N_0 e^{rt} / \big(K + N_0 (e^{rt} - 1)\big)$, which <Concept id="euler" /> and <Concept id="runge-kutta" /> use as their benchmark. Test as many parameter regimes as the formula covers: growth and decline, small and large initial values.
+
+### Invariants and assertions
+
+An *invariant* is a property that must hold at every step. Population sizes are never negative. In the SIR model in proportions, $S + I + R = 1$ at all times, because infection and recovery only move individuals between classes; the example program `ode/sir_rk4.cpp` records the largest drift of this sum. In a stochastic simulation, every event must change the state by exactly its stoichiometry.
+
+The cheapest way to check an invariant is an `assert` (<Concept id="debugging" />): `assert(N >= 0.0);` stops the program with a message if the condition is ever false. Assertions document assumptions and catch violations where they happen, not thousands of steps later. They are removed when the program is compiled with `-DNDEBUG`, so never put code with side effects inside one.
+
+Choose invariants that a bug would actually break. Every Runge–Kutta method preserves linear invariants such as $S + I + R$ exactly, apart from rounding, whatever the step size. The SIR conservation check therefore catches a wrong right-hand side, such as a term missing from one equation, but says nothing about whether the step is small enough. For that you need the next test.
+
+### Convergence order
+
+A numerical method of order $p$ has a global error that shrinks like $C h^p$ as the step $h$ shrinks (<Concept id="numerical-error" />). This prediction is a powerful test: halving $h$ should divide the error by $2^p$. The *observed order* from errors $E(h)$ and $E(h/2)$ is
+
+$$
+p_{\text{obs}} = \log_2 \frac{E(h)}{E(h/2)} .
+$$
+
+<Figure id="verification-and-validation-convergence" />
+
+On logarithmic axes the three methods give straight lines of slopes 1, 2 and 4. A method whose observed order is wrong is wrong, even if its answers look reasonable: an "RK4" that converges at order 2 contains a mistake in its stages. The test needs the exact solution, or a reference solution computed with a much smaller step. Very large steps are outside the asymptotic regime (Euler's observed order at $h = 1$ is not 1), and very small steps hit rounding error, so test in between.
+
+### Statistical tests against exact results
+
+A stochastic simulation never reproduces an exact result exactly; it should agree with it *within sampling error*. For the linear birth–death process with birth rate $b$ and death rate $d$ per individual, Kendall (1948) derived the probability that a population started from $N_0$ individuals is extinct by time $t$:
+
+$$
+p_0(t) = \left[\frac{d\,\big(e^{(b-d)t} - 1\big)}{b\,e^{(b-d)t} - d}\right]^{N_0}, \qquad b \ne d .
+$$
+
+If $n$ independent replicates give an observed fraction $\hat{p}$ of extinct populations, the standardised difference
+
+$$
+z = \frac{\hat{p} - p_0}{\sqrt{p_0 (1 - p_0)/n}}
+$$
+
+is approximately standard normal when the code is correct. Values of $|z|$ above 2 happen about one time in twenty by chance; values above 4 almost never (about six times in a hundred thousand). The figure tests the extinction fraction at twenty time points:
+
+<Figure id="verification-and-validation-kendall" />
+
+The example program `stochastic/birth_death_gillespie.cpp` (<Concept id="gillespie" />) makes the same comparison for the mean and the extinction probability at one time. Two details make such tests trustworthy. Fix the seed, so that a failing test can be rerun and debugged. And set the threshold before looking: with many tests, some will exceed 2 by chance, so a test suite that must pass every time uses a threshold of 4 or more, together with enough replicates that a real bug would produce a much larger $z$.
+
+### A self-checking test program
+
+Tests are most useful when they run automatically after every change. This program bundles several checks, prints a line for each, and returns a failure status if any fails, so that a build script can stop:
+
+<Example file="inference/verify_models.cpp" mark="30-40,65-73" />
+
+Each test has a tolerance chosen in advance: $10^{-10}$ relative for an exact formula evaluated in floating point, 0.1 for an observed order. The output is fully deterministic, so it can itself be compared with a stored copy: a *regression test* (<Concept id="testing-reproducibility" />).
+
+### Independent re-implementation
+
+A strong form of verification is to implement the same model twice, independently, and compare. This site does it: every model in the browser laboratories is written in TypeScript, and the C++ example programs implement the same models separately. A script, `scripts/compare-cpp-benchmarks.ts`, compiles and runs the C++ programs and compares their output with the TypeScript code and with the exact results.
+
+The comparison is honest about what each kind of model allows:
+
+- **Deterministic models** (Beverton–Holt, host–parasitoid, the stage matrix, the ODE integrators) must agree closely: typically to a relative tolerance of $10^{-9}$, and elsewhere to the number of digits a program prints. They are not required to agree to the last bit, because the two languages may evaluate `exp` and `pow` slightly differently and accumulate rounding in different orders; but any real difference in the model would be many orders of magnitude larger.
+- **Stochastic models** are never compared trajectory by trajectory. The browser uses a different generator (`xoshiro128**`) from the C++ programs (`std::mt19937_64`), and C++ standard libraries are free to implement distributions differently. Instead, the means and extinction fractions of both must lie within four standard errors of Kendall's exact values, and the individual-based model must approach its mean-field limit.
+
+Re-implementation catches coding errors well. It is weaker against conceptual errors: two programs written from the same misunderstanding agree perfectly. If both implementations update hosts before parasitoids, they will agree on the wrong dynamics. That is why re-implementation complements, rather than replaces, tests against independent mathematics.
+
+## Explore it
+
+<Check
+  id="v-or-v"
+  kind="interpret"
+  question="Which of these is a validation test rather than a verification test?"
+  options={[
+    "The simulated extinction fraction agrees with Kendall’s formula within two standard errors",
+    "Halving the step size divides the RK4 error by about 16",
+    "The model, fitted to counts from 2001–2015, predicts the counts from 2016–2020 within their observation error",
+    "The C++ and TypeScript implementations agree to a relative tolerance of 10⁻⁹",
+  ]}
+  answer={2}
+  feedback={[
+    "Kendall’s formula is a mathematical property of the model itself. Agreement shows that the code implements the model, not that the model describes any real population.",
+    "This tests the numerical method against its theory: verification. It says nothing about whether logistic growth describes the organism.",
+    "Correct. Only a comparison with observations of the real system can validate a model, and a prediction of data not used in fitting is among the strongest such comparisons.",
+    "Two implementations of the same model agreeing is verification: both could implement a model that is biologically wrong.",
+  ]}
+/>
+
+<Check
+  id="z-score"
+  kind="interpret"
+  question="From 20,000 replicates, a Gillespie program finds an extinction fraction of 0.1590; Kendall’s formula gives 0.1539, and the standard error is 0.0026. What should you conclude?"
+  options={[
+    "The program has a bug: it disagrees with the exact result",
+    "z ≈ 2: weak evidence at most. Rerun with another seed or more replicates before suspecting a bug",
+    "The formula must be wrong, because 20,000 replicates is a large sample",
+    "Nothing, because stochastic simulations cannot be verified",
+  ]}
+  answer={1}
+  feedback={[
+    "A difference of two standard errors occurs by chance about once in twenty tests. It is not, on its own, evidence of a bug.",
+    "Correct. z = (0.1590 − 0.1539)/0.0026 ≈ 2.0. If a rerun with a different seed and four times the replicates gives a z near 0, the first result was chance; if z grows to about 4, the difference is systematic and needs investigating.",
+    "Kendall’s formula is an exact mathematical result for this model. A large sample makes the simulated fraction precise, but a precise estimate can still differ from the truth by chance or by a bug.",
+    "They can: through statistical comparison with exact results, as here, with tolerances expressed in standard errors.",
+  ]}
+/>
+
+<Check
+  id="order-bug"
+  kind="debug"
+  question="A student’s fourth-order Runge–Kutta integrator gives an error of 4.0 × 10⁻³ at h = 0.1 and 1.0 × 10⁻³ at h = 0.05 on the logistic equation. What does this suggest?"
+  options={[
+    "The integrator is fine: the error is small and decreasing",
+    "The integrator behaves like a second-order method, so one of its stages or weights is probably wrong",
+    "The step size is too small, so rounding error dominates",
+    "The logistic equation is too simple to test RK4",
+  ]}
+  answer={1}
+  feedback={[
+    "Small and decreasing is not enough. The test is the rate: RK4 should divide the error by about 16 when h is halved.",
+    "Correct. The observed order is log₂(4.0/1.0) = 2. A correct RK4 gives about 4 in this range. Typical causes are a stage evaluated at the wrong point or weights other than 1, 2, 2, 1 over 6.",
+    "Rounding error would make the error stop decreasing or fluctuate; it would not produce a clean factor of 4. And errors of 10⁻³ are far above rounding level.",
+    "Its exact solution makes it an excellent test. Any correct fourth-order method shows order 4 on it.",
+  ]}
+/>
+
+## In biological modelling
+
+<Anchor id="validation" />
+
+### Validation: does the model describe the system?
+
+Verification ends with a model you can trust to mean what it says. Validation asks whether what it says is true of the organisms. There is no single test, and a model is never validated in general, only for a purpose: a model adequate for predicting the size of a fish stock next year may be useless for predicting its response to a doubling of fishing effort.
+
+**Comparing with data.** The most direct test compares model output with observations of the quantities the model predicts. For a stochastic model the comparison is distributional: observed data should look like one plausible replicate, so ask where the observations fall among the replicate distribution, not whether they match the mean. Include observation error: counts of animals are themselves noisy estimates.
+
+**Pattern-oriented modelling.** A model that reproduces one pattern, such as a population time series, may do so for the wrong reasons; with enough parameters, many structures can fit one curve. Grimm and colleagues (2005) argue for testing a model against *several* patterns observed at different levels and scales at once, for example a population's size, its spatial distribution and its age structure. Each pattern rules out some model structures and parameter values. A model that reproduces several patterns it was not tuned to is much more credible.
+
+**Out-of-sample tests.** A model fitted to data will match those data to some degree almost regardless of its truth. The stronger test is prediction of data not used in fitting: later years, another site, another treatment. The shift from fitting to predicting is the single most informative step in validation.
+
+**Model comparison.** Often the question is not "is this model true?" but "which of these models is better supported?". When models are fitted by maximum likelihood, information criteria trade goodness of fit against complexity. Akaike's criterion is
+
+$$
+\mathrm{AIC} = 2k - 2 \ln \hat{L},
+$$
+
+where $k$ is the number of estimated parameters and $\hat{L}$ the maximised likelihood of the data under the model. Lower is better; differences of a few units matter, and the absolute value does not. The Bayesian information criterion, $\mathrm{BIC} = k \ln n - 2\ln\hat{L}$ for $n$ observations, penalises parameters more heavily. For many stochastic simulation models the likelihood cannot be written down; approximate Bayesian computation and synthetic likelihood methods then compare simulated and observed summary statistics instead.
+
+### What validation can and cannot establish
+
+Validation can show that a model is *adequate* for a purpose, within a range of conditions, and better supported than named alternatives. It cannot show that a model is *true*. Agreement with data is consistent with many models, including ones nobody has thought of, and a model validated under present conditions may fail under conditions it was never tested against. Disagreement is more informative than agreement: once verification has excluded bugs, a mismatch with data points to a missing or mistaken process, which is often the most interesting result a model produces.
+
+Report validation as what was done: which data, which patterns, which alternatives, and how the model performed. Readers can then judge for themselves how far to trust the model's predictions (<Concept id="interpretation" />).
+
+## Common mistakes
+
+<Callout kind="pitfall" title="Tuning the test until it passes">
+If a statistical test fails, it is tempting to try another seed, then another, until one passes. That turns a test into a ritual. Fix the seed and threshold in advance; if the test fails, investigate; if it was chance, you will see the next time with more replicates.
+</Callout>
+
+- **Testing only the default parameters.** Many bugs appear only in some regimes, such as $R_0 \lt 1$, an empty population, or a step size near the stability limit. Test edge cases deliberately.
+- **Tolerances that are too loose.** A tolerance of 1 % on a closed form evaluated in double precision would pass a large class of real errors. Match the tolerance to the expected error.
+- **Calling calibration validation.** Adjusting parameters until the model matches data is fitting. The same data cannot then serve as an independent test.
+- **Validating the mean of a stochastic model.** A model whose mean matches observed averages may still have the wrong variance, the wrong extinction risk or the wrong autocorrelation.
+
+## Practice
+
+<Practice>
+
+1. Add a test to `verify_models.cpp` that checks the observed order of a fourth-order Runge–Kutta step on the logistic equation. Which pair of step counts gives an observed order within 0.1 of 4, given that very small steps reach rounding error?
+2. Add $R_0 = 1$ to the list of growth factors in `verify_models.cpp`. The test fails. Explain why, and fix the closed form using the special case $N_t = N_0 / (1 + N_0 t / M)$.
+3. Run `birth_death_gillespie.cpp` with ten different seeds and 2000 replicates each, and compute $z$ for the extinction fraction in each run. How many values of $|z|$ above 2 do you expect? How many do you see?
+4. A colleague fits the Beverton–Holt model to 15 years of counts of a laboratory population and reports an excellent fit. Design a validation that would convince a sceptical reviewer: which data would you hold back, which alternative model would you compare it with, and what result would make you doubt the model?
+
+<details>
+<summary>Hint for exercise 1</summary>
+RK4 errors on this problem are about $10^{-4}$ at $h = 0.25$ and fall sixteenfold per halving, so they approach rounding level, around $10^{-13}$, only near $h \approx 0.002$. The figure shows that every pair from $h = 1/2$ to $h = 1/32$ (20 to 320 steps over ten days) gives an observed order within 0.1 of 4.
+
+</details>
+
+<details>
+<summary>Worked answer for exercise 2</summary>
+At $R_0 = 1$ the equilibrium is $K = 0$, and the general formula becomes $0 \cdot N_0 / (N_0 - N_0) = 0/0$, which is NaN in floating point. Every comparison with NaN is false, so the test reports FAIL, which is the right outcome for a broken benchmark. With $R_0 = 1$ the recurrence is $1/N_{t+1} = 1/N_t + 1/M$, so $N_t = N_0/(1 + N_0 t/M)$; add `if (R0 == 1.0) return N0 / (1.0 + N0 * t / M);` at the top of `bevertonHoltExact`.
+</details>
+
+<details>
+<summary>Hint for exercise 4</summary>
+Fit to the first ten years, predict the last five, and judge the predictions against the observation error. Compare with a model of a different shape, for example the Ricker model $N_{t+1} = N_t e^{r(1 - N_t/K)}$, which can overshoot its equilibrium, using AIC on the fitting years and prediction error on the held-out years. Systematic misses in the held-out years, such as overshoots the Beverton–Holt model cannot produce, would be strong evidence against it.
+</details>
+
+</Practice>

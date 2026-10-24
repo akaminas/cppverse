@@ -1,0 +1,301 @@
+---
+title: Designing simulation experiments
+summary: Turn a scientific question into a computational experiment with factors, levels, controls, replicates, recorded seeds and metadata.
+level: intermediate
+module: null
+manual: ["M16.1"]
+minutes: 40
+objectives:
+  - Translate a biological question into response variables, factors and levels
+  - Choose between one-factor-at-a-time, full factorial and Latin hypercube designs, and budget the runs
+  - Give every replicate a distinct, recorded seed derived with std::seed_seq
+  - Write a driver program that runs a whole design and records metadata with the output
+standard: c++17
+lab: gillespie
+references:
+  - "Kleijnen, J. P. C. (2015). Design and Analysis of Simulation Experiments, 2nd ed. Springer."
+  - "McKay, M. D., Beckman, R. J. & Conover, W. J. (1979). A comparison of three methods for selecting values of input variables in the analysis of output from a computer code. Technometrics 21: 239–245."
+  - "cppreference.com: std::seed_seq and std::mersenne_twister_engine"
+---
+
+## What it is
+
+A simulation model is a laboratory in which you control everything: the rules, the parameters, the starting state and even the randomness. A *simulation experiment* is a planned set of runs of that model, chosen so that their output answers a question. Running the model "a few times with different values" is not an experiment; deciding in advance which values, how many runs, and what you will measure is.
+
+Every computational experiment has the same parts as a field or bench experiment:
+
+| Part | In a field experiment | In a simulation experiment |
+|---|---|---|
+| Question | Does nest predation limit recruitment? | Does initial population size protect against extinction, and does that depend on the death rate? |
+| Response variable | Fledglings per nest | Population size at year 4; whether the population is extinct |
+| Factors and levels | Predator exclosure: present, absent | Death rate $d$: 0.6, 0.8, 1.0 per year; initial size $N_0$: 2, 5, 10 |
+| Control or baseline | Unfenced plots | A reference parameter set, or a model variant without the mechanism |
+| Replicates | Plots per treatment | Independent runs with different random seeds |
+
+The model used throughout this lesson is the linear birth–death process of <Concept id="gillespie" />: each of $N$ individuals gives birth at rate $b$ and dies at rate $d$ (both per individual per year), simulated exactly event by event.
+
+## Why it matters
+
+A model can produce any number of runs, so the temptation is to run it until a pleasing pattern appears. That is the computational version of fishing in data, and it has the same consequence: conclusions that do not survive a second look. A design written down before the runs protects against it, and it makes the work cheaper, because you know how many runs you need and which comparison each one serves.
+
+Design also determines what you *can* conclude. If two factors were never varied together, no amount of analysis can tell you whether they interact. If replicates share a seed, they are not replicates. These are decisions made before the first run, not problems to fix in R afterwards.
+
+### From question to response variable
+
+Start from the biological question and ask what number would answer it. "Is the population at risk?" is not yet measurable; "the probability that the population is extinct by year 4" is. Good response variables are:
+
+- **defined precisely**, including the time at which they are measured and what counts as an event (extinction is $N = 0$, not "small");
+- **computed by the program**, not judged by eye from a plot;
+- **few**. Decide in advance which response is primary. Every additional response is another chance to find something by accident.
+
+### Factors, levels and baselines
+
+A *factor* is an input you vary deliberately: a parameter, an initial condition, or a structural choice such as the update order or the dispersal rule. Its *levels* are the values you use. Everything else is held at a stated *baseline*.
+
+Choose levels that span the biologically plausible range, which usually comes from the literature or from data, and include values on both sides of any threshold the theory predicts. For the birth–death process the threshold is $d = b$: below it the expected population grows, above it it declines. Levels of 0.6, 0.8 and 1.0 with $b = 1$ place two levels below and one at the threshold.
+
+### Controls
+
+A control answers "compared with what?". In simulation there are two kinds:
+
+- a **baseline run** at reference parameters, against which changes are measured;
+- a **mechanism control**: the same model with the mechanism of interest switched off (no density dependence, no dispersal, a deterministic version). If the pattern survives without the mechanism, the mechanism is not what produces it.
+
+A third, often forgotten, is the **known answer**: a parameter set for which an exact result exists. The birth–death process has Kendall's formula for the extinction probability, so one design point can double as a check that the code is correct (<Concept id="verification" />).
+
+### Replicates
+
+A deterministic model gives the same output every time, so one run per design point is enough; replicating it only repeats the same number. A stochastic model needs *replicates*: independent runs that differ only in their random numbers. They estimate the distribution of the response, and the number of replicates sets how precisely you know its mean or a probability (<Concept id="uncertainty" />). Replicates are not a fix for a small effect: they reduce the uncertainty of an estimate, not the variability between populations.
+
+### Designs
+
+**One factor at a time (OFAT).** Vary $d$ with $N_0$ at its baseline, then vary $N_0$ with $d$ at its baseline. OFAT is cheap and easy to plot, but it explores only a cross through parameter space. It cannot detect interactions, and its conclusions hold only at the baseline of the other factors. If the baseline happens to lie in an unusual region, OFAT will describe that region confidently and nothing else.
+
+**Full factorial.** Run every combination of levels: 3 death rates × 3 initial sizes = 9 design points. A factorial design shows main effects *and* interactions, and every run contributes to every comparison. Its cost grows as $L^k$ for $k$ factors at $L$ levels each, which becomes prohibitive quickly: 6 factors at 5 levels is 15,625 design points before any replication.
+
+**Latin hypercube sampling.** For many continuous factors, divide the range of each factor into $n$ equal strata, draw one value in each stratum, and shuffle the strata independently for each factor before combining them into $n$ design points. Every factor is then sampled evenly across its whole range with only $n$ runs, whatever the number of factors. Latin hypercubes are the usual starting point for global sensitivity analysis (<Concept id="sensitivity" />). They trade the clean comparisons of a factorial design for coverage.
+
+### Budgeting runs
+
+Before running anything, multiply it out:
+
+$$
+\text{runs} = (\text{design points}) \times (\text{replicates per point}), \qquad \text{time} \approx \text{runs} \times (\text{time per run}).
+$$
+
+Time one run first. A 3 × 3 factorial with 1000 replicates is 9000 runs; at 2 ms per run it takes 18 seconds, at 2 seconds per run it takes five hours. If the budget does not fit, reduce the number of levels, use a Latin hypercube, or run replicates in parallel (<Concept id="parallel-replicates" />). Do not quietly reduce replicates at the design points that turn out to be slow: that makes the precision of the results depend on the results.
+
+## How it works in C++
+
+<Anchor id="seeds-and-metadata" />
+
+### Seeds and metadata
+
+A pseudo-random generator such as `std::mt19937_64` is a deterministic algorithm: given the same *seed* it produces the same sequence of numbers, on every computer, for ever (<Concept id="random-seeds" />). That determinism is what makes a stochastic simulation reproducible, and it imposes three rules on an experiment:
+
+1. **Every replicate gets a distinct seed.** Replicates that share a seed are the same run, counted twice.
+2. **Every seed is recorded with the output it produced.** A seed that was not written down cannot be used again, so neither can the run.
+3. **Seeds are derived, not improvised.** Choose one *base seed* for the whole experiment and derive each replicate's seed from it and from the replicate's position in the design.
+
+`std::seed_seq` does the derivation. It takes several integers and mixes them into well-spread 32-bit words, so that seeds derived from (2024, 0, 0), (2024, 0, 1) and (2024, 1, 0) share no obvious structure:
+
+```cpp
+std::seed_seq sequence{base, point, replicate};   // three std::uint32_t values
+std::array<std::uint32_t, 2> words{};
+sequence.generate(words.begin(), words.end());     // two mixed 32-bit words
+const std::uint64_t seed = (std::uint64_t{words[0]} << 32) | words[1];
+std::mt19937_64 rng(seed);                          // this replicate's own engine
+```
+
+Including the design point in the derivation gives every design point its own random streams. Leaving it out, so that replicate $r$ uses the same seed at every design point, is a legitimate technique called *common random numbers*: it can make comparisons between design points less noisy. Make that choice deliberately and report it.
+
+Giving each replicate its own engine, seeded from a recorded number, has a further benefit: a replicate no longer depends on how many random numbers earlier replicates consumed. Any single row of the output can be rerun on its own, in any order, or on another core.
+
+The old C function `rand()` is unsuitable for all of this. Its algorithm and range are left to the implementation (the range can be as small as 0 to 32,767), it keeps one hidden global state, and the same seed can give different sequences on different systems. Use the `<random>` engines with an explicit seed.
+
+<Callout kind="standard" title="Engines are portable; distributions are not">
+The C++ standard specifies exactly what `std::mt19937_64` and `std::seed_seq` compute, so the raw numbers are identical everywhere. It does *not* specify the algorithms behind `std::exponential_distribution` or `std::normal_distribution`. The same seed therefore reproduces a run exactly with the same compiler and standard library, but GCC's and Clang's libraries may give different draws. Record the compiler with the seed.
+</Callout>
+
+A seed alone does not make a run reproducible. Record with every output file the *metadata* that someone (often you, six months later) needs to recreate it:
+
+- the model and its **code version** (a version control commit identifier);
+- every **parameter value**, including the ones you did not vary;
+- the **base seed** and the seed of each replicate;
+- the **date** of the run;
+- the **compiler**, its version and the language standard.
+
+### Files and folders
+
+Keep code, inputs and outputs apart, and never edit output by hand:
+
+```text
+bd-extinction/
+├── src/                     model code under version control
+├── designs/                 one parameter file per experiment
+├── results/
+│   └── 2026-10-24_factorial/
+│       ├── results.csv      written by the program, never edited
+│       └── run.log          command line, standard error
+└── analysis/                R or Python scripts that read results/
+```
+
+Write the output as one *tidy* table: one row per run, one column per variable, the design factors as columns. A tidy table can be filtered, grouped and plotted directly (<Concept id="output-analysis" />).
+
+### A driver program
+
+A *driver* loops over the whole design and writes everything to one file. This one runs the 3 × 3 factorial design with a recorded seed per replicate:
+
+<Example file="inference/bd_factorial_design.cpp" mark="22-27,63-71,76-80" />
+
+Reading it from the top:
+
+- Lines 17–19 let the build insert the code version: `g++ -DMODEL_VERSION="\"$(git describe --always)\"" …`. Without it the output says `unversioned`, which is at least honest.
+- `replicateSeed` (lines 22–27) derives a 64-bit seed from the base seed, the design point and the replicate number.
+- Lines 63–71 write the metadata as lines beginning with `#`, which R's `readr::read_csv(comment = "#")` and Python's `pandas.read_csv(comment="#")` skip, followed by the column header.
+- Each replicate (lines 76–80) creates its own engine from its own seed and writes one row: the two factors, the replicate number, the seed, and the two responses.
+
+Run it as `bd_factorial_design 2024 1000 > results/2026-10-24_factorial/results.csv`. The output is 9000 rows plus the header, and every row can be regenerated from its seed. No expected output is shown here, because the draws from `<random>` distributions depend on the standard library.
+
+A driver need not be written in C++. A program that performs one run, with its parameters and seed on the command line (<Concept id="command-line" />), can be called by a shell script that loops over a design:
+
+```bash
+point=0
+for d in 0.6 0.8 1.0; do
+  for N0 in 2 5 10; do
+    ./bd_point "$d" "$N0" 2024 "$point" 1000 > "results/2026-10-24_factorial/point_${point}.csv"
+    point=$((point + 1))
+  done
+done
+```
+
+Here `bd_point` stands for a program you would write that runs the replicates of one design point. Each file carries its own metadata and factor columns, so the analysis can stack them into one table. Either way, the design lives in one place, and rerunning the whole experiment is one command.
+
+## Explore it
+
+The figure shows what the factorial design is for. The lines are the exact probability of extinction by year 4; the dots are estimates from 400 simulated replicates at each of the nine design points. The dots scatter around the lines by sampling error, roughly two standard errors at most.
+
+<Figure id="simulation-experiments-interaction" />
+
+Read along a line and the effect of initial size is plain: starting with 10 individuals rather than 2 lowers the risk at every death rate. But the *size* of that effect depends on the death rate. On the absolute scale the drop is about 0.29 at $d = 0.6$ and about 0.53 at $d = 1.0$; as a ratio, the risk falls about 130-fold at $d = 0.6$ but only sixfold at $d = 1.0$. The factors interact, and whether the interaction looks large or small depends on the scale on which you compare. State the scale when you report it.
+
+<Check
+  id="ofat"
+  kind="interpret"
+  question="A colleague varies the death rate with N₀ fixed at 5, and then varies N₀ with the death rate fixed at 0.8. Which conclusion can their one-factor-at-a-time design NOT support?"
+  options={[
+    "Extinction risk falls as the initial population size increases, at d = 0.8",
+    "Extinction risk rises with the death rate, at N₀ = 5",
+    "The benefit of a larger initial population is the same at every death rate",
+    "At the baseline (d = 0.8, N₀ = 5) the risk is about 0.15",
+  ]}
+  answer={2}
+  feedback={[
+    "OFAT does support this: it is exactly the comparison they ran, at the stated baseline death rate.",
+    "Also supported, at the baseline initial size. The qualifier matters, but the comparison was made.",
+    "Correct. This is a claim about an interaction, and OFAT never varies the two factors together. The factorial design shows that the claim is false.",
+    "A single design point estimates this directly; any design that includes the baseline can report it.",
+  ]}
+/>
+
+<Check
+  id="seed-loop"
+  kind="debug"
+  code={`for (int r = 0; r < replicates; ++r) {
+    std::mt19937_64 rng(2024);
+    results.push_back(finalSize(b, d, N0, T, rng));
+}`}
+  question="This loop is meant to produce independent replicates. What does it actually produce?"
+  options={[
+    "Independent replicates, because each iteration creates a new engine",
+    "The same run repeated, because every engine starts from the same seed",
+    "Correlated but different runs, because Mersenne Twister engines share state",
+    "A compiler warning about re-seeding inside a loop",
+  ]}
+  answer={1}
+  feedback={[
+    "A new engine with the same seed is the same sequence. Being new does not make it different.",
+    "Correct. Every replicate draws exactly the same random numbers, so all of them give the same result and the apparent variance is zero. Derive a distinct seed per replicate, for example with std::seed_seq from (base seed, replicate).",
+    "Engines do not share state; each object has its own. The problem is that each starts from the identical state.",
+    "The code is valid and compiles silently. The compiler cannot know that you wanted different streams.",
+  ]}
+/>
+
+<Check
+  id="budget"
+  kind="model"
+  question="You plan a full factorial design with 4 factors at 5 levels each and 200 replicates per design point. One run takes 0.1 s. Roughly how long will the experiment take on one core?"
+  options={["About 1 minute", "About 7 minutes", "About 3.5 hours", "About 6 hours"]}
+  answer={2}
+  feedback={[
+    "That is 625 runs × 0.1 s: the design points are right, but each of them needs 200 replicates.",
+    "That would be 4 × 5 × 200 = 4000 runs. A factorial design multiplies the levels of the factors: there are 5 × 5 × 5 × 5 design points, not 4 × 5.",
+    "Correct. 5⁴ = 625 design points × 200 replicates = 125,000 runs × 0.1 s = 12,500 s, about 3.5 hours. Time one run before committing to a design.",
+    "That uses 4⁵ = 1024 design points. With L levels and k factors there are Lᵏ points: here 5⁴ = 625.",
+  ]}
+/>
+
+To see replicate variation for yourself before designing an experiment, run a few replicates of the birth–death model in the laboratory and change the seed:
+
+<Lab id="gillespie" />
+
+## In biological modelling
+
+The same structure serves every kind of model on this site. For a deterministic matrix model (<Concept id="matrix-models" />) the factors are vital rates and the response is the growth rate λ; one run per design point is enough. For an ODE model the numerical step size is an extra factor that should *not* change the answer: include two step sizes in the design to show that it does not (<Concept id="numerical-error" />). For an individual-based model (<Concept id="ibm-logic" />) structural choices such as the scheduling of individuals are factors in their own right, and replicates are essential.
+
+A useful habit is to write the design as a short plain-text plan before coding the driver: the question, the primary response, the factors with their levels and why, the baseline, the controls, the number of replicates and the expected run time. The plan becomes the methods section of the eventual paper.
+
+## Common mistakes
+
+<Callout kind="pitfall" title="Seeding from the clock and not recording it">
+`std::mt19937_64 rng(std::time(nullptr));` gives different runs every time, which looks like good practice. But unless the seed is written to the output, no run can ever be repeated, and two replicates started in the same second share a seed. If you want an unpredictable base seed, take it from `std::random_device` once, print it, and derive everything else from it.
+</Callout>
+
+- **Choosing levels after looking at results.** Adding a design point "where the interesting thing happens" is legitimate exploration, but it is a new experiment: label it as such and do not pool it with the planned design.
+- **Comparing stochastic runs one by one.** Two single runs at different parameter values differ for random reasons as well as for the parameter. Compare distributions or means over replicates.
+- **Writing parameters into file names only.** `run_d0.8_N5.csv` is fragile; put the factors in columns of the table and the fixed parameters in the metadata.
+- **Losing the code version.** A table of results produced by code that has since changed cannot be interpreted. Record the commit, and commit before running.
+
+## Practice
+
+<Practice>
+
+1. A population ecologist asks whether a seedling refuge, which raises seedling survival, does more for a perennial plant than protecting flowering plants from grazing. Using the three-stage model of <Concept id="matrix-models" />, write a design plan: response variable, factors and levels, baseline, controls, and the number of runs. Do you need replicates?
+2. Extend `bd_factorial_design.cpp` with a third factor, the birth rate $b$ at levels 0.9 and 1.1. How many design points and rows does the program now produce with 1000 replicates? Make sure `point` still identifies each design point uniquely.
+3. Write a program that takes `death_rate`, `initial_size` and `seed` from the command line and reruns that one replicate, printing its final size. Check that it reproduces a row of the driver's output exactly (same compiler).
+4. Write a function `std::vector<std::vector<double>> latinHypercube(int n, int k, std::mt19937_64& rng)` that returns $n$ points in $[0, 1)^k$, with exactly one point in each of the $n$ strata of every coordinate.
+
+<details>
+<summary>Hint for exercise 1</summary>
+The matrix model is deterministic, so one run per design point suffices; replicates would repeat the same λ. Natural factors are seedling survival and the survival of flowering plants (which in this model is the sum of reversion and reflowering), each at a few levels spanning plausible management effects, in a factorial design. The baseline is the unmanaged matrix; the response is λ, or the time for the population to halve. A sensible control is a run with both changes, to see whether their effects add.
+</details>
+
+<details>
+<summary>Worked answer for exercise 2</summary>
+There are now 3 × 3 × 2 = 18 design points and 18,000 data rows. Wrap the two existing loops in a loop over `const double b : {0.9, 1.1}`, pass `b` to `finalSize`, add a `birth_rate` column to the header and to every row, and record the levels in the `# design:` line. Because `point` is incremented once per combination inside the innermost factor loop, it still runs from 0 to 17 without repeats.
+</details>
+
+<details>
+<summary>Worked answer for exercise 4</summary>
+
+```cpp
+std::vector<std::vector<double>> latinHypercube(int n, int k, std::mt19937_64& rng) {
+    std::uniform_real_distribution<double> within(0.0, 1.0);
+    std::vector<std::vector<double>> points(static_cast<std::size_t>(n), std::vector<double>(static_cast<std::size_t>(k)));
+    std::vector<int> strata(static_cast<std::size_t>(n));
+    for (int j = 0; j < k; ++j) {
+        std::iota(strata.begin(), strata.end(), 0);          // 0, 1, …, n − 1  (<numeric>)
+        std::shuffle(strata.begin(), strata.end(), rng);     // a random order   (<algorithm>)
+        for (int i = 0; i < n; ++i) {
+            const double stratum = strata[static_cast<std::size_t>(i)];
+            points[static_cast<std::size_t>(i)][static_cast<std::size_t>(j)] = (stratum + within(rng)) / n;
+        }
+    }
+    return points;
+}
+```
+
+Scale each coordinate to its factor's range afterwards, for example `low + (high - low) * u`.
+</details>
+
+</Practice>

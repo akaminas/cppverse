@@ -1,0 +1,9 @@
+lambda,0.934253
+parameter,value,elasticity
+fecundity,4.5000,0.1377
+seedling_survival,0.1200,0.1377
+stasis,0.5000,0.2546
+flowering,0.2500,0.2211
+reversion,0.3500,0.0834
+reflowering,0.4000,0.1655
+sum,1.0000

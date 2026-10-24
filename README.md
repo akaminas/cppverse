@@ -6,8 +6,8 @@ simulation with the Gillespie algorithm, individual-based models, and the infere
 simulation output into scientific claims.
 
 The curriculum follows the University of Groningen course manual *Programming in C++ for
-Biologists*. Every instructional section of the manual is covered by an original lesson (see
-[docs/STUDENT_MANUAL_COVERAGE.md](docs/STUDENT_MANUAL_COVERAGE.md)); the manual's exercises,
+Biologists*. Every instructional section of the manual is covered by an original lesson (see the Sources
+page of the site); the manual's exercises,
 solutions, assignments and projects are not reproduced. The site is independent and is not
 endorsed by the University of Groningen.
 
@@ -50,7 +50,7 @@ npm test             # unit and scientific model tests (Vitest)
 npx astro check      # type-check
 npm run build        # validate, then build the static site into dist/
 npm run test:e2e     # Playwright: navigation, atlas, labs, accessibility (axe)
-npm run coverage     # regenerate docs/STUDENT_MANUAL_COVERAGE.md
+npm run coverage     # regenerate the local coverage document (docs/, not tracked)
 ```
 
 The C++ examples are checked in CI on Ubuntu with g++-14 and clang++-18. To run the same check
@@ -72,21 +72,8 @@ repositories; otherwise make the repository public.
 The site is built for the project path `/cppverse/`. To deploy elsewhere, set `SITE_URL` and
 `BASE_PATH` when building.
 
-## Documentation
-
-| Document | Contents |
-|---|---|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the code is organised and how the parts fit together |
-| [docs/CURRICULUM.md](docs/CURRICULUM.md) | The atlas graph, domains, levels, routes and validation rules |
-| [docs/STUDENT_MANUAL_COVERAGE.md](docs/STUDENT_MANUAL_COVERAGE.md) | Every manual section and where it is taught (generated) |
-| [docs/CONTENT_GUIDE.md](docs/CONTENT_GUIDE.md) | How to write a lesson |
-| [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | How Vellum is applied, and the few deliberate deviations |
-| [docs/SCIENTIFIC_VALIDATION.md](docs/SCIENTIFIC_VALIDATION.md) | How the models, the C++ and the laboratories are verified |
-| [docs/SOURCES.md](docs/SOURCES.md) | Source material, attribution and the copyright policy |
-| [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) | What is done, what is verified, known limitations |
-
 ## Licence and sources
 
 The site's code and text are original. The Vellum design tokens in `src/styles/vellum/` are
-MIT-licensed. The source PDFs are kept out of the repository (`sources/` is gitignored); see
-[docs/SOURCES.md](docs/SOURCES.md).
+MIT-licensed. The source PDFs are kept out of the repository (`sources/` is gitignored); see the
+Sources page of the site.

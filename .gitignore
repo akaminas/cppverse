@@ -8,6 +8,9 @@ test-results/
 playwright-report/
 coverage/
 
+# working documents: kept locally, not published
+docs/
+
 # copyrighted source PDFs: kept locally for authoring, never published
 sources/
 

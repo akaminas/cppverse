@@ -83,7 +83,11 @@ const lines: string[] = [
 const text = lines.join('\n');
 
 if (process.argv.includes('--check')) {
-  const current = existsSync(out) ? readFileSync(out, 'utf8').replace(/\r\n/g, '\n') : '';
+  if (!existsSync(out)) {
+    console.log('coverage document not present (docs/ is not tracked); skipped');
+    process.exit(0);
+  }
+  const current = readFileSync(out, 'utf8').replace(/\r\n/g, '\n');
   if (current !== text) {
     console.error('docs/STUDENT_MANUAL_COVERAGE.md is out of date: run npm run coverage');
     process.exit(1);

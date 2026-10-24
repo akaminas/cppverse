@@ -1,0 +1,272 @@
+---
+title: A complete procedural simulation
+summary: Parameters, state, update rule, simulation loop, validation, command-line input and CSV output, assembled into one program for a juvenile–adult population.
+level: beginner
+module: 11
+manual: ["M11.1", "M11.2", "M11.3", "M11.4", "M11.5"]
+minutes: 40
+objectives:
+  - Read a complete simulation program and say which earlier construct each part uses
+  - Organise a model program as parameters, state, update rule, loop, validation and output
+  - Check a simulation against a result derived from the model's equations
+  - Use the smaller features reviewed in Module 11, from brace initialisation to the iterator-range vector constructor
+references:
+  - "Caswell, H. (2001). Matrix Population Models, 2nd ed. Sinauer: stage-structured models."
+---
+
+## What it is
+
+You now know enough C++ to write a complete, honest simulation: one that takes its parameters from outside, refuses nonsense, runs a model, writes a well-documented output file and checks its own result. This lesson assembles such a program from the pieces of the earlier lessons. It introduces almost nothing new; instead it shows how the pieces fit together, and where each one came from.
+
+The program is *procedural*: it is organised around functions that act on data held in structs. The next part of the course, starting with <Concept id="classes" />, organises programs around objects instead, and this program is the baseline against which that design can be judged.
+
+## Why it matters
+
+Almost every simulation, however large, has the same skeleton:
+
+1. **parameters**, fixed during a run;
+2. a **state**, which changes;
+3. an **update rule** that maps the state at time $t$ to the state at $t + 1$;
+4. a **loop** that applies the rule and records the trajectory;
+5. **input** and **validation** of the parameters;
+6. **output** of the trajectory, with enough metadata to reproduce it.
+
+Recognising the skeleton makes unfamiliar model code readable, and keeping to it makes your own code checkable.
+
+## How it works in C++
+
+### The model
+
+Many populations have a juvenile stage that does not reproduce. A minimal model in discrete time keeps two numbers, juveniles $J_t$ and adults $A_t$, counted once per generation:
+
+$$
+J_{t+1} = \frac{b\,A_t}{1 + A_t/M}, \qquad A_{t+1} = s_j\,J_t + s_a\,A_t
+$$
+
+- $b$: juveniles recruited per adult when adults are scarce;
+- $M$: the adult density at which recruitment per adult is halved (competition among breeders);
+- $s_j$: the probability that a juvenile survives to become an adult; the others die;
+- $s_a$: the probability that an adult survives a generation.
+
+Two quantities follow from the equations and give the program something to check. An adult lives on average $1/(1 - s_a)$ generations and produces $b$ juveniles in each, of which a fraction $s_j$ mature, so at low density each adult replaces itself
+
+$$
+R_0 = \frac{b\,s_j}{1 - s_a}
+$$
+
+times. If $R_0 > 1$ the population grows from low numbers and settles at the equilibrium obtained by setting $J_{t+1} = J_t$ and $A_{t+1} = A_t$:
+
+$$
+A^* = M\,(R_0 - 1), \qquad J^* = \frac{(1 - s_a)\,A^*}{s_j}.
+$$
+
+### The program
+
+<Example file="architecture/two_stage_sim.cpp" />
+
+The example is run with the arguments `5 0.25 0.5 40`: $b = 5$, $s_j = 0.25$, $s_a = 0.5$ and 40 generations, so that $R_0 = 2.5$, $A^* = 75$ and $J^* = 150$. After 40 generations the population is within 0.02 individuals of that equilibrium, which is good evidence that the update rule implements the equations. Here is the whole run:
+
+<Figure id="procedural-review-stages" />
+
+Select a term of the equations to see the line that implements it, or a highlighted line to see its term:
+
+<MathCode id="procedural-review-step" />
+
+Read `main` (lines 82–110) first: it is an outline of the experiment. Convert the arguments, validate, simulate, write the file, report. Every step is a call to a function with a name that says what it does, and everything that can go wrong ends in the same `catch` block, which reports the problem on `std::cerr` and returns `EXIT_FAILURE`.
+
+### Where each part comes from
+
+| In `two_stage_sim.cpp` | Lines | Taught in |
+|---|---|---|
+| Variables of type `double`, `int` and `bool`, all initialised | 16–27, 31 | <Concept id="variables" />, <Concept id="initialisation" /> |
+| `Parameters` and `State` as structs with default values | 15–28 | <Concept id="structs" />, <Concept id="state-representation" /> |
+| `const` for values computed once | 38–39, 91–95 | <Concept id="literals-constants" /> |
+| Compound conditions with `&&` and comparisons | 31–33 | <Concept id="boolean-logic" />, <Concept id="if-else" /> |
+| The update rule as a function returning the new state | 37–41 | <Concept id="update-rule" />, <Concept id="functions" /> |
+| Both new values computed from the old state | 38–40 | <Concept id="update-order" /> |
+| A `for` loop over generations, storing every state | 43–49 | <Concept id="for-loop" />, <Concept id="time-stepping" /> |
+| `std::vector<State>`, `push_back`, `back` | 44–46, 95 | <Concept id="std-vector" /> |
+| Parameters by `const&`, the small `State` by value | 30, 37, 65 | <Concept id="const-reference" />, <Concept id="pass-by-value" /> |
+| `std::string` for file names and messages | 51–63, 65 | <Concept id="strings" /> |
+| Throwing and catching exceptions | 33, 54, 61, 79, 104–107 | <Concept id="exceptions" /> |
+| `argc`, `argv` and checked conversion with `std::stod`, `std::stoi` | 51–63, 82–89 | <Concept id="command-line" /> |
+| `std::ofstream`, opening, closing and checking | 66–67, 78–79 | <Concept id="file-streams" />, <Concept id="stream-state" /> |
+| Metadata, long format and full precision in the CSV file | 68–76 | <Concept id="trajectory-output" />, <Concept id="output-formatting" /> |
+
+If any row is unfamiliar, follow its link before going on; the rest of this lesson assumes all of them.
+
+Two design choices are worth making explicit:
+
+- **The model knows nothing about input and output.** `step` and `simulate` neither read nor print. They can be tested, reused in a parameter sweep, or moved into their own file pair (<Concept id="multiple-files" />) without change.
+- **Validation happens once, early.** After `validate(p)` the rest of the program may assume sensible parameters. The test is written as "all conditions hold" rather than "any condition fails", so that a `nan` parameter, for which every comparison is false, is rejected too.
+
+## What Module 11 adds
+
+The review module of the course manual also gathers a few smaller features that did not fit elsewhere. Each is worth knowing when you read other people's code.
+
+### Three ways to initialise
+
+```cpp
+int clutch = 7.6;    // copy initialisation: silently becomes 7
+int clutch2(7.6);    // direct initialisation: also 7
+int clutch3{7.6};    // brace initialisation: error, narrowing from double to int
+```
+
+The three forms are not equivalent. Braces refuse *narrowing* conversions, those that may lose information, which is why this site prefers them. One more trap: `Parameters p();` with empty parentheses does not create an object at all but declares a function returning `Parameters`. Write `Parameters p;` or `Parameters p{};`. See <Concept id="initialisation" />.
+
+<Callout kind="manual" title="Not all equivalent">
+The course manual presents the three initialisation forms as equivalent. They differ in exactly the case that matters for models, a `double` value stored in an integer variable, where only the brace form reports the mistake.
+</Callout>
+
+### Unsigned literals
+
+The suffix `u` makes an integer literal unsigned: `40u` has type `unsigned int`. Mixing signed and unsigned values in a comparison converts the signed one to unsigned, with surprising results:
+
+```cpp
+const int change = -1;
+if (change < 1u) { /* never reached: -1 becomes 4294967295 on common systems */ }
+```
+
+GCC (with `-Wall`) and Clang (with `-Wextra`) warn about such comparisons. The same conversion happens when a signed index is compared with `v.size()`, which is why loops over vectors use `std::size_t`. See <Concept id="literals-constants" /> and <Concept id="numeric-limits" />.
+
+### Sharing a variable between files: `extern`
+
+A global variable defined in one source file can be used in another if that file declares it with `extern`:
+
+```cpp
+// settings.cpp
+int verbosity = 1;          // the definition: storage lives here
+
+// settings.hpp, included wherever verbosity is used
+extern int verbosity;       // a declaration only: "defined in another file"
+```
+
+This is the variable counterpart of a function prototype, and obeys the same one-definition rule (<Concept id="multiple-files" />). Use it sparingly: a mutable global can be changed from anywhere, which makes a model hard to reason about. Pass parameters explicitly, as `two_stage_sim.cpp` does, and give shared constants a single definition in a header with `inline constexpr`.
+
+### `(void)` in a parameter list
+
+```cpp
+int countAdults(void);      // C style
+int countAdults();          // C++ style: the same declaration
+```
+
+In C an empty list once meant "unspecified parameters", so `(void)` was needed to say "none". In C++ the two forms mean the same; write `()`.
+
+### `std::make_pair`
+
+```cpp
+#include <utility>
+std::vector<std::pair<int, double>> samples;           // (generation, adults)
+samples.push_back(std::make_pair(10, 49.45));          // older style
+samples.push_back({20, 72.70});                        // braces do the same
+std::pair first{0, 10.0};                              // C++17 deduces pair<int, double>
+```
+
+`std::make_pair` creates a pair whose types are deduced from the arguments. It is common in older code; braces and C++17 class template argument deduction make it rarely necessary now. See <Concept id="pairs" />.
+
+### A vector from part of another
+
+A vector can be constructed from a *range* of another container, given by two iterators: the first element to copy and the position just after the last.
+
+```cpp
+const std::vector<State> trajectory = simulate(p);
+const std::vector<State> lastTen(trajectory.end() - 10, trajectory.end());   // needs size() >= 10
+```
+
+`begin()` and `end()` and what you can do with them are the subject of <Concept id="iterators" />.
+
+### The fourth stream state
+
+Besides `good()`, `eof()` and `fail()`, a stream has `bad()`: true when the stream itself has lost integrity, for instance after a read error from the device or a failed write to a full disk. `fail()` is also true in that case, which is why `two_stage_sim.cpp` can check `out.fail()` after closing its file. See <Concept id="stream-state" />.
+
+## Explore it
+
+<Check
+  id="narrowing"
+  kind="predict"
+  question="What happens when this line is compiled?"
+  code={`int eggsPerNest{7.6};`}
+  options={[
+    "eggsPerNest is 7",
+    "eggsPerNest is 8",
+    "The compiler reports an error: narrowing conversion from double to int",
+    "It compiles with a warning and eggsPerNest is 7.6",
+  ]}
+  answer={2}
+  feedback={[
+    "That is what int eggsPerNest = 7.6; would do, silently. Braces refuse the conversion.",
+    "C++ never rounds when converting a floating-point value to an integer; it truncates, and here it does not convert at all.",
+    "Brace initialisation forbids conversions that may lose information. Write 7 if you mean a whole number of eggs, or use double.",
+    "An int cannot hold 7.6 under any circumstances.",
+  ]}
+/>
+
+<Check
+  id="extinction"
+  kind="interpret"
+  question="Run with b = 4, sj = 0.1 and sa = 0.5 (and M = 50, starting from 10 adults). What do you expect the trajectory to do?"
+  options={[
+    "Approach A* = 50 × (0.8 − 1) = −10 adults",
+    "Decline towards zero, because R0 = 0.8 < 1",
+    "Grow without bound, because b = 4 is large",
+    "Oscillate for ever around the starting value",
+  ]}
+  answer={1}
+  feedback={[
+    "A negative equilibrium is not biologically meaningful; it signals that no positive equilibrium exists. The program only prints the equilibrium when R0 > 1.",
+    "Each adult leaves 4 × 0.1 = 0.4 maturing juveniles per generation over 1/(1 − 0.5) = 2 generations: 0.8 replacements. Crowding only lowers recruitment further, so the population dies out.",
+    "Recruitment per adult is at most b, but most juveniles die before maturing; what matters is R0, which combines all three demographic rates.",
+    "The model's dynamics are determined by R0 here; with R0 < 1 the only stable state is extinction.",
+  ]}
+/>
+
+<Check
+  id="vector-range"
+  kind="predict"
+  question="Which values does middle contain?"
+  code={`const std::vector<int> nests{4, 9, 2, 7};
+const std::vector<int> middle(nests.begin() + 1, nests.end() - 1);`}
+  options={["9, 2, 7", "9, 2", "4, 9, 2", "2"]}
+  answer={1}
+  feedback={[
+    "The second iterator marks the position after the last element copied, and nests.end() - 1 points at the 7, so the 7 is excluded.",
+    "begin() + 1 points at 9, end() - 1 points at 7; the range includes the first position and stops before the second.",
+    "begin() + 1 skips the first element, the 4.",
+    "Both 9 and 2 lie in the half-open range [begin() + 1, end() − 1).",
+  ]}
+/>
+
+## In biological modelling
+
+This program is a template you can reuse. Changing the model means changing `Parameters`, `State`, `step`, `validate` and the column names; the loop, the input handling and the output machinery stay as they are. The same skeleton carries through the first capstone (<Concept id="capstone-a" />), and the matrix models of <Concept id="matrix-models" /> are the linear relatives of this model.
+
+The final check against $R_0$ and the equilibrium is the most valuable part of the output. A simulation that reproduces a result derived independently from the equations has passed a first test of <Concept id="verification" />; one that does not is wrong somewhere, however plausible its figures look.
+
+## Common mistakes
+
+- **A model function that prints.** Keep input and output out of `step` and `simulate`, so that they can be tested and reused.
+- **Validation scattered through the program**, or missing altogether. Validate once, right after reading.
+- **Updating in place.** Writing `s.adults = …` before computing the recruits from `s.adults` changes the model.
+- **Unexplained magic numbers.** Every number in the update rule should be a named parameter with a unit and a comment.
+- **Trusting the output without a check.** Compare with something you can derive: an equilibrium, a closed form, a limiting case.
+
+## Practice
+
+<Practice>
+
+1. Give the program two more optional arguments, the initial numbers of juveniles and adults. Confirm that the population approaches the same equilibrium from several starting points, including one far above it.
+2. Replace the command-line arguments by a parameter file, reusing the reader from <Concept id="parameter-files" />, and write every parameter, including M, J0 and A0, into the output's metadata.
+3. Add a third stage, subadults, between juveniles and adults: juveniles become subadults with probability $s_j$, and subadults become adults with probability $s_s$. Derive the new $R_0$ and equilibrium, and let the program check them.
+4. Read `two_stage_output.csv` in R or Python and plot both stages against generation from the long format, one line per stage.
+
+<details>
+<summary>Hint for exercise 3</summary>
+A newborn now has to survive two transitions before it breeds, so the factor $s_j$ in $R_0$ becomes $s_j s_s$. At equilibrium the number of subadults equals $s_j J^*$ and the adults satisfy $A^* = s_s S^* + s_a A^*$. Extend `State`, `step`, the CSV loop and `validate`; the loop in `simulate` does not change.
+</details>
+
+<details>
+<summary>Hint for exercise 4</summary>
+In R with ggplot2: `ggplot(read.csv("two_stage_output.csv", comment.char = "#"), aes(generation, count, colour = stage)) + geom_line()`. In Python: `df.pivot(index="generation", columns="stage", values="count").plot()`.
+</details>
+
+</Practice>

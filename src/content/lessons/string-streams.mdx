@@ -1,0 +1,204 @@
+---
+title: String streams
+summary: Streams that write into and read from a std::string, for building file names per run and splitting lines of text into fields.
+level: intermediate
+module: 9
+manual: ["M9.adv-sstream"]
+minutes: 25
+optional: true
+objectives:
+  - Build a formatted string, such as a file name per replicate, with std::ostringstream
+  - Split a line of comma-separated values into fields with std::istringstream and std::getline
+  - Convert a text field to a number and reject fields that are only partly numeric
+references:
+  - "cppreference.com: std::basic_ostringstream, std::basic_istringstream and std::getline"
+---
+
+## What it is
+
+A *string stream* is a stream whose characters live in a `std::string` in memory instead of in a file or on the console. The header `<sstream>` provides three:
+
+- `std::ostringstream` collects whatever you write into it with `<<`; `str()` hands back the result as a string;
+- `std::istringstream` reads from a string you give it, with `>>` or `std::getline`;
+- `std::stringstream` does both.
+
+Everything you know about <Concept id="file-streams" /> carries over: the same operators, the same manipulators from `<iomanip>`, the same stream state.
+
+## Why it matters
+
+Two jobs come up in every modelling project.
+
+**Naming things.** A parameter sweep with replicates produces many output files, and each name should say what is inside: `bh_R0-2.2_rep01_seed44.csv` can be found, sorted and parsed later, whereas `output7.csv` cannot. Building such a name needs numbers formatted with a chosen precision and zero padding, which is exactly what streams are good at.
+
+**Taking text apart.** Data arrive as lines of text, and a line such as `Q1,Plantago lanceolata,14` has to be split into a quadrat label, a species name containing a space, and a count. Reading the whole line first and then parsing it from a string stream keeps one bad line from disturbing the rest of the file.
+
+## How it works in C++
+
+### Formatting into a string
+
+Write into an `std::ostringstream` as if it were `std::cout`, then take the string out with `str()`:
+
+<Example file="io/sstream_run_names.cpp" mark="14-18" />
+
+Each call of `runFileName` creates a fresh stream, so the manipulators set inside it (`std::fixed`, `std::setprecision(1)`, `std::setfill('0')`) cannot leak into the next name. `std::setw(2)` together with `std::setfill('0')` pads the replicate number to two digits, so that `rep02` sorts before `rep10` in a file listing. The seed is part of the name because every run of a stochastic model needs its own, recorded seed (see <Concept id="seed-management" />).
+
+Compare the alternatives:
+
+```cpp
+std::string a = "bh_R0-" + std::to_string(2.2) + ".csv";   // "bh_R0-2.200000.csv"
+std::string b = "rep" + std::to_string(7);                  // "rep7": no padding
+```
+
+`std::to_string` is fine for integers but always prints six decimals for a `double` and offers no control over width or padding.
+
+<Callout kind="modern" title="std::format">
+With a C++20 compiler <Std v="c++20" />, `std::format` from `<format>` builds the same name in one expression: `std::format("bh_R0-{:.1f}_rep{:02}_seed{}.csv", R0, replicate, seed)`. See <Concept id="output-formatting" /> for the format mini-language.
+</Callout>
+
+### Reading from a string
+
+An `std::istringstream` reads from the string it was given, with the same whitespace-skipping `>>` as any input stream:
+
+```cpp
+std::istringstream counts{"12 7 0 3"};
+int n{0};
+int total{0};
+while (counts >> n) total += n;   // total is 22
+```
+
+This is useful on its own, for instance to read a line of numbers typed by a user, but its main use is in combination with `std::getline`.
+
+### Splitting a line into fields
+
+`std::getline(stream, text, delimiter)` reads characters into `text` until it meets `delimiter`, which it removes from the stream but does not store. Without the third argument the delimiter is the newline, so `std::getline(in, line)` reads one complete line of a file, spaces included. The usual way to read a comma-separated file is therefore two-level:
+
+1. read a line from the file with `std::getline(in, line)`;
+2. put the line into an `std::istringstream` and read fields from it with `std::getline(stream, field, ',')`.
+
+Step through the second level for one line:
+
+<Trace id="string-streams-split" />
+
+The file `quadrat_counts.csv` holds a header and seven rows of illustrative plant counts, one of them with a mistyped count (`two`):
+
+```text
+quadrat,species,count
+Q1,Plantago lanceolata,14
+Q1,Trifolium repens,6
+Q2,Plantago lanceolata,9
+Q2,Bellis perennis,3
+Q3,Trifolium repens,11
+Q3,Bellis perennis,two
+Q3,Ranunculus acris,4
+```
+
+<Example file="io/csv_quadrat_parse.cpp" mark="21-29,32-37" />
+
+Points to notice:
+
+- `splitFields` creates a new `std::istringstream` for every line. Fields such as `Plantago lanceolata` keep their space, because `std::getline` stops only at the delimiter.
+- The count is converted with `std::stoi`, which throws `std::invalid_argument` when the text does not start with a number at all. Its second argument receives the number of characters it used; comparing that with the length of the field rejects text such as `12b`, which `std::stoi` alone would quietly read as 12.
+- Each problem is reported with its line number on `std::cerr`, and the remaining lines are still processed. Whether skipping is acceptable is a scientific decision; the program makes it visible.
+- A line that ends in `\r` came from a file saved on Windows. Removing that character first saves a lot of confusion.
+
+## Explore it
+
+<Check
+  id="padding"
+  kind="predict"
+  question="What string does name.str() return?"
+  code={`std::ostringstream name;
+name << "plot" << std::setw(3) << std::setfill('0') << 7
+     << "_day" << 12 << ".txt";`}
+  options={["plot007_day012.txt", "plot007_day12.txt", "plot7_day12.txt", "plot  7_day12.txt"]}
+  answer={1}
+  feedback={[
+    "setfill is sticky, but setw applies only to the next item, the 7. The 12 is printed at its natural width, so the zeros do not appear there.",
+    "setw(3) pads only the next field, 7, with the fill character '0'. The later 12 has no width set and prints as it is.",
+    "setw(3) does take effect for the 7: the field is three characters wide.",
+    "The fill character was changed to '0', so the padding uses zeros rather than spaces.",
+  ]}
+/>
+
+<Check
+  id="trailing-field"
+  kind="debug"
+  question="splitFields from the example receives the line `Q4,Bellis perennis,` (the count is missing). How many fields does it return?"
+  options={["3, the last one empty", "2", "1", "It throws an exception"]}
+  answer={1}
+  feedback={[
+    "That would be convenient, but getline fails when it reaches the end of the stream without reading any character, so no empty third field is produced.",
+    "getline returns Q4 and Bellis perennis; the third call finds nothing after the last comma and fails. The program rejects the line for having too few fields, which is the right outcome, but a missing value in the middle of a line would give an empty field instead.",
+    "getline stops at every comma, not only at the first.",
+    "getline signals failure through the stream state; it does not throw.",
+  ]}
+/>
+
+<Check
+  id="mixing"
+  kind="debug"
+  question="A program reads the number of sites with in >> nSites and then the first site name with std::getline(in, name). The name comes out empty. Why?"
+  options={[
+    "getline cannot follow >> on the same stream",
+    "The >> read stops before the newline that ends its line, and getline reads up to that newline: an empty line",
+    "getline skips leading whitespace and therefore skips the name",
+    "nSites must be a string for getline to work",
+  ]}
+  answer={1}
+  feedback={[
+    "They can be combined; you only have to deal with what >> leaves behind.",
+    "Calling in.ignore(std::numeric_limits<std::streamsize>::max(), '\\n') after the >> discards the rest of the line, or read every line with getline and parse the number from an istringstream.",
+    "It is the other way round: >> skips leading whitespace, getline does not.",
+    "The type of nSites is not the issue; the newline left in the stream is.",
+  ]}
+/>
+
+## In biological modelling
+
+- **One file per run.** Build every output name from the values that distinguish the runs: model, the parameters you vary, replicate number and seed. A script in R or Python can later recover them from the name, and nothing is overwritten by accident.
+- **Reading structured data.** Field and laboratory data are mostly delimited text. Reading a line, then splitting it, lets you report the line number of every problem.
+- **Testing output code.** A function that writes to an `std::ostream&` can be given an `std::ostringstream` in a test, and the resulting string compared with what you expect, without touching the disk (see <Concept id="testing-reproducibility" />).
+
+## Common mistakes
+
+- **Reusing an `ostringstream` without emptying it.** Text accumulates: the second name contains the first. Create a new stream for each name, or reset it with `name.str("")` and `name.clear()`.
+- **Expecting an empty last field.** As the second check shows, a trailing delimiter does not produce an empty field.
+- **Mixing `>>` and `std::getline`** on the same stream without discarding the rest of the line.
+- **Trusting `std::stoi` and `std::stod` on their own.** They stop at the first character that does not fit and return what they have read; use the position argument to check that the whole field was used.
+- **Using `std::to_string` for doubles in names.** Six decimals, always.
+- **Unsafe characters in file names.** Spaces, colons and slashes cause trouble on some systems; stick to letters, digits, `-`, `_` and `.`.
+
+## Practice
+
+<Practice>
+
+1. A sweep varies the growth factor R0 over 1.5, 2.0 and 2.5 and the half-saturation density M over 20, 40 and 80. Write a function that returns names such as `bh_R0-2.0_M-040.csv` and print all nine.
+2. A tracking file has lines of the form `2026-05-14;52.21;6.89;nest`, with a semicolon as separator: date, latitude, longitude and a habitat label. Write a function that splits such a line and returns the latitude and longitude as numbers, rejecting lines with the wrong number of fields.
+3. Write `std::string describe(double R0, double M, double N0)` that returns, for example, `R0=2.2 M=40 N0=5`, and check it in `main` by comparing its result with the expected string.
+
+<details>
+<summary>Hint for exercise 1</summary>
+Inside the function, use `std::fixed << std::setprecision(1)` before R0 and `std::setw(3) << std::setfill('0')` before M. `std::fixed` is still in force when M is written, so M would appear as `40.0`; convert it with `static_cast<int>(M)` first (the values are whole numbers), and remember that the width must be set again for each field.
+</details>
+
+<details>
+<summary>Worked answer for exercise 3</summary>
+
+```cpp
+std::string describe(double R0, double M, double N0) {
+    std::ostringstream text;
+    text << "R0=" << R0 << " M=" << M << " N0=" << N0;
+    return text.str();
+}
+
+// in main:
+if (describe(2.2, 40.0, 5.0) != "R0=2.2 M=40 N0=5") {
+    std::cerr << "describe() gives an unexpected result\n";
+    return 1;
+}
+```
+
+The default floating-point format prints at most six significant digits and drops trailing zeros, which is why 40.0 appears as `40`.
+</details>
+
+</Practice>

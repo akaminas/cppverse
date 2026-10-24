@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import BrandMark from '../components/site/BrandMark.astro';
 import Attribution from '../components/site/Attribution.astro';
+import Nautilus from '../components/site/Nautilus.astro';
 import { url } from '../lib/url';
 
 interface Props {
@@ -30,11 +31,12 @@ const nav = [
 ] as const;
 ---
 <!doctype html>
-<html lang="en-GB" data-theme="light">
+<html lang="en-GB" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0A0B0D" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -42,18 +44,6 @@ const nav = [
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    <!-- Vellum theme switch: ?theme= wins, then the stored choice, else light. Runs before first paint. -->
-    <script is:inline>
-      (function () {
-        var t = new URLSearchParams(location.search).get('theme');
-        if (t !== 'light' && t !== 'dark') {
-          t = null;
-          try { t = localStorage.getItem('vellum-theme'); } catch (e) {}
-        }
-        if (t !== 'light' && t !== 'dark') t = 'light';
-        document.documentElement.dataset.theme = t;
-      })();
-    </script>
     <slot name="head" />
   </head>
   <body class={bodyClass}>
@@ -70,9 +60,6 @@ const nav = [
           ))}
         </nav>
         <div class="header-tools">
-          <button class="icon-btn theme-toggle" type="button" aria-label="Switch to the dark twin">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" /></svg>
-          </button>
           <button class="icon-btn menu-btn" type="button" aria-label="Open the menu" aria-expanded="false" aria-controls="site-nav">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
           </button>
@@ -83,6 +70,8 @@ const nav = [
     <main id="content" tabindex="-1">
       <slot />
     </main>
+
+    {!bare && <Nautilus />}
 
     {!bare && !app && (
       <footer class="site-footer">
@@ -107,19 +96,6 @@ const nav = [
     )}
 
     <script>
-      const root = document.documentElement;
-      const toggle = document.querySelector<HTMLButtonElement>('.theme-toggle');
-      const label = () => {
-        if (!toggle) return;
-        toggle.setAttribute('aria-label', root.dataset.theme === 'dark' ? 'Switch to the light twin' : 'Switch to the dark twin');
-      };
-      label();
-      toggle?.addEventListener('click', () => {
-        const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
-        root.dataset.theme = next;
-        try { localStorage.setItem('vellum-theme', next); } catch { /* storage unavailable */ }
-        label();
-      });
       const menu = document.querySelector<HTMLButtonElement>('.menu-btn');
       const nav = document.getElementById('site-nav');
       menu?.addEventListener('click', () => {

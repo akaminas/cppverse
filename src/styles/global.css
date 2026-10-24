@@ -32,15 +32,26 @@
   font-display: swap;
 }
 
-:root {
-  color-scheme: light;
-  --bg: #FFFFFF;
-  --panel: #F7F6F3;
-  --soft: #F3F1EC;
-  --line: #ECE9E3;
-  --frame: #D9D5CC;
-  --accent: var(--v-indigo-deep);
-  --accent-soft: #E6E9F1;
+/* The site is dark only: a true near-black page with neutral greys (no warm
+   tint). Vellum's dark twin supplies the family colours; its warm neutrals
+   are replaced here with cool greys. */
+:root, :root[data-theme='dark'] {
+  color-scheme: dark;
+  --v-surface: #0A0B0D;
+  --v-card: #121418;
+  --v-grid: #24272D;
+  --v-rule: #3B3F47;
+  --v-muted: #8E939C;
+  --v-secondary: #B7BCC4;
+  --v-ink: #EDEFF2;
+
+  --bg: #0A0B0D;
+  --panel: #121418;
+  --soft: #181B20;
+  --line: #1F2228;
+  --frame: #2D3139;
+  --accent: #6FE3EE;
+  --accent-soft: #12303A;
   --link: var(--accent);
   --v-font-mono: Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace;
 
@@ -59,18 +70,7 @@
   --t-tiny: 0.8rem;
 
   --header-h: 64px;
-  --shadow-float: 0 28px 56px -30px rgba(30, 26, 22, 0.5);
-}
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --bg: #2A2520;
-  --panel: #302B26;
-  --soft: #34302A;
-  --line: #3A352F;
-  --frame: #4D463F;
-  --accent: #A9B9DF;
-  --accent-soft: #333847;
-  --shadow-float: 0 28px 56px -30px rgba(0, 0, 0, 0.7);
+  --shadow-float: 0 28px 56px -30px rgba(0, 0, 0, 0.9);
 }
 @media (max-width: 620px) {
   :root { --gutter: 16px; }
@@ -109,7 +109,7 @@ a:hover { text-decoration-thickness: 2px; }
 strong, b { font-weight: 700; }
 small { font-size: var(--t-small); }
 hr { border: 0; border-top: 1px solid var(--line); margin: 48px 0; }
-::selection { background: var(--v-indigo-tint); color: var(--v-ink); }
+::selection { background: var(--accent-soft); color: var(--v-ink); }
 
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
 summary:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {

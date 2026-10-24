@@ -37,7 +37,7 @@ export default function TraceIsland({ html, title, steps }: Props) {
       <p className="trace-title" id={`${uid}-t`}>{title}</p>
       <div className="trace-grid">
         <div className="trace-code" data-current={step.line}>
-          <style>{`#${cssId} .line[data-line="${step.line}"]{background:color-mix(in srgb,var(--v-terracotta-tint) 55%,transparent);box-shadow:inset 3px 0 0 var(--v-terracotta)}`}</style>
+          <style>{`#${cssId} .line[data-line="${step.line}"]{background:rgba(111,227,238,0.1);box-shadow:inset 3px 0 0 var(--accent)}`}</style>
           <div id={cssId} dangerouslySetInnerHTML={{ __html: html }} />
         </div>
         <div className="trace-state">

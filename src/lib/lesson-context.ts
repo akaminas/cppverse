@@ -64,9 +64,16 @@ export function lessonContext(slug: string) {
     points: own.map((c) => layout.nodes[c.id]),
   };
 
+  // Field-guide entry number: the lesson's place in a dependency-respecting
+  // walk through the whole curriculum.
+  const lessonOrder = [...new Set(topologicalOrder(g, concepts.map((c) => c.id)).map((id) => g.byId.get(id)!.lesson).filter(Boolean))];
+  const entryNo = lessonOrder.indexOf(slug) + 1;
+
   return {
     own,
     primary,
+    entryNo,
+    entryCount: lessonOrder.length,
     domain: domainById[primary.domain],
     needs,
     leads,

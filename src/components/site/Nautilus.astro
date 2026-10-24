@@ -1,0 +1,143 @@
+---
+// The nautilus companion (see nautilus.ts). The shell is a true logarithmic
+// spiral, r = a·e^(bθ), computed here at build time; its last whorl is the
+// outline, ending in the aperture where the hood and tentacles emerge.
+const a = 1.55;
+const b = 0.205;
+const cx = 10;
+const cy = 0;
+const end = 0.88 * Math.PI; // aperture faces left and slightly down
+const phi = end - 4 * Math.PI;
+const pt = (t: number) => {
+  const r = a * Math.exp(b * t);
+  return [cx + r * Math.cos(t + phi), cy + r * Math.sin(t + phi)] as const;
+};
+const path = (t0: number, t1: number, n = 90) =>
+  Array.from({ length: n + 1 }, (_, i) => {
+    const [x, y] = pt(t0 + ((t1 - t0) * i) / n);
+    return `${i ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`;
+  }).join('');
+const shell = `${path(2 * Math.PI, 4 * Math.PI)}Z`;
+const coil = path(0.6 * Math.PI, 2.6 * Math.PI, 50);
+// Tiger stripes on the back of the shell: wavy rays from the coil to the rim.
+const stripes = Array.from({ length: 7 }, (_, i) => {
+  const t = 2 * Math.PI + 0.55 + i * 0.62;
+  const [x1, y1] = pt(t - 2 * Math.PI);
+  const [x2, y2] = pt(t);
+  const mx = (x1 + x2) / 2 + (y2 - y1) * 0.12;
+  const my = (y1 + y2) / 2 - (x2 - x1) * 0.12;
+  return `M${x1.toFixed(2)},${y1.toFixed(2)}Q${mx.toFixed(2)},${my.toFixed(2)} ${x2.toFixed(2)},${y2.toFixed(2)}`;
+});
+const [ox, oy] = pt(4 * Math.PI);
+const [ix, iy] = pt(2 * Math.PI);
+const tentacles = [
+  { y: -3.5, len: 24 },
+  { y: -1, len: 30 },
+  { y: 1.5, len: 27 },
+  { y: 4, len: 33 },
+  { y: 6.5, len: 26 },
+  { y: 9, len: 22 },
+];
+---
+<div class="nautilus-root" data-nautilus>
+  <div class="nautilus-layer" aria-hidden="true">
+    <svg class="nautilus-trail"><polyline points="" /></svg>
+    <div class="nautilus">
+      <div class="nautilus-flip">
+        <svg viewBox="-46 -26 80 52" width="64" height="42">
+          <defs>
+            <clipPath id="nt-shell-clip"><path d={shell} /></clipPath>
+            <radialGradient id="nt-shell-shade" cx="0.62" cy="0.38" r="0.75">
+              <stop offset="0" style="stop-color: var(--nt-shell-a)" />
+              
+              <stop offset="1" style="stop-color: var(--nt-shell-b)" />
+            </radialGradient>
+          </defs>
+          <g class="nt-tentacles">
+            {tentacles.map((t) => <path class="nt-tentacle" data-y={t.y} data-len={t.len} d={`M-13,${t.y} L${-13 - t.len},${t.y}`} />)}
+          </g>
+          <path class="nt-shell" d={shell} fill="url(#nt-shell-shade)" />
+          <g clip-path="url(#nt-shell-clip)">
+            {stripes.map((d) => <path class="nt-stripe" d={d} />)}
+          </g>
+          <path class="nt-coil" d={coil} />
+          <circle class="nt-umbilicus" cx={cx} cy={cy} r="2.2" />
+          <path class="nt-hood" d={`M${(ox + 3).toFixed(2)},${(oy - 1).toFixed(2)} C${(ox - 7).toFixed(2)},${(oy - 5).toFixed(2)} -16,${(iy - 6).toFixed(2)} ${(ix - 1).toFixed(2)},${(iy - 3).toFixed(2)} C${(ix - 2).toFixed(2)},${(iy + 3).toFixed(2)} -10,10 -14,9 C-16,4 -16,-2 ${(ox + 3).toFixed(2)},${(oy - 1).toFixed(2)}Z`} />
+          <circle class="nt-spot" cx="-7" cy="-4" r="0.9" />
+          <circle class="nt-spot" cx="-4" cy="-6.5" r="0.7" />
+          <circle class="nt-spot" cx="-10" cy="-1" r="0.6" />
+          <circle class="nt-eye" cx="-6" cy="1.6" r="2.1" />
+          <circle class="nt-glint" cx="-6.6" cy="1" r="0.6" />
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div class="nautilus-bubble" hidden>
+    <p class="nb-kind"></p>
+    <p class="nb-text"></p>
+    <div class="nb-actions">
+      <button type="button" class="btn nb-ok">Thanks</button>
+      <button type="button" class="btn btn-ghost nb-mute">Mute tips</button>
+    </div>
+  </div>
+  <p class="sr-only nb-live" aria-live="polite"></p>
+</div>
+
+<script>
+  import { startNautilus } from './nautilus';
+  const root = document.querySelector<HTMLElement>('[data-nautilus]');
+  if (root) startNautilus(root);
+</script>
+
+<style>
+  .nautilus-layer { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+  .nautilus-root.is-present .nautilus-layer { z-index: 70; }
+  .nautilus-trail { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .nautilus-trail polyline { fill: none; stroke: #6FE3EE; stroke-opacity: 0.12; stroke-width: 1; stroke-dasharray: 2 4; }
+  .nautilus {
+    /* Muted greys while it drifts behind the page; true colours when it comes forward. */
+    --nt-shell-a: #9A9EA5; --nt-shell-b: #6E737B; --nt-line: #50555D; --nt-stripe: #5D6168;
+    --nt-hood: #3E4248; --nt-spot: #8C9097; --nt-arm: #7E838B;
+    position: absolute; left: 0; top: 0; width: 64px; height: 42px; margin: -21px 0 0 -36.8px;
+    transform-origin: 36.8px 21px; will-change: transform;
+    opacity: 0.22; transition: opacity 0.8s ease;
+  }
+  .nautilus-flip { width: 100%; height: 100%; transform-origin: 36.8px 21px; }
+  .nautilus svg { display: block; overflow: visible; }
+  .nautilus-root.is-present .nautilus {
+    --nt-shell-a: #FFF8EC; --nt-shell-b: #C9B49A; --nt-line: #8C6B4E; --nt-stripe: #B5602F;
+    --nt-hood: #6A5249; --nt-spot: #EFE3D3; --nt-arm: #D9B9A2;
+    opacity: 1; filter: drop-shadow(0 0 10px rgba(111, 227, 238, 0.35));
+  }
+  .nt-shell { stroke: var(--nt-line); stroke-width: 0.6; }
+  .nt-stripe { fill: none; stroke: var(--nt-stripe); stroke-width: 2.1; stroke-linecap: round; opacity: 0.85; }
+  .nt-coil { fill: none; stroke: var(--nt-line); stroke-width: 0.6; opacity: 0.7; }
+  .nt-umbilicus { fill: var(--nt-hood); }
+  .nt-hood { fill: var(--nt-hood); stroke: #2A2420; stroke-width: 0.5; }
+  .nt-spot { fill: var(--nt-spot); opacity: 0.8; }
+  .nt-eye { fill: #121212; stroke: #2A211D; stroke-width: 0.4; }
+  .nt-glint { fill: #fff; }
+  .nt-tentacle { fill: none; stroke: var(--nt-arm); stroke-width: 1.3; stroke-linecap: round; }
+
+  .nautilus-bubble {
+    position: fixed; z-index: 71; right: 220px; bottom: 96px; width: min(340px, calc(100vw - 32px));
+    background: rgba(12, 19, 22, 0.94); color: var(--v-ink); border: 1px solid #1F3A40; border-radius: 16px 16px 4px 16px;
+    padding: 14px 16px 12px; box-shadow: 0 24px 48px -20px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(111, 227, 238, 0.06), 0 0 28px rgba(111, 227, 238, 0.12);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    animation: nb-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .nautilus-bubble[hidden] { display: none; }
+  .nautilus-bubble[data-kind='cheer'] { border-color: #2E5A3A; }
+  .nautilus-bubble[data-kind='break'] { border-color: #5A4A24; }
+  .nb-kind { margin: 0 0 4px; font-family: var(--v-font-mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+  .nautilus-bubble[data-kind='cheer'] .nb-kind { color: var(--v-status-good); }
+  .nautilus-bubble[data-kind='break'] .nb-kind { color: var(--v-status-warning); }
+  .nb-text { margin: 0 0 12px; font-size: 0.95rem; line-height: 1.5; }
+  .nb-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nb-actions .btn { font-size: 0.82rem; padding: 5px 12px; }
+  .nb-actions [hidden] { display: none; }
+  @keyframes nb-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+  @media (max-width: 620px) {
+    .nautilus-bubble { right: 16px; bottom: 236px; border-radius: 16px; }
+  }
+</style>

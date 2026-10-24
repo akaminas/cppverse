@@ -128,6 +128,7 @@ test.describe('lessons, models and laboratories', () => {
 test.describe('accessibility', () => {
   for (const path of ['./', 'atlas/', 'learn/hello-world/', 'models/algorithms/', 'curriculum/', 'start/', 'learn/vectors/', 'learn/gillespie/', 'models/ibm/']) {
     test(`no serious accessibility violations on ${path}`, async ({ page }) => {
+      test.setTimeout(120_000); // axe is slow on pages with large DOMs and animated layers
       await page.goto(path);
       await page.waitForLoadState('networkidle');
       const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();

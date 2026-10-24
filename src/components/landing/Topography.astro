@@ -2,19 +2,27 @@
 import { topoMap } from '../../lib/topo';
 const map = topoMap();
 ---
+<!-- Interactive contour field (WebGL). The build-time SVG contours stay as the
+     fallback for browsers without WebGL or JavaScript. -->
 <div class="topo" aria-hidden="true">
   <svg viewBox={`0 0 ${map.width} ${map.height}`} preserveAspectRatio="xMidYMid slice">
     {map.paths.map((p) => <path d={p.d} class:list={{ index: p.index }} />)}
   </svg>
+  <canvas class="topo-gl"></canvas>
 </div>
+
+<script>
+  import { startTopoField } from './topo-field';
+  const canvas = document.querySelector<HTMLCanvasElement>('.topo-gl');
+  if (canvas && startTopoField(canvas)) canvas.parentElement?.classList.add('is-live');
+</script>
+
 <style>
-  .topo { position: absolute; inset: -4%; overflow: hidden; pointer-events: none; }
-  .topo svg { width: 100%; height: 100%; display: block; animation: drift 90s ease-in-out infinite alternate; transform-origin: 60% 50%; }
-  .topo path { fill: none; stroke: var(--v-grid); stroke-width: 1; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
-  .topo path.index { stroke: var(--v-rule); stroke-opacity: 0.55; }
-  @keyframes drift {
-    from { transform: translate3d(0, 0, 0) scale(1.02); }
-    to { transform: translate3d(-1.6%, 1.1%, 0) scale(1.05); }
-  }
-  @media (prefers-reduced-motion: reduce) { .topo svg { animation: none; } }
+  .topo { position: absolute; inset: 0; z-index: -2; overflow: hidden; background: #0A0B0D; }
+  .topo svg { position: absolute; inset: -4%; width: 108%; height: 108%; display: block; pointer-events: none; }
+  .topo path { fill: none; stroke: #fff; stroke-opacity: 0.32; stroke-width: 1; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+  .topo path.index { stroke-opacity: 0.75; stroke-width: 1.6; }
+  .topo-gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 1.2s ease; }
+  .topo.is-live .topo-gl { opacity: 1; }
+  .topo.is-live svg { display: none; }
 </style>

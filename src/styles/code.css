@@ -68,8 +68,8 @@ pre code { background: none; padding: 0; white-space: pre; font-size: inherit; }
   content: attr(data-line); display: inline-block; width: 2.2em; margin-right: 1.1em;
   text-align: right; color: var(--v-secondary); user-select: none; opacity: 0.8;
 }
-.line.is-marked { background: color-mix(in srgb, var(--v-terracotta-tint) 45%, transparent); box-shadow: inset 3px 0 0 var(--v-terracotta); }
-.line.is-dim { opacity: 0.45; }
+.line.is-marked { background: rgba(111, 227, 238, 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+.line.is-dim, .line.is-dim span { color: var(--v-muted) !important; }
 
 .std-badge {
   display: inline-flex; align-items: center; font-family: var(--v-font-mono); font-size: 0.7rem; letter-spacing: 0.06em;

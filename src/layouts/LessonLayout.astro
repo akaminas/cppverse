@@ -23,28 +23,63 @@ const checkCounts = lessonCheckCounts();
 const LEVEL = { beginner: 'Beginner', intermediate: 'Intermediate', seasoned: 'Seasoned' } as const;
 const toc = headings.filter((h) => h.depth === 2);
 const kindNote = (k: string) => (k === 'landmark' ? 'destination' : k === 'capstone' ? 'capstone' : '');
+const checks = checkCounts[slug] ?? 0;
+// Stat bars for the field-guide entry (value, scale maximum).
+const stats = [
+  { label: 'Minutes', value: d.minutes, max: 60 },
+  { label: 'Builds on', value: ctx.needs.length, max: 10 },
+  { label: 'Leads to', value: ctx.leads.length, max: 12 },
+  { label: 'Checks', value: checks, max: 6 },
+];
+const hue = ctx.domain.family ? `var(--v-${ctx.domain.family})` : 'var(--v-secondary)';
 ---
-<BaseLayout title={d.title} section="learn" description={d.summary}>
-  <article class="lesson">
+<BaseLayout title={d.title} section="learn" description={d.summary} bodyClass="dex-page">
+  <article class="lesson" data-domain={ctx.domain.id} data-slug={slug} data-checks={checks} data-title={d.title}>
     <header class="lesson-head wrap">
-      <p class="eyebrow lesson-crumbs">
-        <a href={url(`/atlas/?domain=${ctx.domain.id}`)}>{ctx.domain.title}</a>
-        <span aria-hidden="true"> · </span>
-        {d.module ? `Groningen manual, Module ${d.module}` : 'Original material'}
-        {d.optional && <span> · optional branch</span>}
-      </p>
-      <h1>{d.title}</h1>
-      <p class="lead">{d.summary}</p>
-      <ul class="lesson-meta">
-        <li><span class="tag">{LEVEL[d.level]}</span></li>
-        <li><span class="tag">About {d.minutes} min</span></li>
-        <li><span class:list={['std-badge', { 'is-new': d.standard !== 'c++17' }]}>{d.standard.toUpperCase()}</span></li>
-        {ctx.destinations.length > 0 && ctx.destinations.length < 5 && (
-          <li class="lesson-dests">
-            Leads to {ctx.destinations.map((l, i) => (<>{i > 0 && ', '}<a href={l.href}>{l.title}</a></>))}
-          </li>
-        )}
-      </ul>
+      <div class="dex-shell">
+        <div class="dex-bar">
+          <span class="dex-lens" aria-hidden="true"></span>
+          <span class="dex-leds" aria-hidden="true"><i></i><i></i><i></i></span>
+          <p class="eyebrow lesson-crumbs">
+            <a href={url(`/atlas/?domain=${ctx.domain.id}`)}>{ctx.domain.title}</a>
+            <span aria-hidden="true"> · </span>
+            {d.module ? `Groningen manual, Module ${d.module}` : 'Original material'}
+            {d.optional && <span> · optional branch</span>}
+          </p>
+        </div>
+        <div class="dex-screen">
+          <div class="dex-main">
+            <p class="dex-id">
+              <span class="dex-no">No. {String(ctx.entryNo).padStart(3, '0')}</span>
+              <span class="dex-of">of {ctx.entryCount} field-guide entries</span>
+            </p>
+            <h1>{d.title}</h1>
+            <p class="lead dex-desc">{d.summary}</p>
+            <ul class="lesson-meta dex-types">
+              <li><span class="dex-type" style={`--hue: ${hue}`}>{ctx.domain.short}</span></li>
+              <li><span class="dex-type">{LEVEL[d.level]}</span></li>
+              <li><span class:list={['std-badge', { 'is-new': d.standard !== 'c++17' }]}>{d.standard.toUpperCase()}</span></li>
+              {d.optional && <li><span class="dex-type">Optional</span></li>}
+            </ul>
+            {ctx.destinations.length > 0 && ctx.destinations.length < 5 && (
+              <p class="lesson-dests">
+                Leads to {ctx.destinations.map((l, i) => (<>{i > 0 && ', '}<a href={l.href}>{l.title}</a></>))}
+              </p>
+            )}
+          </div>
+          <dl class="dex-stats" aria-label="Entry data">
+            {stats.map((s) => (
+              <div class="dex-stat">
+                <dt>{s.label}</dt>
+                <dd>
+                  <span class="dex-num">{s.value}</span>
+                  <span class="dex-meter" aria-hidden="true"><span style={`--v: ${Math.min(1, s.value / s.max).toFixed(3)}`}></span></span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
     </header>
 
     <div class="wrap lesson-grid">

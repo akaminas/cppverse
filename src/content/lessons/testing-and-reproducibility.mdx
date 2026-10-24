@@ -1,0 +1,255 @@
+---
+title: Testing and reproducible model code
+summary: Plan, test and record a model so that its results can be trusted and regenerated, from unit tests and regression tests to git, CMake and continuous integration.
+level: intermediate
+module: null
+manual: ["A.guidelines"]
+minutes: 45
+objectives:
+  - Plan a model as small components and test each one before building on it
+  - Write unit tests, invariant checks, analytical tests and regression tests for a simulation
+  - Record the commit, compiler, flags, seed and parameters with every output
+  - Use git tags, CMake and CTest so that others can rebuild and rerun a result
+  - Cite borrowed code properly
+standard: c++17
+references:
+  - "Wilson, G. et al. (2014). Best practices for scientific computing. PLoS Biology 12(1), e1001745."
+  - "Catch2 documentation (github.com/catchorg/Catch2); GoogleTest documentation (google.github.io/googletest)"
+  - "CMake documentation: add_test and ctest"
+---
+
+## What it is
+
+**Testing** means checking, with code, that each part of a program does what you intended. **Reproducibility** means that anyone, including you in two years' time, can regenerate a published number or figure exactly from recorded inputs. The two support each other: tests show that the code is right, and a reproducible record shows which code produced which result.
+
+This lesson collects the working practices behind both, starting with the habits recommended in the course manual's practical guidelines and ending with the machinery that this site itself uses to check every program you have read.
+
+## Why it matters
+
+A simulation with a bug rarely crashes. It produces numbers, often plausible ones. The plant model with newborns reproducing in their year of birth still settles at an equilibrium; it is simply the wrong one. Only a test that knows the right answer can tell. And once a result is in a manuscript, the question "which version of the code, with which parameters and which seed, produced Figure 3?" has to have an answer.
+
+## How it works in C++
+
+### Working habits
+
+The manual's guidelines for programming assignments contain the core of good practice, and they apply unchanged to research code:
+
+- **Plan before coding.** Divide the task into small components, each with a clear job: a function for torus distance, one for neighbour counting, one for the survival rule, one for output. Writing the model's rules in plain sentences first (<Concept id="ibm-logic" />) is part of the plan.
+- **Test after every step.** Add one component, check it, and only then build on it. Errors found immediately are found in the ten lines you just wrote.
+- **Save often, and keep a working version.** Today that means committing to version control, described below.
+- **Write for a reader.** Comments that say *why*, consistent indentation and descriptive names (<Concept id="code-style" />). Judge a program on three things: functionality (it compiles, runs and gives correct results), quality (it is robust, handles errors and uses appropriate techniques efficiently) and style (it is easy to read).
+- **Cite borrowed code.** Short pieces taken from a book, a paper or a website are acceptable when the source is cited and you explain what the code does. Larger borrowings need permission and a compatible licence (code posted on Stack Overflow, for example, is licensed CC BY-SA).
+
+A citation belongs in a comment next to the code:
+
+```cpp
+// Poisson variates for large means by transformed rejection (PTRS):
+// Hörmann, W. (1993). The transformed rejection method for generating Poisson
+// random variables. Insurance: Mathematics and Economics 12, 39–45.
+// Constants as in the paper; translated to C++ and checked against
+// std::poisson_distribution by comparing means and variances.
+```
+
+This site follows the same rule: the browser simulations in `src/lib/simulations/rng.ts` cite the published algorithms they implement.
+
+### Unit tests for model components
+
+A unit test calls one function with inputs whose correct output you know, and compares. You do not need a framework to start. The program below tests the parts of the plant model with a test runner of a dozen lines, and ends with a non-zero exit status if any check fails, which is what build tools and continuous integration look for:
+
+<Example file="inference/testing_model_parts.cpp" mark="27-36,50" />
+
+Points worth copying:
+
+- **Compare floating-point numbers with a tolerance.** `torusDelta(0.1, 0.3)` is 0.19999999999999998, not 0.2. Exact `==` on computed doubles makes tests fail for no reason.
+- **Test the awkward cases**: the path across the edge, symmetry, negative positions, the boundary between survival and extinction.
+- **Test against analytical results.** The equilibrium check confirms that `meanFieldEquilibrium` and `survival` are consistent with each other and with the algebra $s(N^*)(1+f) = 1$.
+
+`assert` from `<cassert>` is the simplest check of all: `assert(N == before - deaths + births);` stops the program with a message if the condition is false. Use it *inside* model code for invariants that must never fail. Do not rely on it for a test suite: compiling with `-DNDEBUG`, which CMake's Release configuration does by default, removes every `assert`, and the tests silently stop testing.
+
+As a project grows, a test framework saves effort. With Catch2 (version 3) the first test above becomes
+
+```cpp
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
+
+TEST_CASE("torus distance takes the shortest path across the edge") {
+    REQUIRE_THAT(torusDelta(0.95, 0.05), Catch::Matchers::WithinAbs(0.1, 1e-12));
+}
+```
+
+and with GoogleTest `TEST(Torus, CrossesEdge) { EXPECT_NEAR(torusDelta(0.95, 0.05), 0.1, 1e-12); }`. Both report every failure with the values involved, select tests by name and integrate with CTest.
+
+### Tests that suit simulation models
+
+Unit tests are one of four kinds, and a model needs all of them:
+
+1. **Unit tests** of components with known answers, as above.
+2. **Invariants**: properties that must hold after every step. In the plant model, the census must balance ($N_{t+1} = N_t - \text{deaths} + \text{births}$), every position must lie in $[0, 1)$ and every probability in $[0, 1]$. This site's test of the browser version checks exactly these after each of 20 years (`src/tests/ibm.test.ts`).
+3. **Analytical results and limits.** Where theory gives an answer, test against it: the global-interaction limit must fluctuate around $N^*$ (<Concept id="ibm-validation" />), and a population with $s_0(1+f) < 1$ must go extinct. Stochastic tests need a tolerance set from the expected variation, several replicates, and fixed seeds so that a passing test keeps passing.
+4. **Regression tests**: save the output of a version you trust and check that later versions reproduce it. They catch changes you did not intend. Byte-for-byte comparison works for deterministic output printed with fixed formatting. For stochastic output it works only within one compiler and standard library, because `<random>` distributions and `std::shuffle` are implemented differently by different libraries.
+
+This site uses all four. Every example program with a fully determined output has a `.out` file beside it, and continuous integration compares the program's output with it byte for byte on GCC and Clang. The step-through traces in the lessons are tested against the same files.
+
+### Version control and provenance
+
+Version control records every state of your code. With git, the minimum is:
+
+```bash
+git init                                  # once per project
+git add plants.cpp parameters.txt         # stage the changes you mean to keep
+git commit -m "Add crowding-dependent survival; test passes"
+git tag -a fig3-v1 -m "Code that produced Figure 3 of the manuscript"
+git rev-parse --short HEAD                # the commit identifier to record
+```
+
+Commit after each tested step, with a message that says what changed and why. Tag the exact version that produced a result you report, so it can be checked out later with `git checkout fig3-v1`.
+
+A result is reproducible only if its output says what produced it. Write a **provenance header** before the data: model version, commit, compiler, language standard, build flags, seed and every parameter.
+
+<Example file="inference/testing_run_provenance.cpp" mark="42-47" />
+
+Compile it with the commit identifier passed in from the shell, as in the file's header comment. If the working copy has uncommitted changes (`git status --porcelain` prints something), record that too, or refuse to produce results for publication. Store parameters in files rather than in the code (<Concept id="parameter-files" />), and copy the parameter file next to the output. Seeds are discussed further in <Concept id="seed-management" />.
+
+### Builds that others can repeat: CMake and CTest
+
+A build system records how to compile the program, so that nobody has to guess the flags. A minimal CMake project for a model with its tests:
+
+```cmake
+cmake_minimum_required(VERSION 3.20)
+project(plant_ibm LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+add_executable(plants src/plants.cpp)
+add_executable(model_tests tests/testing_model_parts.cpp)
+foreach(target plants model_tests)
+  target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+endforeach()
+
+enable_testing()
+add_test(NAME model_parts COMMAND model_tests)            # fails on non-zero exit
+add_test(NAME runs_globally COMMAND plants synchronous global 11 50)
+```
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+CTest runs every registered test and reports which failed. A test passes when its program exits with status zero, which is why the test runner above returns `EXIT_FAILURE` on any failed check.
+
+### Continuous integration
+
+**Continuous integration** (CI) runs the build and the tests automatically on a server every time code is pushed, on a clean machine with recorded compiler versions. It catches the "works on my laptop" class of problems and makes regressions visible within minutes.
+
+This site is a working example. On every change, its CI (a GitHub Actions workflow):
+
+1. compiles every C++ program on this site with GCC 14 and with Clang 18, using `-Wall -Wextra -Wpedantic -Werror`, so that any warning fails the build;
+2. runs each program and compares its output with its `.out` file where one exists;
+3. **cross-validates** the C++ models against the independent TypeScript implementations that drive the browser laboratories: deterministic models must agree to a relative tolerance of $10^{-9}$, and stochastic ones statistically. For the plant model, the C++ program's global-interaction run must lie within 5 % of $N^*$, its local run must be clustered and below the mean-field value, and random-order scheduling must raise abundance.
+
+Two implementations, in two languages, written separately and agreeing on what theory predicts, are much stronger evidence than either alone.
+
+## Explore it
+
+<Check
+  id="regression-stochastic"
+  kind="interpret"
+  question="You swap the order of two random draws in your model (the dispersal draw now comes before the survival draw). A byte-for-byte regression test of the output for seed 7 now fails. What does this tell you?"
+  options={[
+    "The model is now wrong and the change must be reverted",
+    "Only that the sequence of random numbers used by each process has changed; whether the model is still correct must be checked with tests that do not depend on the exact stream, such as invariants and statistical comparisons over several seeds",
+    "That the compiler is faulty",
+    "Nothing: regression tests of stochastic models are meaningless",
+  ]}
+  answer={1}
+  feedback={[
+    "The new order draws from the same distributions, so the model may be just as correct; it simply uses the random numbers in a different sequence.",
+    "Correct. A byte-for-byte test detects any change, intended or not. After a deliberate change, confirm correctness statistically, then record a new reference output and say why in the commit message.",
+    "The same compiler with the same seed produces the same stream; it is your code that now consumes it differently.",
+    "They are valuable: they flag every unintended change, including refactorings that were supposed to leave results untouched. They just cannot tell you whether an intended change is correct.",
+  ]}
+/>
+
+<Check
+  id="ndebug"
+  kind="debug"
+  question="A test suite made of assert statements passes when built in Debug mode. Built with cmake -DCMAKE_BUILD_TYPE=Release, it still passes, even after you deliberately break the survival function. Why?"
+  options={[
+    "Release builds are optimised so well that the bug disappears",
+    "CMake's Release configuration defines NDEBUG, which turns every assert into nothing, so no check runs",
+    "assert only works with integers",
+    "CTest ignores the output of programs built in Release mode",
+  ]}
+  answer={1}
+  feedback={[
+    "Optimisation does not change what a correct program computes, and a broken function stays broken.",
+    "Correct. With NDEBUG defined, assert(condition) expands to nothing, so a test suite built from asserts tests nothing. Use explicit checks that set the exit status, or a test framework.",
+    "assert accepts any expression that converts to bool, including comparisons of doubles.",
+    "CTest looks at the exit status. The exit status is zero because no check ran.",
+  ]}
+/>
+
+<Check
+  id="which-test"
+  kind="model"
+  question="Which test would detect the bug in which seedlings reproduce in the year of their birth?"
+  options={[
+    "A unit test of torusDelta",
+    "A test that runs reproduction alone (s₀ = 1, c = 0) and checks that the population grows by a factor close to 1 + f per year, or that no seedling's parent was born in the same year",
+    "A test that every position lies in [0, 1)",
+    "Compiling with -Wall -Wextra",
+  ]}
+  answer={1}
+  feedback={[
+    "torusDelta is unaffected by the bug; its test would pass.",
+    "Correct. The bug changes the growth factor and the parent–offspring record, so a test that knows the correct growth factor, or checks the parents directly, fails. This is the incremental strategy of testing each rule on its own.",
+    "Positions remain valid; the bug produces too many plants, not misplaced ones.",
+    "The buggy loop is valid C++, so no warning is issued. Logic errors need tests.",
+  ]}
+/>
+
+## In biological modelling
+
+Reproducibility in modelling has a practical checklist. When you submit a paper:
+
+- archive the exact code version (a tagged commit, deposited with a persistent identifier such as a Zenodo DOI);
+- include the parameter files and seeds for every reported run, and the scripts that turn raw output into figures;
+- state the compiler, its version and the flags, because floating-point results and `<random>` distributions can differ between them;
+- describe the tests that support the implementation, especially limits in which the model reproduces known results.
+
+None of this is bureaucracy. It is what lets a reviewer, a colleague or you yourself confirm a surprising result instead of having to trust it.
+
+## Common mistakes
+
+- **Testing only the whole model.** A wrong final answer says that something is wrong, not what. Test components and rules separately.
+- **Exact comparison of doubles.** Use a tolerance appropriate to the calculation.
+- **Assert-only test suites.** They vanish under `NDEBUG`.
+- **Statistical tests without fixed seeds.** A test that fails one time in twenty by chance will be ignored, and then it will miss the real failure.
+- **Results without provenance.** An output file that does not record its commit, seed and parameters cannot be traced back.
+- **Uncommitted changes in published runs.** If the working copy differs from every commit, the commit hash in the header is a lie.
+- **Copying code without citation.** Cite the source, check the licence and explain what the borrowed code does.
+
+## Practice
+
+<Practice>
+
+1. Add `countNeighbours` from `design_crowding.cpp` to `testing_model_parts.cpp` and write three tests: an isolated plant has no neighbours; two plants just inside $R$ are each other's neighbours; and two plants that are neighbours only across a *corner* of the plot (both coordinates wrap) are found.
+2. Write a function `bool censusBalances(std::size_t before, std::size_t deaths, std::size_t births, std::size_t after)` and a function that checks that every plant's position lies in $[0, 1)$. Call both after every step of a copy of `plants.cpp`, and make the program exit with a failure status if either check fails.
+3. Put a small model of your own under git. Make three commits, each adding one tested feature, tag the last one, and add a provenance header to its output that includes the commit identifier.
+4. Design a statistical test of the extinction condition: with $s_0(1+f) < 1$ the population must die out. How many years and seeds would you use, and how would you choose them so that the test fails essentially never when the code is correct?
+
+<details>
+<summary>Hint for exercise 1</summary>
+Plants at $(0.98, 0.98)$ and $(0.02, 0.02)$ are $0.04$ apart along each axis across the edges, so their separation is $\sqrt{0.04^2 + 0.04^2} \approx 0.057$. With $R = 0.1$ they must count each other.
+</details>
+
+<details>
+<summary>Worked answer for exercise 4</summary>
+In expectation the population shrinks by the factor $s_0(1+f)$ per year at low density, where crowding is negligible. With $s_0 = 0.4$ and $f = 1$ that factor is 0.8, so 200 plants are expected to fall below one plant after about $\ln 200/\ln(1/0.8) \approx 24$ years. Running for 200 years leaves an enormous margin. Use a few fixed seeds so the test is deterministic, and check that the final census is zero. This site's own test does this with one fixed seed, 200 plants and 200 years.
+</details>
+
+</Practice>

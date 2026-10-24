@@ -1,0 +1,236 @@
+---
+title: Designing an individual-based model
+summary: Individuals as values with a valid state, a population that owns them, local interaction rules, and births and deaths without bookkeeping bugs.
+level: intermediate
+module: 17
+manual: ["M17.1"]
+minutes: 45
+objectives:
+  - Represent an individual as a struct or class that is always constructed in a valid state
+  - Store a population as a std::vector of individuals and say what belongs to the individual, the population and the parameters
+  - Implement a neighbourhood interaction on a torus and a crowding-dependent survival rule
+  - Add births and deaths to a container without letting newborns reproduce or skipping the dead
+  - Develop a model incrementally, testing each rule before adding the next
+standard: c++17
+references:
+  - "cppreference.com: std::vector, std::remove_if, std::erase_if"
+---
+
+## What it is
+
+Designing an individual-based model means answering four questions in code. What is an individual, and which state does it carry? Who owns the individuals? How does one individual's fate depend on others? And how do births and deaths change the collection without corrupting it? This lesson answers them for the plant model introduced in <Concept id="ibm-logic" />, using small programs whose output you can check by hand.
+
+## Why it matters
+
+The rules of an IBM are usually simple; the bookkeeping around them is where models go wrong. A seedling that reproduces in the year it was born, a dead plant that still crowds its neighbours, or a removal loop that skips every other corpse produces no error message. It produces a population that grows a little too fast or dies a little too slowly, and the result looks like biology. Careful design makes such errors impossible or, failing that, easy to test for.
+
+## How it works in C++
+
+### Representing an individual
+
+An individual is a value with a few named attributes, which makes it a natural <Concept id="structs">struct</Concept> or <Concept id="classes">class</Concept>. Decide first what it must remember from one time step to the next. For the plants, that is a position and an age. Quantities that can be recomputed from the population, such as the number of neighbours, are *derived* and need not be stored, although storing them for output is harmless if they are refreshed every year.
+
+An individual should never exist in an impossible state. A <Concept id="constructors">constructor</Concept> is the place to guarantee that: it can wrap a position back onto the plot and reject a negative age, so that no other code ever has to check.
+
+```cpp
+struct Plant {
+    double x;
+    double y;
+    int age;
+    Plant(double xPos, double yPos, int ageYears)
+        : x{wrapUnit(xPos)}, y{wrapUnit(yPos)}, age{ageYears} {
+        if (ageYears < 0) throw std::invalid_argument("a plant cannot have a negative age");
+    }
+};
+```
+
+If other code could later break the rule (for example by assigning `x = 1.7`), make the members private and offer member functions that preserve it; see <Concept id="access-control" />. For a small model a struct with a validating constructor is usually enough.
+
+The **population** owns the individuals. Store them by value in a `std::vector<Plant>`: the elements sit next to each other in memory, copying a population copies its plants, and nothing needs to be deleted by hand. Keep three kinds of data apart:
+
+- **per-individual state** (position, age) in the `Plant`;
+- **parameters** shared by everyone ($s_0$, $c$, $R$, $f$, $\sigma$) in a `Parameters` struct, passed in, never global;
+- **the random number engine**, owned by the population or the simulation and passed to the rules that need it (<Concept id="random-library" />).
+
+An index into the vector is *not* an identity. Indices change whenever individuals are removed, so if you need to follow a plant through time or record who descends from whom, give each plant a permanent `id`.
+
+<Anchor id="interactions" />
+
+### Interaction rules
+
+An interaction rule makes an individual's fate depend on others. The plant model has one: a plant's survival depends on its **crowding** $n_i$, the number of other living plants within distance $R$.
+
+The plot is a **torus**: a plant that leaves the right edge re-enters on the left, and the same holds top to bottom. On a torus every location has the same surroundings, so there are no edge plants with artificially few neighbours. That is a modelling choice with consequences, not a technicality; a fenced plot with hard edges would be equally legitimate, and it would give different results near the boundary. The shortest separation along one axis is either the direct distance or the distance the other way round:
+
+```cpp
+double torusDelta(double a, double b) {     // positions on [0, 1)
+    const double d = std::abs(a - b);
+    return d > 0.5 ? 1.0 - d : d;           // going across the edge is shorter
+}
+```
+
+The program below builds six plants, counts each one's neighbours and prints its survival probability $s_0/(1+c\,n)$. Plants 3 and 4 are neighbours only because the plot wraps around: plant 4 was created at $x = 1.03$, which the constructor wrapped to $0.03$, and the shortest path between it and plant 3 at $x = 0.98$ is $0.05$ across the edge.
+
+<Example file="ibm/design_crowding.cpp" mark="32-41" />
+
+Notice that neighbourhood is not transitive. Plants 1 and 2 are both neighbours of plant 0 but not of each other, so plant 0 has two neighbours and each of the others one. No aggregate description of "density" captures that.
+
+Comparing $dx^2 + dy^2$ with $R^2$ avoids a square root per pair. Even so, counting neighbours by scanning every other plant costs time proportional to $N^2$ per year. That is fine for hundreds of plants; for tens of thousands, divide the plot into square cells of side at least $R$ and examine only the nine cells around each plant (the browser version of this model, `src/lib/simulations/ibm.ts`, does this). See <Concept id="performance" />.
+
+The complete canonical model puts these pieces together. Select a term in the equation to see where the code implements it:
+
+<MathCode id="ibm-design-survival" />
+
+<Example file="ibm/plants.cpp" mark="85-98" />
+
+Two details of `plants.cpp` matter for design. The `alive` flags (line 80) let a plant be marked dead without moving anything, so indices stay valid for the rest of the year. And reproduction builds a fresh vector `next` (lines 101–118) instead of editing the population in place. Both are protections against the bugs described next.
+
+### Births and deaths in a container
+
+Adding individuals to a vector while looping over it is the most common bookkeeping error in IBMs. A range-based `for` loop over a vector that grows inside the loop is **undefined behaviour**: `push_back` may move the elements to new memory, leaving the loop's iterator pointing at freed storage. An index loop avoids the crash but not the logic error, because `plants.size()` is re-evaluated before every iteration, so the loop reaches the seedlings it has just appended and lets them reproduce in their year of birth.
+
+<Example file="ibm/design_newborns.cpp" mark="20,29-30" />
+
+The plot's ten microsites are the only thing that stops the buggy loop; with Poisson-distributed seed numbers and no such limit, it would keep visiting newborns until memory ran out. The fix is to decide who the parents are *before* anyone is born: store the count, or loop over a separate list of survivors, or append newborns to a different vector, as `plants.cpp` does.
+
+Removing the dead has its own trap. Calling `erase` inside an index loop and then incrementing the index skips the element that slid into the erased position, and each `erase` shifts every later element, which makes the loop slow for large populations. Two correct idioms remove all the dead in one pass:
+
+<Example file="ibm/design_remove_dead.cpp" mark="31,37-44" />
+
+- **Erase–remove.** `std::remove_if` moves the survivors forward, keeping their order, and returns where the leftover tail begins; `erase` then cuts the tail. The order is preserved, which matters if your schedule or output depends on it. <Std v="c++20" /> `std::erase_if(plants, predicate)` does both steps in one call.
+- **Swap-and-pop.** Overwrite a dead individual with the last one and shrink the vector. Each removal costs one copy, but the survivors are reordered, so use it only when order is irrelevant (for example, when individuals are shuffled every step anyway). Note that the index must not advance after a swap, because the plant moved into the slot has not been checked yet.
+
+<Callout kind="pitfall" title="References into a growing vector">
+`Plant& mother = plants[i]; plants.push_back(...);` leaves `mother` dangling if the vector reallocates. Read the values you need into local variables, or refer to individuals by index, before adding to the container.
+</Callout>
+
+### Building the model one rule at a time
+
+The manual's working method for individual-based simulation is to alternate two phases: add one piece of functionality, then test it, and move on only when the test passes. For the plant model a sensible sequence is:
+
+1. **The individual.** Construct a few plants, including awkward ones (a position of $1.03$, a negative age), and print them.
+2. **The neighbourhood.** Place plants in a configuration you can count by hand, as in `design_crowding.cpp`, including a pair that interacts across the edge.
+3. **Survival alone.** Switch off reproduction and crowding ($f = 0$, $c = 0$). The population should then decline by a factor of about $s_0$ per year.
+4. **Reproduction alone.** Set $s_0 = 1$ and $c = 0$. The population should grow by a factor of about $1 + f$ per year, and no seedling should have a parent born in the same year.
+5. **Everything together**, followed by the mean-field test of <Concept id="ibm-validation" />.
+
+Each step changes one thing, so when a test fails you know where to look. <Concept id="testing-reproducibility" /> shows how to turn these checks into tests that run automatically.
+
+## Explore it
+
+Step through the buggy reproduction loop and watch `i` chase `plants.size()`:
+
+<Trace id="ibm-design-newborns" />
+
+<Check
+  id="range-for"
+  kind="debug"
+  question="What is wrong with this reproduction loop?"
+  code={`for (const Plant& parent : plants) {
+    if (sets_seed(parent, rng)) plants.push_back(seedling_near(parent, rng));
+}`}
+  options={[
+    "Nothing: range-based for loops are safe with any container",
+    "It is undefined behaviour: push_back can reallocate the vector, invalidating the loop's iterator and the reference parent",
+    "It only lets newborns reproduce, which is a logic error but otherwise well defined",
+    "It does not compile, because parent is const",
+  ]}
+  answer={1}
+  feedback={[
+    "A range-based for loop holds iterators into the vector. Any operation that may reallocate the vector invalidates them.",
+    "Correct. The loop's hidden iterators and the reference parent may point at memory the vector has released. The program may crash, loop forever or appear to work; none of it can be trusted. Collect seedlings in a separate vector and append them after the loop.",
+    "The newborn problem is what an index loop that re-reads size() produces. With iterators the situation is worse: the behaviour is undefined.",
+    "A const reference can be read, which is all the loop does with parent. The code compiles; the danger is at run time.",
+  ]}
+/>
+
+<Check
+  id="erase-skip"
+  kind="predict"
+  question="Plants with ids 0 to 4 are in a vector, and plants 1 and 2 are dead. Which ids remain after this loop?"
+  code={`for (std::size_t i = 0; i < plants.size(); ++i) {
+    if (!plants[i].alive) plants.erase(plants.begin() + i);
+}`}
+  options={["0 3 4", "0 2 3 4", "0 1 3 4", "0 4"]}
+  answer={1}
+  feedback={[
+    "That is what a correct removal would give. Follow the index: after erasing at position 1, plant 2 slides into position 1, but the loop moves straight on to position 2.",
+    "Correct. Erasing plant 1 shifts plant 2 into position 1; then ++i moves to position 2, which now holds plant 3. Plant 2 is never examined and survives as a ghost. Use erase–remove or swap-and-pop instead.",
+    "Plant 1 is examined first, at position 1, and is erased. It is plant 2 that escapes.",
+    "Only dead plants are erased, and plants 3 and 4 are alive.",
+  ]}
+/>
+
+<Check
+  id="torus"
+  kind="read"
+  question="On the unit torus, two plants stand at x = 0.02 and x = 0.97 on the same horizontal line. With R = 0.1, are they neighbours?"
+  options={[
+    "No: they are 0.95 apart",
+    "Yes: the shortest separation is 0.05, across the edge of the plot",
+    "Only if the plot has hard edges",
+    "It depends on which of the two is updated first",
+  ]}
+  answer={1}
+  feedback={[
+    "0.95 is the direct separation. On a torus the path across the edge is 1 − 0.95 = 0.05, and torusDelta returns the shorter of the two.",
+    "Correct. torusDelta finds d = 0.95 > 0.5 and returns 1 − 0.95 = 0.05, which is less than R.",
+    "It is the other way round: with hard edges they would be 0.95 apart and not neighbours. The torus is what joins them.",
+    "Distances do not depend on update order. What can depend on order is whether a neighbour is still alive when it is counted; see the scheduling lesson.",
+  ]}
+/>
+
+## In biological modelling
+
+Good representation choices are those that make the biology explicit:
+
+- **Identity and lineage.** A permanent `id` and a `parent` field cost two integers per individual and let you reconstruct genealogies, measure relatedness among neighbours and test whether clusters are families.
+- **Age and history.** Storing age makes age-dependent rules a one-line change and lets you compare the model's age structure with field data.
+- **Traits.** Heritable traits are attributes copied, possibly with mutation, from parent to offspring. The data structure barely changes when a model becomes evolutionary.
+- **Derived quantities.** Keep crowding, local density or resource availability out of the permanent state unless they genuinely carry memory. Recomputing them each step from the population avoids stale values.
+- **Boundary conditions.** A torus represents a small window onto a large, homogeneous habitat. A bounded plot represents a real patch with edges. Choose deliberately and report the choice; the emergence lesson shows how much such choices can matter.
+
+## Common mistakes
+
+- **Members left uninitialised.** A struct without a constructor or default member initialisers can hold garbage. Give every member a value at construction.
+- **Using indices as identities.** After any removal, index 17 is a different plant. Use an `id` for anything that must persist.
+- **Newborns reproducing in their birth year.** Fix the list of parents before the first birth.
+- **Erasing inside a counting loop.** It skips elements and is slow. Use erase–remove, swap-and-pop, or build a new vector of survivors.
+- **Counting the focal individual as its own neighbour.** Exclude `j == i`; otherwise every plant has at least one neighbour and $s_0$ is never reached.
+- **Counting the dead.** Decide whether plants that died earlier in the same step still interact, and implement that decision explicitly with flags such as `alive`.
+- **Global variables for parameters and the engine.** They make it impossible to run two populations with different settings in one program, and they hide dependencies that tests need to control.
+
+## Practice
+
+<Practice>
+
+1. Give `Plant` a rosette diameter in centimetres that must be positive, and make the constructor reject anything else. Then change the survival rule so that a plant of diameter $d$ survives with probability $s_0\,d/(d + d_{50})/(1 + c\,n)$, where $d_{50}$ is the diameter at which the size effect halves survival. What test would show that your change behaves as intended for a very large plant?
+2. Replace the torus in `design_crowding.cpp` by a plot with hard edges, where distance is simply $|a - b|$. Predict the new neighbour counts and survival probabilities of plants 3 and 4 before running the program.
+3. Write a function `void removeDead(std::vector<Plant>& plants)` using erase–remove for a `Plant` that carries an `alive` flag. Then explain why keeping the flags in a separate `std::vector<char>`, as `plants.cpp` does during the survival phase, would make erase–remove awkward.
+4. Give each plant a `parent` id and a founder id inherited unchanged by its descendants. After 50 years of the full model, count how many plants descend from each of the founders that still has descendants. What does the answer suggest about whether clusters are families?
+
+<details>
+<summary>Hint for exercise 1</summary>
+For a very large diameter, $d/(d + d_{50})$ approaches 1, so the new rule should reduce to the old one. A test can construct a plant with a huge diameter and check that its survival probability matches $s_0/(1+c\,n)$ to within a small tolerance.
+</details>
+
+<details>
+<summary>Worked answer for exercise 2</summary>
+Without the wrap-around, plants 3 and 4 are $|0.98 - 0.03| = 0.95$ apart horizontally, far beyond $R = 0.1$. Each now has no neighbours and survives with probability $0.90$ instead of $0.72$. The other plants are unaffected. This is an edge effect: on a bounded plot, plants near the boundary systematically have fewer neighbours.
+</details>
+
+<details>
+<summary>Worked answer for exercise 3</summary>
+
+```cpp
+void removeDead(std::vector<Plant>& plants) {
+    plants.erase(std::remove_if(plants.begin(), plants.end(),
+                                [](const Plant& p) { return !p.alive; }),
+                 plants.end());
+}
+```
+
+With the flags in a separate vector, the predicate would need the *position* of each plant to look up its flag, but `std::remove_if` moves elements while it works, so positions and flags no longer line up. You would have to compact both vectors in step by hand, or build a new vector of survivors as `plants.cpp` does.
+</details>
+
+</Practice>

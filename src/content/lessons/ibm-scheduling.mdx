@@ -1,0 +1,224 @@
+---
+title: Scheduling individuals in time
+summary: Synchronous, random-order and event-driven updating of individuals, how to implement each, and why the choice changes what a model predicts.
+level: intermediate
+module: 17
+manual: ["M17.1"]
+minutes: 40
+objectives:
+  - Distinguish synchronous, random-order and event-driven schedules and implement each in C++
+  - Draw a fresh random visiting order every time step with std::shuffle
+  - Schedule events across individuals with per-individual next-event times and a priority queue
+  - Explain, with a mechanism, why a change of schedule changes the outcome of the plant model
+standard: c++17
+lab: ibm
+references:
+  - "cppreference.com: std::shuffle, std::priority_queue"
+  - "Ruxton, G. D. and Saravia, L. A. (1998). The need for biological realism in the updating of cellular automata models. Ecological Modelling 107, 105–112."
+---
+
+## What it is
+
+An individual-based model must say not only *what* happens to each individual but *when*, relative to everyone else. That is its **schedule**. Three schedules cover most models:
+
+- **Synchronous updating.** Time advances in discrete steps. In each step every individual reads the same snapshot of the population (a census), and all the changes are applied together afterwards. Nobody sees anybody else's change until the next step.
+- **Random-order (asynchronous) updating.** Time still advances in steps, but within a step individuals are visited one at a time in a freshly shuffled order, and each change takes effect immediately. Later individuals see the consequences of earlier ones.
+- **Event-driven scheduling.** Time is continuous. Each individual carries the times of its own next events (giving birth, dying, moving), and the simulation repeatedly carries out whichever event, across all individuals, comes first.
+
+The first two are the individual-based versions of the simultaneous and sequential updates of <Concept id="update-order" />. The third is the <Concept id="gillespie">Gillespie algorithm</Concept> organised around individuals instead of reaction types.
+
+## Why it matters
+
+Take one rule and apply it with different schedules. Seven plants stand in a row, and a plant dies if *both* of its immediate neighbours are alive.
+
+<Example file="ibm/scheduling_orders.cpp" mark="21,28" />
+
+Synchronously, every interior plant has two living neighbours in the census, so all five die. Sequentially, a death protects the plant visited next to it, so far fewer die, and *how many* depends on the order. Nothing in the rule says which outcome is right; the schedule is part of the model, and it should be chosen for biological reasons and reported.
+
+The effect is not confined to toy examples. Here is the plant model of this part of the atlas with identical parameters and seeds, run synchronously (every plant counts its neighbours at the start of the year, and the deaths are applied afterwards) and in random order (each plant counts the neighbours still alive when its turn comes):
+
+<Figure id="ibm-scheduling-abundance" />
+
+The random-order population settles at roughly three and a half times the synchronous one, and above the mean-field value $N^*$. The mechanism is visible if you look at what each plant experiences when its fate is decided:
+
+<Figure id="ibm-scheduling-crowding" />
+
+Under both schedules the population grows until a plant's *experienced* crowding is high enough to bring average survival down to replacement, $1/(1+f)$: only then do births and deaths balance. That crowding level comes out almost the same, about 4.7 neighbours, under both schedules. What differs is how many plants it takes to produce it. About 55 % of the plants die each year, so a plant visited late in the random order finds that many of its neighbours have already died and no longer count. To reach the same experienced crowding the random-order population must therefore be much denser. Synchronously, a plant competes with every neighbour present at the census, including those that will die this year.
+
+Which is biologically right? It depends on the plant. If competition acts through the whole season (shading by neighbours that die only at its end), the synchronous version is closer. If deaths happen early and free resources for the remaining plants, a sequential schedule is closer. The model forces you to decide.
+
+<Callout kind="note" title="Why the reference line is not reached">
+The mean-field crowding of 3.92 neighbours is where a plant with exactly average crowding would be at replacement. Real crowding varies from plant to plant, and survival $s_0/(1+c\,n)$ is a convex function of $n$, so variable crowding raises average survival and the population must be more crowded on average before it stops growing. This is Jensen's inequality at work; <Concept id="ibm-validation" /> develops it.
+</Callout>
+
+## How it works in C++
+
+### Synchronous updating
+
+Read from the census, write to a separate place, apply afterwards. In `plants.cpp` every plant's crowding is computed first, then the survival draws are made, and dead plants are only flagged, so the census is never disturbed:
+
+<Example file="ibm/plants.cpp" mark="80-98" />
+
+With synchronous scheduling the loop on lines 86–88 fills in every plant's crowding before any plant dies. Reproduction then builds a new vector from the survivors (lines 101–118), so newborns never take part in the step that produced them.
+
+### Random-order updating with std::shuffle
+
+Visit indices in a random order, and let each change take effect at once:
+
+```cpp
+#include <algorithm>   // std::shuffle
+#include <numeric>     // std::iota
+
+std::vector<std::size_t> order(plants.size());
+std::iota(order.begin(), order.end(), std::size_t{0});   // 0, 1, 2, ...
+std::shuffle(order.begin(), order.end(), rng);           // a fresh order every step
+for (std::size_t i : order) {
+    plants[i].crowding = countNeighbours(i, alive);      // only plants still alive count
+    if (unit(rng) >= survival(plants[i].crowding)) alive[i] = 0;   // effective at once
+}
+```
+
+`plants.cpp` does exactly this when run as `plants random-order` (lines 81–83 and 94). Three points matter:
+
+- **Shuffle every step.** A fixed order, including plain index order, gives the same individuals the same advantage year after year. In `plants.cpp` index order is also age order (survivors come first, then seedlings), so a fixed order would quietly make age matter in a model whose rules never mention it.
+- **Use the model's own engine.** `std::shuffle` takes the engine as an argument, so the order is reproducible from the recorded seed.
+- **Do not expect identical runs across compilers.** As with `<random>` distributions, the standard does not specify the algorithm inside `std::shuffle`, so GCC and Clang can produce different orders from the same seed. Results agree statistically, not run by run.
+
+### Event-driven scheduling
+
+In continuous time each individual carries its own clocks. A vole that gives birth at rate $b$ and dies at rate $d_i$ has a next-birth time $t + T_b$ and a death time $t + T_d$, where $T_b$ and $T_d$ are exponential waiting times with rates $b$ and $d_i$ (<Concept id="waiting-times" />). The scheduler's job is to find the earliest pending event of all individuals, carry it out, and schedule whatever new events it creates.
+
+Finding the earliest event by scanning every individual costs time proportional to $N$ per event. A **priority queue** (<Concept id="container-adaptors" />) keeps the events ordered so that the earliest is always on top, at a cost proportional to $\log N$ per insertion or removal. `std::priority_queue` puts the *largest* element on top, so the comparison is inverted to make the earliest time win:
+
+<Example file="ibm/scheduling_event_queue.cpp" mark="28-30,65-76" />
+
+Robust and frail voles differ only in their death rate, and pups inherit their mother's type, so the robust lineage grows (birth rate 1.0 exceeds death rate 0.8 per year) while the frail one dwindles. Two implementation details are typical of event-driven IBMs:
+
+- **Stale events.** When a vole dies, its pending birth is still in the queue. Removing an arbitrary element from a priority queue is not possible, so the program checks `alive` when an event reaches the top and discards it if its owner is dead (*lazy deletion*). Forgetting this check lets the dead give birth.
+- **Rates that depend on others.** Here every vole's rates are constant, so a waiting time drawn at the start stays valid. If rates depend on the population (for example, births slowing with crowding), pending events become out of date whenever another individual's event changes the conditions. Because exponential waiting times are memoryless, redrawing all affected clocks after each event is valid; for strongly coupled populations the population-level Gillespie direct method (one total rate, one random choice of event) is usually simpler.
+
+When all rates are constant the two views coincide exactly: the earliest of many independent exponential clocks is itself exponential with the summed rate, and the chance that it belongs to a given individual is proportional to that individual's rate, which is precisely the Gillespie direct method.
+
+## Explore it
+
+<Check
+  id="reverse"
+  kind="predict"
+  question="In scheduling_orders.cpp, what does sequential(start, {6, 5, 4, 3, 2, 1, 0}) return?"
+  options={["#.....#", "#.#.#.#", "##.#.##", "#######"]}
+  answer={1}
+  feedback={[
+    "That is the synchronous result. Sequentially, the first death protects the next plant visited.",
+    "Correct. Plant 6 has no right neighbour and survives; plant 5 has two living neighbours and dies; plant 4 then has a dead neighbour and survives; plant 3 dies, 2 survives, 1 dies, 0 survives. It mirrors the left-to-right order.",
+    "That is the result of the evens-first order, which kills plants 2 and 4 first.",
+    "Plant 5, the first interior plant visited, has two living neighbours and dies.",
+  ]}
+/>
+
+<Check
+  id="mechanism"
+  kind="interpret"
+  question="In the plant model, why does random-order scheduling lead to a much larger population than synchronous scheduling?"
+  options={[
+    "Random-order scheduling uses more random numbers, which adds noise and so raises the mean",
+    "Plants visited late count only neighbours that have survived so far, so each plant experiences less crowding at a given density and the population can grow denser before survival falls to replacement",
+    "Seedlings reproduce in their year of birth under random-order scheduling",
+    "Random-order scheduling removes clustering, so the mean-field prediction applies",
+  ]}
+  answer={1}
+  feedback={[
+    "Extra randomness does not, by itself, raise abundance. The difference comes from what each plant can see when its fate is decided.",
+    "Correct. The second figure shows the populations settling at almost the same experienced crowding. Because roughly half the plants die each year, a random-order population needs many more plants to produce that crowding.",
+    "Reproduction is identical under both schedules: in both, seedlings are appended to a new vector after all survival decisions.",
+    "The random-order population ends up above the mean-field value, not at it, so the mean-field prediction does not apply.",
+  ]}
+/>
+
+<Check
+  id="fixed-order"
+  kind="model"
+  question="Birds settle on territories one at a time each spring, and each takes the best free territory. The code visits birds in index order every year, and index order is the order in which birds were born. What will the model produce?"
+  options={[
+    "Nothing unusual: the order of settlement is an implementation detail",
+    "An artificial advantage for older birds, which always choose first, so territory quality will appear to increase with age",
+    "A random assignment of territories, because birth order is unrelated to quality",
+    "A compile-time error, because the visiting order must be shuffled",
+  ]}
+  answer={1}
+  feedback={[
+    "Here the order decides who gets the best territories, so it directly shapes the result.",
+    "Correct. A fixed order turns an accident of bookkeeping into a biological effect. If priority by age is real, model it explicitly; otherwise shuffle the order every year.",
+    "The order is not random: it is the same every year and correlated with age. Any correlation between age and territory quality in the output would be an artefact.",
+    "C++ has no opinion about visiting orders; the bias is silent.",
+  ]}
+/>
+
+<Check
+  id="stale"
+  kind="debug"
+  question="In scheduling_event_queue.cpp, the line `if (!voles[e.vole].alive) continue;` is deleted. What happens?"
+  options={[
+    "Nothing: dead voles have no events left",
+    "A dead vole's pending birth event is still carried out, so dead voles keep producing pups",
+    "The program fails to compile",
+    "The queue stops returning events in time order",
+  ]}
+  answer={1}
+  feedback={[
+    "A vole has a death event and a birth event pending at the same time. When the death comes first, the birth event remains in the queue.",
+    "Correct. Worse, each such birth schedules another birth for the dead mother, so the dead keep reproducing for ever and frail lineages never disappear. (A dead vole's death event cannot fire twice, but nothing else stops its births.)",
+    "The line is a run-time check; removing it leaves valid code.",
+    "The ordering is maintained by the priority queue and is unaffected; the events themselves are wrong.",
+  ]}
+/>
+
+### The laboratory
+
+Run the plant model in the browser, switch between synchronous and random-order scheduling with the same seed, and watch abundance and the spatial pattern change:
+
+<Lab id="ibm" />
+
+## In biological modelling
+
+Choose the schedule by asking how the biology happens in time:
+
+- **Synchronous** schedules suit life cycles with a census: annual plants that all flower at once, seasonal breeders, insects with discrete generations, cellular automata of vegetation in which each cell responds to last year's neighbours.
+- **Random-order** schedules suit processes in which one individual's action changes the conditions for the next within a step: settlement on territories, depletion of a shared food patch, sequential competition for nest sites. Fixed orders almost never suit anything.
+- **Event-driven** schedules suit continuous-time biology in which events are rare relative to any natural time step and their precise timing matters: births and deaths in small populations, infections and recoveries, movements between patches.
+
+A schedule is a hypothesis about timing. If a result depends on it, as the plant model's abundance does, that dependence is itself a finding: it says which aspect of timing the outcome is sensitive to, and therefore what must be measured in the field. Report the schedule as part of the model description, and test sensitivity to it, as in <Concept id="ibm-validation" />.
+
+## Common mistakes
+
+- **Accidental sequential updating.** Writing new states into the same vector that later individuals read turns an intended synchronous model into an ordered asynchronous one. Separate the census from the update.
+- **A fixed visiting order.** Index order is not neutral. Shuffle every step, with the model's engine.
+- **Shuffling once.** A single shuffle before the first step is a fixed order thereafter.
+- **Stale events.** In an event queue, check that an event's owner is still alive (and that the event is still current) before carrying it out.
+- **Out-of-date rates.** If an event changes other individuals' rates, their pending waiting times must be redrawn.
+- **Holding references across insertions.** In event-driven code, adding a newborn may reallocate the vector of individuals; refer to individuals by index.
+- **Expecting bit-identical output across compilers.** `std::shuffle` and the distributions differ between standard libraries. Compare runs statistically, or within one build.
+
+## Practice
+
+<Practice>
+
+1. Show that every sequential order in `scheduling_orders.cpp` leaves either four or five plants alive, while synchronous updating leaves two. Find one order that gives each sequential outcome.
+2. Suppose `plants.cpp` visited plants in index order, without shuffling, but kept immediate deaths. Survivors come first in the vector, seedlings last. Predict how survival would differ between adults and seedlings, and why no rule of the model would explain it.
+3. Make the vole birth rate density-dependent, $b(N) = b_0 / (1 + N/K)$. Explain why using $b(N)$ only at the moment each birth is scheduled gives wrong dynamics, and describe a correct way to implement it in the event queue.
+
+<details>
+<summary>Worked answer for exercise 1</summary>
+In a sequential update, a plant that dies immediately protects both of its neighbours, because each now has a dead neighbour whenever it is visited. So no two adjacent plants can both die. The interior plants are 1 to 5, and at most three of them can die without two being adjacent (1, 3 and 5), so at least four survive: the left-to-right order achieves this. At least two must die: if only plant $k$ died, some interior plant not adjacent to $k$ would still have two living neighbours when visited. Killing 2 and 4 first protects all the others, giving five survivors (the evens-first order does this). Synchronously, all five interior plants see two living neighbours in the census and die together.
+</details>
+
+<details>
+<summary>Hint for exercise 2</summary>
+Adults are visited first and count every neighbour, including seedlings that may die later in the step. Seedlings are visited last, after many of their neighbours have died.
+</details>
+
+<details>
+<summary>Worked answer for exercise 3</summary>
+A birth time drawn when the population was small uses a high rate and is too early once the population has grown; it is never corrected. Either redraw every pending birth time after each event that changes $N$ (valid because exponential waiting times are memoryless), or use *thinning*: schedule births at the maximum rate $b_0$ and, when a birth event comes up, carry it out only with probability $b(N)/b_0$, otherwise just schedule the next candidate. Thinning is exact and needs no redrawing.
+</details>
+
+</Practice>

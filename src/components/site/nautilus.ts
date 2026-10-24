@@ -117,7 +117,7 @@ export function startNautilus(root: HTMLElement) {
       const ph = s.t * 0.11 + i * 0.8;
       const w1 = amp * Math.sin(ph);
       const w2 = amp * 1.6 * Math.sin(ph - 1.3);
-      el.setAttribute('d', `M-13,${y0} C${-13 - len * 0.35},${(y0 + w1).toFixed(2)} ${-13 - len * 0.7},${(y0 * 1.25 + w2 * 0.6).toFixed(2)} ${-13 - len},${(y0 * 1.4 + w2).toFixed(2)}`);
+      el.setAttribute('d', `M-8,${y0} C${-8 - len * 0.35},${(y0 + w1).toFixed(2)} ${-8 - len * 0.7},${(y0 * 1.25 + w2 * 0.6).toFixed(2)} ${-8 - len},${(y0 * 1.4 + w2).toFixed(2)}`);
     });
     if (mode === 'ambient') {
       // The faint track is sampled every fourth frame: cheap, and it reads as a tracker's trace.

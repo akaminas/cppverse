@@ -44,7 +44,6 @@ const checkCounts = lessonCheckCounts();
     <header class="dest-hero">
       <p class="eyebrow"><a href={url('/models/')}>Destinations</a> · {dest.eyebrow}</p>
       <h1>{domain.title}</h1>
-      <p class="lead">{dest.capability}</p>
       <div class="measure">{dest.intro.map((p) => <p>{p}</p>)}</div>
       <div class="cta-row">
         <a class="btn-solid" href={atlasUrl(dest.landmark)}>See it in the atlas</a>
@@ -146,7 +145,7 @@ const checkCounts = lessonCheckCounts();
     <section class="dest-section lesson-source" aria-label="Source">
       {manual.length > 0 ? (
         <p>
-          This destination corresponds to Module {dest.module} of the Groningen course manual:{' '}
+          This destination draws on these sections of the Groningen course manual:{' '}
           {manual.map((m, i) => (<>{i > 0 && '; '}§{m.section} {m.title}</>))}. Lessons, examples and laboratories are original.
         </p>
       ) : (

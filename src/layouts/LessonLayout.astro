@@ -43,8 +43,7 @@ const hue = ctx.domain.family ? `var(--v-${ctx.domain.family})` : 'var(--v-secon
           <p class="eyebrow lesson-crumbs">
             <a href={url(`/atlas/?domain=${ctx.domain.id}`)}>{ctx.domain.title}</a>
             <span aria-hidden="true"> · </span>
-            {d.module ? `Groningen manual, Module ${d.module}` : 'Original material'}
-            {d.optional && <span> · optional branch</span>}
+            {d.optional ? 'Optional branch' : 'Field-guide entry'}
           </p>
         </div>
         <div class="dex-screen">

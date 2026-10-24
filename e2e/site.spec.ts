@@ -10,10 +10,10 @@ async function hydrated(target: Locator) {
 const CITATION = 'C++ for biologists course material, University of Groningen, Faculty of Science and Engineering, Nijenborgh 7, 9747 AG Groningen';
 
 test.describe('landing and navigation', () => {
-  test('the landing page shows the title, the phrase and the exact attribution', async ({ page }) => {
+  test('the landing page shows the title, the subtitle and the exact attribution', async ({ page }) => {
     await page.goto('./');
     await expect(page.getByRole('heading', { level: 1, name: 'C++ Atlas' })).toBeVisible();
-    await expect(page.getByText('Learn the language. Build the model. Understand the system.')).toBeVisible();
+    await expect(page.getByText('Programming and Modelling for Biologists')).toBeVisible();
     await expect(page.locator('cite').first()).toHaveText(CITATION);
   });
 

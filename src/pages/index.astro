@@ -8,10 +8,8 @@ import { url } from '../lib/url';
   <section class="landing">
     <Topography />
     <div class="landing-in">
-      <p class="eyebrow">Programming and modelling for biologists</p>
       <h1>C++ Atlas</h1>
       <p class="subtitle">Programming and Modelling for Biologists</p>
-      <p class="phrase">Learn the language. Build the model. Understand the system.</p>
       <div class="cta-row">
         <a class="btn-solid" id="enter" href={url('/start/')} data-atlas={url('/atlas/')}>Enter the atlas</a>
         <a class="btn-outline" href={url('/curriculum/')}>Curriculum outline</a>
@@ -50,8 +48,7 @@ import { url } from '../lib/url';
     background: radial-gradient(closest-side, rgba(10, 11, 13, 0.92) 50%, rgba(10, 11, 13, 0));
   }
   h1 { font-size: clamp(3.4rem, 2rem + 6vw, 6.4rem); letter-spacing: -0.02em; margin: 10px 0 6px; color: #fff; }
-  .subtitle { font-family: var(--v-font-title); font-size: clamp(1.25rem, 1rem + 1vw, 1.7rem); color: var(--v-secondary); margin: 0 0 22px; }
-  .phrase { font-size: 1.06rem; color: var(--v-secondary); margin: 0 auto 34px; letter-spacing: 0.01em; }
+  .subtitle { font-family: var(--v-font-title); font-size: clamp(1.25rem, 1rem + 1vw, 1.7rem); color: var(--v-secondary); margin: 0 0 34px; }
   .cta-row { justify-content: center; }
   .returning { margin-top: 18px; font-size: 0.9rem; color: var(--v-secondary); }
   .landing-foot {

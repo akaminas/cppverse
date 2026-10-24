@@ -2,28 +2,12 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Attribution from '../components/site/Attribution.astro';
 import { CITATION, MANUAL } from '../data/citation';
-import { coverageRows, lessonFactsFrom } from '../lib/coverage';
 import { url } from '../lib/url';
-
-const files = import.meta.glob('/src/content/lessons/*.mdx', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
-const existing = new Set(Object.keys(files).map((p) => p.split('/').pop()!.replace(/\.mdx$/, '')));
-const facts = Object.fromEntries(Object.entries(files).map(([p, src]) => [p.split('/').pop()!.replace(/\.mdx$/, ''), lessonFactsFrom(src)]));
-const rows = coverageRows(existing, facts);
-const counts = {
-  instructional: rows.filter((r) => r.status !== 'excluded').length,
-  implemented: rows.filter((r) => r.status === 'implemented').length,
-  partial: rows.filter((r) => r.status === 'partial').length,
-  pending: rows.filter((r) => r.status === 'pending').length,
-  excluded: rows.filter((r) => r.status === 'excluded').length,
-};
-const STATUS = { implemented: 'Implemented', partial: 'Partial', pending: 'Pending', excluded: 'Excluded' } as const;
 ---
-<BaseLayout title="Sources and coverage" section="about" description="Sources, required attribution, content-use rules and the complete coverage of the Groningen course manual.">
+<BaseLayout title="Sources" section="about" description="Sources, required attribution and content-use rules.">
   <div class="wrap">
     <header class="page-head">
-      <p class="eyebrow">Sources</p>
-      <h1>Sources and coverage</h1>
-      <p class="lead">Where the curriculum comes from, how it is credited, and how every section of the course manual maps onto this site.</p>
+      <h1>Sources</h1>
     </header>
 
     <section class="src-section" aria-labelledby="primary">
@@ -31,7 +15,7 @@ const STATUS = { implemented: 'Implemented', partial: 'Partial', pending: 'Pendi
       <div class="measure">
         <p>
           The curriculum follows <cite>{MANUAL.title}</cite> by {MANUAL.authors.join(', ')} ({MANUAL.institution}). It determines the
-          C++ knowledge taught here, the order of concepts, and the four modelling destinations (Modules 14–17).
+          C++ knowledge taught here, the order of concepts, and the four modelling destinations.
         </p>
         <div class="key"><Attribution label="Required attribution" /></div>
         <p>
@@ -51,8 +35,7 @@ const STATUS = { implemented: 'Implemented', partial: 'Partial', pending: 'Pendi
           Where the manual describes behaviour that is outdated or incorrect for modern C++, lessons teach the current behaviour and
           say so. Examples: <code>std::vector&lt;T&gt;(n)</code> value-initialises its elements; signed integer overflow is undefined
           behaviour; integer division truncates toward zero on every compiler since C++11; whether plain <code>char</code> is signed is
-          implementation-defined; exceptions are caught by <code>const&amp;</code> and live in <code>&lt;stdexcept&gt;</code>. The
-          <a href="#coverage">coverage matrix</a> lists these notes per section.
+          implementation-defined; exceptions are caught by <code>const&amp;</code> and live in <code>&lt;stdexcept&gt;</code>.
         </p>
       </div>
     </section>
@@ -65,40 +48,6 @@ const STATUS = { implemented: 'Implemented', partial: 'Partial', pending: 'Pendi
         <li><a href="https://en.cppreference.com/">cppreference.com</a>: the reference for language and library behaviour.</li>
         <li><a href="https://akaminas.github.io/vellum/">Vellum</a>: the design system for colour, typography and every scientific figure (MIT-licensed code; tokens copied verbatim).</li>
       </ul>
-    </section>
-
-    <section class="src-section" aria-labelledby="coverage" id="coverage">
-      <div class="sec-head"><h2>Coverage of the course manual</h2></div>
-      <p class="measure">
-        {counts.instructional} instructional sections (including advanced ones): {counts.implemented} implemented, {counts.partial} partial,
-        {counts.pending} pending. {counts.excluded} sections are excluded (exercises, solutions, assignments, projects and indexes).
-        Every instructional section is mapped to at least one atlas concept; the build fails otherwise.
-      </p>
-      <div class="table-scroll">
-        <table class="coverage">
-          <thead>
-            <tr>
-              <th scope="col">Module</th><th scope="col">Section</th><th scope="col">Concept and objective</th><th scope="col">Atlas nodes</th>
-              <th scope="col">Lessons</th><th scope="col">Level</th><th scope="col">Modelling relevance</th><th scope="col">Status</th><th scope="col">Validation</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr class={`st-${r.status}`}>
-                <td>{r.section.module ?? '—'}</td>
-                <td>{r.section.section} {r.section.title}</td>
-                <td>{r.section.concept}{r.section.objective && <span class="muted"> Objective: {r.section.objective}</span>}{r.section.notes && <span class="cov-note"> Note: {r.section.notes}</span>}</td>
-                <td>{r.nodes.map((n, i) => (<>{i > 0 && ', '}<a href={url(`/atlas/?node=${n.id}`)}>{n.title}</a></>))}</td>
-                <td>{r.lessons.map((l, i) => (<>{i > 0 && ', '}{existing.has(l) ? <a href={url(`/learn/${l}/`)}>{l}</a> : l}</>))}</td>
-                <td>{[...new Set(r.nodes.map((n) => n.level))].join(', ')}</td>
-                <td>{r.section.modelling}</td>
-                <td><span class:list={['status', { 'status-good': r.status === 'implemented', 'status-warning': r.status === 'partial' || r.status === 'pending' }]}>{STATUS[r.status]}</span></td>
-                <td>{r.validation}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </section>
 
     <section class="src-section" aria-labelledby="licences">
@@ -115,9 +64,4 @@ const STATUS = { implemented: 'Implemented', partial: 'Partial', pending: 'Pendi
 <style>
   .src-section { margin-top: 56px; }
   .src-section h3 { margin-top: 1.4em; }
-  .coverage { font-size: 0.8rem; min-width: 1100px; }
-  .coverage td { line-height: 1.45; }
-  .coverage .muted, .cov-note { display: block; margin-top: 4px; }
-  .cov-note { color: var(--v-ochre-deep); }
-  .coverage tr.st-excluded td { color: var(--v-secondary); }
 </style>

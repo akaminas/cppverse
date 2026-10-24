@@ -11,11 +11,6 @@ const list = Object.values(capstones).map((c) => ({ c, node: conceptById[c.id] }
     <header class="page-head">
       <p class="eyebrow">Integration projects</p>
       <h1>Capstones</h1>
-      <p class="lead">
-        Six original projects that bring the concepts of a destination together in one model. Each states a question, a model,
-        milestones and verification criteria, so that you can check your own work. They are not the Groningen course's graded
-        projects, and no solutions are published.
-      </p>
     </header>
     <div class="grid grid-2">
       {list.map(({ c, node }) => (

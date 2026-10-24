@@ -9,7 +9,7 @@ objectives:
   - Read a complete simulation program and say which earlier construct each part uses
   - Organise a model program as parameters, state, update rule, loop, validation and output
   - Check a simulation against a result derived from the model's equations
-  - Use the smaller features reviewed in Module 11, from brace initialisation to the iterator-range vector constructor
+  - Use the smaller features reviewed here, from brace initialisation to the iterator-range vector constructor
 references:
   - "Caswell, H. (2001). Matrix Population Models, 2nd ed. Sinauer: stage-structured models."
 ---
@@ -100,9 +100,9 @@ Two design choices are worth making explicit:
 - **The model knows nothing about input and output.** `step` and `simulate` neither read nor print. They can be tested, reused in a parameter sweep, or moved into their own file pair (<Concept id="multiple-files" />) without change.
 - **Validation happens once, early.** After `validate(p)` the rest of the program may assume sensible parameters. The test is written as "all conditions hold" rather than "any condition fails", so that a `nan` parameter, for which every comparison is false, is rejected too.
 
-## What Module 11 adds
+## What else the review adds
 
-The review module of the course manual also gathers a few smaller features that did not fit elsewhere. Each is worth knowing when you read other people's code.
+The manual's review also gathers a few smaller features that did not fit elsewhere. Each is worth knowing when you read other people's code.
 
 ### Three ways to initialise
 

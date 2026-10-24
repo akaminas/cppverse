@@ -67,7 +67,7 @@ Because `char` is an integer type, it can hold numbers as well as characters, an
 <Example file="data/text_char_signedness.cpp" />
 
 <Callout kind="manual" title="char is not unsigned by default">
-Module 8 of the manual states that `char` is unsigned by default, with values from 0 to 255. The standard leaves this choice to the compiler, and the most common desktop compilers make plain `char` signed. Do not rely on either: use plain `char` for text, and `std::uint8_t` or `int` for small numbers.
+The manual states that `char` is unsigned by default, with values from 0 to 255. The standard leaves this choice to the compiler, and the most common desktop compilers make plain `char` signed. Do not rely on either: use plain `char` for text, and `std::uint8_t` or `int` for small numbers.
 </Callout>
 
 <Anchor id="strings" />

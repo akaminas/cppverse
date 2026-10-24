@@ -31,12 +31,12 @@ const stripes = Array.from({ length: 7 }, (_, i) => {
 const [ox, oy] = pt(4 * Math.PI);
 const [ix, iy] = pt(2 * Math.PI);
 const tentacles = [
-  { y: -3.5, len: 24 },
-  { y: -1, len: 30 },
-  { y: 1.5, len: 27 },
-  { y: 4, len: 33 },
-  { y: 6.5, len: 26 },
-  { y: 9, len: 22 },
+  { y: 0, len: 29 },
+  { y: 2, len: 35 },
+  { y: 4, len: 32 },
+  { y: 6, len: 38 },
+  { y: 7.5, len: 31 },
+  { y: 8.5, len: 27 },
 ];
 ---
 <div class="nautilus-root" data-nautilus>
@@ -54,7 +54,7 @@ const tentacles = [
             </radialGradient>
           </defs>
           <g class="nt-tentacles">
-            {tentacles.map((t) => <path class="nt-tentacle" data-y={t.y} data-len={t.len} d={`M-13,${t.y} L${-13 - t.len},${t.y}`} />)}
+            {tentacles.map((t) => <path class="nt-tentacle" data-y={t.y} data-len={t.len} d={`M-8,${t.y} L${-8 - t.len},${t.y}`} />)}
           </g>
           <path class="nt-shell" d={shell} fill="url(#nt-shell-shade)" />
           <g clip-path="url(#nt-shell-clip)">
@@ -63,11 +63,11 @@ const tentacles = [
           <path class="nt-coil" d={coil} />
           <circle class="nt-umbilicus" cx={cx} cy={cy} r="2.2" />
           <path class="nt-hood" d={`M${(ox + 3).toFixed(2)},${(oy - 1).toFixed(2)} C${(ox - 7).toFixed(2)},${(oy - 5).toFixed(2)} -16,${(iy - 6).toFixed(2)} ${(ix - 1).toFixed(2)},${(iy - 3).toFixed(2)} C${(ix - 2).toFixed(2)},${(iy + 3).toFixed(2)} -10,10 -14,9 C-16,4 -16,-2 ${(ox + 3).toFixed(2)},${(oy - 1).toFixed(2)}Z`} />
-          <circle class="nt-spot" cx="-7" cy="-4" r="0.9" />
-          <circle class="nt-spot" cx="-4" cy="-6.5" r="0.7" />
-          <circle class="nt-spot" cx="-10" cy="-1" r="0.6" />
-          <circle class="nt-eye" cx="-6" cy="1.6" r="2.1" />
-          <circle class="nt-glint" cx="-6.6" cy="1" r="0.6" />
+          <circle class="nt-spot" cx="-11" cy="5.6" r="0.8" />
+          <circle class="nt-spot" cx="-9.4" cy="7.6" r="0.6" />
+          <circle class="nt-spot" cx="-2.6" cy="3.6" r="0.6" />
+          <circle class="nt-eye" cx="-6.4" cy="3.1" r="2" />
+          <circle class="nt-glint" cx="-7" cy="2.5" r="0.6" />
         </svg>
       </div>
     </div>

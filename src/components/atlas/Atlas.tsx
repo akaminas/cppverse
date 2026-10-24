@@ -704,10 +704,28 @@ export default function Atlas({ data, checkCounts }: Props) {
             {data.domains.map((d) => {
               const fam = d.family;
               const lit = !highlight || data.nodes.some((n) => n.domain === d.id && highlight.has(n.id));
-              const fitTitle = (d.box.w * 0.86) / (d.title.length * 0.5);
-              const caps = d.modules.length ? `${d.title} · M${d.modules.join(', ')}` : d.title;
+              // Titles sit in the part of the box west of the destination dot, with a clear gap
+              // between the text and the dot's glow.
+              const dots = data.nodes.filter((n) => n.domain === d.id && n.kind === 'landmark');
+              const freeRight = dots.length ? Math.min(...dots.map((n) => n.x - n.r * 1.72 - 34)) : d.box.x + d.box.w;
+              const tx = d.box.x + (freeRight - d.box.x) / 2;
+              const freeW = freeRight - d.box.x - 20;
+              // Beside a destination dot the title wraps onto two lines, split where the lines are most even.
+              const words = d.title.split(' ');
+              let lines = [d.title];
+              if (dots.length && words.length > 1) {
+                let best = Infinity;
+                for (let i = 1; i < words.length; i++) {
+                  const a = words.slice(0, i).join(' ');
+                  const b = words.slice(i).join(' ');
+                  if (Math.max(a.length, b.length) < best) (best = Math.max(a.length, b.length)), (lines = [a, b]);
+                }
+              }
+              const longest = Math.max(...lines.map((l) => l.length));
+              const fitTitle = (freeW * 0.94) / (longest * 0.5);
+              const caps = d.title;
               const fitCaps = (d.box.w - 56) / (caps.length * 0.8);
-              const sub = `${d.modules.length ? `Module${d.modules.length > 1 ? 's' : ''} ${d.modules.join(', ')}` : 'Original synthesis'} · ${data.nodes.filter((n) => n.domain === d.id && n.kind !== 'landmark').length} nodes`;
+              const sub = `${data.nodes.filter((n) => n.domain === d.id && n.kind !== 'landmark').length} concepts`;
               return (
                 <g
                   key={d.id}
@@ -725,10 +743,12 @@ export default function Atlas({ data, checkCounts }: Props) {
                       fitDomain(d.id);
                     }}
                   >
-                    <text className="atlas-domain-title" x={d.box.x + d.box.w / 2} y={d.box.y + d.box.h / 2} dy="-0.25em" style={{ ['--fit' as string]: fitTitle.toFixed(2) }}>
-                      {d.title}
+                    <text className="atlas-domain-title" x={tx} y={d.box.y + d.box.h / 2} dy={lines.length > 1 ? '-0.95em' : '-0.25em'} style={{ ['--fit' as string]: fitTitle.toFixed(2) }}>
+                      {lines.map((l, i) => (
+                        <tspan key={i} x={tx} dy={i ? '1.1em' : undefined}>{l}</tspan>
+                      ))}
                     </text>
-                    <text className="atlas-domain-sub" x={d.box.x + d.box.w / 2} y={d.box.y + d.box.h / 2} dy="1.9em" style={{ ['--fit' as string]: ((d.box.w * 0.86) / (sub.length * 0.5)).toFixed(2) }}>
+                    <text className="atlas-domain-sub" x={tx} y={d.box.y + d.box.h / 2} dy={lines.length > 1 ? '2.1em' : '1.9em'} style={{ ['--fit' as string]: ((freeW * 0.94) / (sub.length * 0.5)).toFixed(2) }}>
                       {sub}
                     </text>
                     <text className="atlas-domain-caps" x={d.box.x + 26} y={d.box.y + 30} style={{ ['--fit' as string]: fitCaps.toFixed(2) }}>

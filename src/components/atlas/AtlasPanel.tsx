@@ -309,7 +309,7 @@ export default function AtlasPanel(props: Props) {
               <ul>
                 <li><span className="lg-dot" /> Concept, anchored in a lesson</li>
                 <li><span className="lg-dot lg-optional" /> Optional or advanced branch</li>
-                <li><span className="lg-dot lg-landmark" /> Modelling destination (Modules 14–17) and the inference synthesis</li>
+                <li><span className="lg-dot lg-landmark" /> Modelling destination, and the inference synthesis</li>
                 <li><span className="lg-diamond" /> Capstone project</li>
                 <li><span className="lg-check">✓</span> Studied · <span className="lg-ring" /> next on your pathway</li>
               </ul>

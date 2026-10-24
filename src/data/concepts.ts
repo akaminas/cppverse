@@ -273,7 +273,7 @@ export const concepts: ConceptNode[] = [
     goals: ['Split a model into header and source files'] },
   { id: 'procedural-review', title: 'A complete procedural simulation', label: 'Procedural synthesis', domain: 'architecture', kind: 'integration', level: 'beginner',
     lesson: 'procedural-review', manual: ['M11.1', 'M11.2', 'M11.3', 'M11.4', 'M11.5'],
-    summary: 'Module 11 synthesis: state, update rule, parameters and output assembled into one program.',
+    summary: 'A synthesis: state, update rule, parameters and output assembled into one program.',
     goals: ['Assemble a procedural simulation from earlier constructs'] },
   { id: 'constructors', title: 'Constructors', domain: 'architecture', kind: 'concept', level: 'intermediate',
     lesson: 'constructors', manual: ['M13.2'],

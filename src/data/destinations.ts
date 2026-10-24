@@ -1,6 +1,6 @@
 import type { DomainId, LabId } from './types';
 
-// The four modelling destinations (Groningen Modules 14–17) and the
+// The four modelling destinations and the
 // scientific-inference synthesis. Destination pages are generated from
 // this file together with the atlas graph.
 
@@ -21,7 +21,7 @@ export const destinations: Destination[] = [
     id: 'algorithms',
     landmark: 'algorithms-landmark',
     module: 14,
-    eyebrow: 'Destination · Module 14',
+    eyebrow: 'Destination',
     capability: 'Translate biological hypotheses and mathematical models into computational procedures.',
     intro: [
       'Algorithm design is where programming becomes modelling. A biological hypothesis is written as equations, the equations become a step-by-step procedure, the procedure becomes C++, and the program produces output that can be checked and interpreted.',
@@ -35,7 +35,7 @@ export const destinations: Destination[] = [
     id: 'ode',
     landmark: 'ode-landmark',
     module: 15,
-    eyebrow: 'Destination · Module 15',
+    eyebrow: 'Destination',
     capability: 'Implement continuous-time models with numerical methods, and know how accurate the result is.',
     intro: [
       'Most continuous-time models in biology have no closed-form solution, so they are solved numerically. The model, a set of rates of change, is distinct from the numerical method that approximates its solution.',
@@ -49,7 +49,7 @@ export const destinations: Destination[] = [
     id: 'stochastic',
     landmark: 'stochastic-landmark',
     module: 16,
-    eyebrow: 'Destination · Module 16',
+    eyebrow: 'Destination',
     capability: 'Implement probabilistic processes and Gillespie simulations, and analyse them across replicates.',
     intro: [
       'In small populations, chance events (who is born, who dies, who infects whom) shape outcomes. A stochastic model describes a distribution of possible histories, and a simulation samples from it.',
@@ -63,7 +63,7 @@ export const destinations: Destination[] = [
     id: 'ibm',
     landmark: 'ibm-landmark',
     module: 17,
-    eyebrow: 'Destination · Module 17',
+    eyebrow: 'Destination',
     capability: 'Build systems from individuals, their attributes and interactions, and study the patterns that emerge.',
     intro: [
       'Individual-based models represent each organism explicitly, with its own attributes and local interactions. Population-level patterns, such as clustering or abundance below a mean-field expectation, emerge from the rules rather than being written into them.',
@@ -81,7 +81,7 @@ export const destinations: Destination[] = [
     capability: 'Design simulation experiments, analyse their output, and draw appropriately qualified scientific conclusions.',
     intro: [
       'A working simulation is the beginning of a study, not its end. The four destinations converge here: computational experiments with replicates and recorded seeds, analysis of the output in R or Python, verification and validation, and conclusions that state what the model can and cannot support.',
-      'This region is an original synthesis of this site. It is not a numbered module of the Groningen course.',
+      'This region is an original synthesis of this site.',
     ],
     assemblies: [],
     capstones: ['capstone-f'],

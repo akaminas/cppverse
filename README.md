@@ -25,7 +25,7 @@ Live site (after deployment): <https://akaminas.github.io/cppverse/>
   step-through traces, annotated program anatomy, synchronised maths and code, computed
   figures and knowledge checks.
 - **Model destinations** (`/models/`): the discrete-time and matrix models, the ODE, stochastic
-  and individual-based models (manual modules 14–17) and a scientific-inference synthesis. Each
+  and individual-based models, and a scientific-inference synthesis. Each
   has a model assembly view that links every part of the mathematics to the lines of C++ that
   implement it, and a browser laboratory.
 - **Laboratories:** five interactive simulations written in TypeScript (discrete-time, matrix,

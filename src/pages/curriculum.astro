@@ -2,7 +2,6 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { concepts, conceptById } from '../data/concepts';
 import { domains, regions } from '../data/domains';
-import { manualSections } from '../data/manual';
 import { dependenciesOf, getGraph, topologicalOrder } from '../lib/graph/graph';
 import { hrefFor } from '../lib/lesson-context';
 import { atlasUrl, url } from '../lib/url';
@@ -19,39 +18,28 @@ const byRegion = regions.map((r) => ({
     .filter((d) => d.region === r.id)
     .map((d) => ({ d, items: topologicalOrder(g, concepts.filter((c) => c.domain === d.id).map((c) => c.id)).map((id) => conceptById[id]) })),
 }));
-const modules = Array.from({ length: 17 }, (_, i) => i + 1).map((m) => ({
-  m,
-  sections: manualSections.filter((s) => s.module === m && s.kind !== 'excluded'),
-  lessons: [...new Set(concepts.filter((c) => c.lesson && c.manual.some((id) => manualSections.find((s) => s.id === id)?.module === m)).map((c) => c.lesson!))],
-}));
 ---
 <BaseLayout title="Curriculum" section="curriculum" description="The complete curriculum as text: every domain, concept, lesson and prerequisite.">
   <div class="wrap">
     <header class="page-head">
       <p class="eyebrow">Curriculum outline</p>
       <h1>The atlas as text</h1>
-      <p class="lead">
-        Every concept of the <a href={url('/atlas/')}>atlas</a> in prerequisite order, grouped by region and domain, with its lesson,
-        level, Groningen manual sections and direct prerequisites.
-      </p>
     </header>
 
     <nav class="outline-toc" aria-label="Regions">
       {byRegion.map(({ r }) => <a href={`#${r.id}`}>{r.title}</a>)}
-      <a href="#by-module">By manual module</a>
     </nav>
 
     {byRegion.map(({ r, domains: ds }) => (
       <section class="outline-region" id={r.id} aria-labelledby={`h-${r.id}`}>
         <div class="sec-head"><h2 id={`h-${r.id}`}>{r.title}</h2></div>
-        <p class="muted measure">{r.summary}</p>
         {ds.map(({ d, items }) => (
           <section class="outline-domain" aria-labelledby={`h-${d.id}`}>
             <h3 id={`h-${d.id}`}>
               {d.title}
-              <span class="muted">{d.modules.length ? ` · Module${d.modules.length > 1 ? 's' : ''} ${d.modules.join(', ')}` : ' · original synthesis'}</span>
+              {!d.modules.length && <span class="muted"> · original synthesis</span>}
             </h3>
-            <p class="muted measure">{d.summary} <a href={url(`/atlas/?domain=${d.id}`)}>Show in the atlas</a></p>
+            <p class="muted measure"><a href={url(`/atlas/?domain=${d.id}`)}>Show in the atlas</a></p>
             <ol class="outline-list">
               {items.map((c) => {
                 const deps = dependenciesOf(g, c.id).map((id) => conceptById[id]);
@@ -78,24 +66,6 @@ const modules = Array.from({ length: 17 }, (_, i) => i + 1).map((m) => ({
         ))}
       </section>
     ))}
-
-    <section class="outline-region" id="by-module" aria-labelledby="h-modules">
-      <div class="sec-head"><h2 id="h-modules">By Groningen manual module</h2><a href={url('/sources/#coverage')}>Full coverage matrix</a></div>
-      <div class="table-scroll">
-        <table>
-          <thead><tr><th scope="col">Module</th><th scope="col">Instructional sections</th><th scope="col">Lessons</th></tr></thead>
-          <tbody>
-            {modules.map(({ m, sections, lessons: ls }) => (
-              <tr>
-                <td>{m}</td>
-                <td>{sections.map((s) => `${s.section === 'advanced' ? '' : `${s.section} `}${s.title}`).join('; ')}</td>
-                <td>{ls.map((slug, i) => (<>{i > 0 && ', '}{written.has(slug) ? <a href={url(`/learn/${slug}/`)}>{slug}</a> : slug}</>))}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
   </div>
 </BaseLayout>
 

@@ -1,0 +1,245 @@
+---
+title: Overloading, default arguments, inline and static
+summary: Several functions may share a name, trailing parameters may have defaults, inline concerns definitions in headers, and static locals hide state.
+level: intermediate
+module: 6
+manual: ["M6.adv-fast", "M7.4"]
+minutes: 30
+optional: true
+objectives:
+  - Overload a function for conceptually identical operations and predict which overload a call selects
+  - Declare default arguments correctly, and decide when a default is appropriate
+  - Explain what inline means in modern C++
+  - Explain how a static local variable keeps state between calls, and why that state makes functions hard to test
+references:
+  - "cppreference.com: Overload resolution"
+  - "cppreference.com: Default arguments"
+  - "cppreference.com: inline specifier"
+  - "cppreference.com: Storage class specifiers (static local variables)"
+---
+
+## What it is
+
+Four features adjust how functions are declared and called:
+
+- **Overloading**: several functions with the same name and different parameter lists. The compiler picks one at each call from the arguments.
+- **Default arguments**: values the compiler fills in when trailing arguments are left out of a call.
+- **`inline`**: permission to define the same function in several source files, typically by putting the definition in a header.
+- **`static` local variables**: variables inside a function that keep their value from one call to the next.
+
+All four are convenient. Each can also make a program harder to read or test when it is used without thought, so this lesson pairs every feature with its limits.
+
+## Why it matters
+
+Model code is read far more often than it is written, frequently by someone checking it against a paper. Overloads and defaults can make calls short and natural, or they can hide what is actually computed. Static variables can be useful, but they make a function's result depend on its call history, which is exactly what a reproducible simulation must avoid.
+
+## How it works in C++
+
+### Overloading
+
+A function is identified not just by its name but by its name together with the types of its parameters, its *signature*. Two functions with the same name but different parameter lists are different functions, and the compiler chooses between them at every call:
+
+<Example file="foundations/features_overloading.cpp" mark="11,16,26-27" />
+
+`total_biomass(40, 2.5)` matches the version with an `int` and a `double`; `total_biomass(weighed)` matches the version taking a vector. The standard library does the same: `std::abs` has overloads for `int`, `long`, `double` and others, which is why `std::abs(-2.5)` works on a `double` (older code uses `fabs` from C for this; with `std::abs` it is unnecessary).
+
+How the compiler chooses, in brief:
+
+- It considers every visible function with that name and the right number of parameters.
+- It prefers an exact match, then a promotion (such as `float` to `double`), then a conversion (such as `int` to `double`).
+- If two candidates are equally good, the call is **ambiguous** and does not compile.
+- The return type plays no part. Two functions that differ only in their return type cannot both be declared.
+
+### When not to overload
+
+Overload only functions that do the *same thing* for different kinds of input. A useful test: could someone call any of the overloads without needing to know which one runs? Both versions of `total_biomass` pass: either way the answer is a total mass. This pair does not:
+
+```cpp
+double sampled_area(int quadrats);     // number of 0.25 m² quadrats → m²
+double sampled_area(double radius);    // radius of a circular plot in m → m²
+```
+
+`sampled_area(2)` is 0.5 m², `sampled_area(2.0)` is about 12.6 m². The difference between the two calls is a decimal point, and nothing warns you. Functions that compute different things deserve different names: `quadrat_area(2)` and `circular_plot_area(2.0)`.
+
+### Default arguments
+
+A default value written in a function's declaration is used when the caller leaves that argument out:
+
+<Example file="foundations/features_default_argument.cpp" mark="9,12-14,18" />
+
+The rules:
+
+- **Defaults go at the end.** Once a parameter has a default, every parameter after it must have one too. `void f(int a = 1, double b);` is an error, since a call `f(2.0)` could not say which argument it meant.
+- **A default is given once**, in the first declaration the caller sees: normally the prototype, or the header file. Repeating it in the definition is an error, even with the same value. That is why the definition above has no `= 2`.
+- **Arguments can only be omitted from the right.** There is no way to give the third argument and default the second.
+
+A default argument is shorthand for an overload: `print_state(int, double, int = 2)` behaves like two functions, one with three parameters and one with two that calls the first with precision 2.
+
+### When to use a default
+
+A default is appropriate when there is a value that nearly every caller wants and that a reader would assume anyway: the number of decimals printed, a separator, a tolerance with a sensible standard value. Put the parameters with defaults last, after the essential inputs.
+
+Be wary of defaults for the **parameters of a model**. `double logistic_step(double N, double r, double K = 100.0)` lets a call such as `logistic_step(N, r)` silently assume a carrying capacity that appears nowhere near the call. In a scientific program every model parameter should be visible where the model is used. A default should never change what is computed in a way that would surprise the caller.
+
+<Anchor id="inline-static" />
+
+### inline: about definitions, not speed
+
+Historically `inline` was a request to the compiler to replace each call by a copy of the function's body, saving the small cost of the call itself. Today that is not what it does in practice. Optimising compilers decide on their own which calls to expand, based on size and profile, and they inline small functions whether or not they are marked; equally, they may ignore the keyword.
+
+What `inline` reliably does is relax the one-definition rule (see <Concept id="prototypes" />): an `inline` function may be *defined* in several source files, provided all the definitions are identical. That is what lets you put the full definition of a small function in a header that many files include:
+
+```cpp
+// growth.hpp
+inline double next_generation(double N, double lambda) {
+    return lambda * N;
+}
+```
+
+Without `inline`, every source file that includes this header would contain its own definition, and the linker would reject the program for defining the function more than once. Functions defined inside a class body and `constexpr` functions are implicitly inline for the same reason, and templates follow similar rules. Since C++17, variables can be declared `inline` too, which allows a constant to be defined in a header. See <Concept id="multiple-files" />.
+
+<Callout kind="manual" title="inline as an optimisation">
+The manual presents `inline` as a way to make small functions faster, at the cost of a larger program. That was its original purpose, but compilers no longer depend on the hint. Use `inline` for definitions in headers; leave optimisation to the compiler and to measurement (see <Concept id="performance" />).
+</Callout>
+
+### static local variables
+
+A local variable declared `static` is created once and lives until the program ends, but its name is visible only inside its function. It therefore keeps its value from one call to the next:
+
+<Example file="foundations/features_static_counter.cpp" mark="9-11" />
+
+`last_id` is initialised only once. Because its initial value is a constant, that happens before `main` even starts; an initialiser that has to be computed at run time instead runs the first time control reaches the declaration. Either way it never runs again, and every later call continues from where the last one left off. Handing out unique identification numbers to new individuals, as here, is a legitimate use. So is work that should be done on the first call only, such as reading a lookup table: older code keeps a static `bool` flag for this, but the initialiser of a static local already runs only once, so `static const std::vector<double> table = read_table();` does the job by itself.
+
+Step through the program and watch `last_id` outlive every call:
+
+<Trace id="function-features-static" />
+
+The same example also shows the cost. When the second replicate of a simulation starts, the counter does not start again at 1, and there is no way to reset it from outside the function. More generally, a function with static state:
+
+- **gives different results for the same arguments**, depending on how often it has been called before;
+- **is hard to test**, because a test's outcome depends on which other tests ran first;
+- **cannot be shared by independent runs**, for example replicates run in parallel, which would all modify the same variable.
+
+The classic example in simulation code is a random-number engine hidden inside a function:
+
+```cpp
+double uniform01() {
+    static std::mt19937_64 engine{42};   // hidden state: one fixed stream for the whole program
+    return std::uniform_real_distribution<double>{0.0, 1.0}(engine);
+}
+```
+
+Every part of the program draws from one invisible stream. You cannot choose a seed per replicate, cannot run two independent streams, and adding a single draw anywhere changes every number drawn after it. The remedy is to make the state explicit: create the engine where the run is set up, with a recorded seed, and pass it by reference to every function that needs randomness.
+
+<Example file="foundations/features_engine_parameter.cpp" mark="10,23-24" />
+
+Each replicate owns its engine and its seed, the seed is printed, and `survivors` can be tested by giving it an engine with a known seed. (The output of this program is not listed: the algorithm behind `std::bernoulli_distribution` differs between standard libraries, so the counts depend on the compiler, although each is reproducible for a given compiler and seed.) The lessons on <Concept id="random-seeds" /> and <Concept id="random-library" /> build on this.
+
+The keyword `static` has other meanings in other places: on a function or variable outside any function it restricts the name to one source file, and inside a class it makes a member shared by all objects. They are covered where they arise.
+
+## Explore it
+
+<Check
+  id="which-overload"
+  kind="predict"
+  question="Given the two declarations, which function does the call select?"
+  code={`double sampled_area(int quadrats);
+double sampled_area(double radius);
+
+const double a = sampled_area(4);`}
+  options={[
+    "sampled_area(double), because the result is stored in a double",
+    "sampled_area(int), an exact match for the argument 4",
+    "Neither: the call is ambiguous",
+    "Both, and the results are added",
+  ]}
+  answer={1}
+  feedback={[
+    "The return type and what happens to the result play no part in choosing an overload.",
+    "4 is an int literal, so sampled_area(int) is an exact match, better than the conversion to double the other overload would need. With 4.0 the other function would run, which is exactly why this pair of overloads is a bad idea.",
+    "A call is ambiguous only when two candidates are equally good. An exact match beats a conversion.",
+    "Exactly one function is called.",
+  ]}
+/>
+
+<Check
+  id="default-rules"
+  kind="debug"
+  question="Which of these declarations is valid?"
+  options={[
+    "double survival(double m = 0.05, int days);",
+    "double survival(double m, int days = 1);",
+    "double survival(double m, int days = 1) { … } after the prototype double survival(double m, int days = 1);",
+    "double survival(double m = 0.05, int days = 1, bool verbose);",
+  ]}
+  answer={1}
+  feedback={[
+    "A parameter with a default may not be followed by one without.",
+    "The default is on the last parameter. survival(0.1) means survival(0.1, 1).",
+    "The default may be given only once. Repeating it in the definition is an error, even with the same value.",
+    "verbose comes after defaulted parameters but has no default itself.",
+  ]}
+/>
+
+<Check
+  id="static-calls"
+  kind="predict"
+  question="What does this print?"
+  code={`int visits() {
+    static int count = 0;
+    count = count + 2;
+    return count;
+}
+
+int main() {
+    visits();
+    visits();
+    std::cout << visits() << '\\n';
+}`}
+  options={["2", "6", "0", "It does not compile: the first two results are not used"]}
+  answer={1}
+  feedback={[
+    "That would be the result without static: count would be a new variable, set to 0, on every call.",
+    "count is initialised once and keeps its value: 2 after the first call, 4 after the second, 6 after the third.",
+    "count is incremented before it is returned, on every call.",
+    "Ignoring a return value is legal.",
+  ]}
+/>
+
+## In biological modelling
+
+- **Overloads for the same quantity from different data.** A total biomass from a count and a mean mass, or from individual weighings; a population density from a count and an area, or from a vector of quadrat counts. Same meaning, different inputs.
+- **Defaults for presentation, not for the model.** Output precision, separators, whether to print a header line. Keep growth rates, carrying capacities and survival probabilities explicit at every call.
+- **`inline` for small helpers in headers.** Unit conversions, small formulas and accessors that several source files use can be defined once in a header.
+- **No hidden state in the model.** Random-number engines, counters of events and running statistics belong in objects or variables that are created, seeded and passed explicitly, so that every replicate starts from a known state. This is the foundation of <Concept id="testing-reproducibility" />.
+
+## Common mistakes
+
+- **Overloads that differ in meaning.** If a reader must know which overload runs, use different names.
+- **Relying on the return type to distinguish overloads.** It does not take part.
+- **Ambiguous calls.** With `f(int)` and `f(double)`, a call `f(2L)` (a `long`) needs a conversion either way and does not compile.
+- **Repeating a default in the definition**, or putting defaulted parameters before required ones.
+- **Defaults for model parameters**, which hide assumptions from the reader of the call.
+- **`inline` as a performance switch.** It is not one; measure instead.
+- **Static state where a replicate needs a fresh start.** Make the state a variable that the caller owns and passes in.
+
+## Practice
+
+<Practice>
+
+1. Write two overloads of `density`: one taking a count and an area in square metres, one taking a vector of counts from quadrats of a given area. Do they pass the "could a caller use either without knowing which runs" test? What should each do with an area of zero?
+2. A colleague proposes `void simulate(double N0, double r = 0.5, int generations = 100, double K);`. Explain why it does not compile, and rewrite the declaration so that it does. Then argue which, if any, of the defaults should be kept.
+3. Rewrite `next_id` from `features_static_counter.cpp` so that the counter is a variable owned by the caller and passed by reference: `int next_id(int& last_id)`. Show that two replicates can now each start their numbering at 1.
+4. Move `next_generation` from `functions_outline.cpp` into a header, include it from two source files, and build both into one program, first without and then with `inline`. Read the linker's message for the first attempt.
+
+<details>
+<summary>Hints</summary>
+
+1. Both compute individuals per square metre, so the overloads are reasonable. For an area of zero there is no meaningful density; check it before dividing and decide how to report it.
+2. `K` has no default but follows parameters that do. Moving `K` before the defaulted parameters fixes the error: `simulate(double N0, double K, double r = 0.5, int generations = 100)`. Whether `r` should have a default at all is the more important question: a growth rate is a model parameter, so it is better left explicit.
+3. `int replicate_counter = 0;` before each replicate's loop, and `next_id(replicate_counter)` inside it.
+4. Without `inline` the linker reports a multiple definition of `next_generation`. See <Concept id="multiple-files" /> for how to compile and link several files.
+
+</details>
+
+</Practice>

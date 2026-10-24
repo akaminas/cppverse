@@ -1,0 +1,258 @@
+---
+title: while loops, do-while and jumps
+summary: Repeat until a condition fails, when the number of steps is not known in advance, and leave or skip passes with break and continue.
+level: beginner
+module: 5
+manual: ["M5.adv-while", "M5.adv-jump", "M5.1", "M11.2"]
+minutes: 35
+optional: false
+objectives:
+  - Write a while loop that runs until a stopping condition is met, with a guard against running for ever
+  - Choose between while, do-while and for, and explain pre-test and post-test loops
+  - Use break to stop a simulation early and continue to skip the rest of a pass
+  - Leave nested loops with a flag or by returning from a function instead of goto
+references:
+  - "cppreference.com: while loop"
+  - "cppreference.com: do-while loop"
+  - "cppreference.com: break, continue and goto statements"
+---
+
+## What it is
+
+A `for` loop is the natural choice when you know how many passes you need. Often you do not. How many generations until a declining population falls below 10 individuals? How many until a growing one has doubled? How many iterations until a model settles at its equilibrium? The answer is what the simulation is meant to find out. A `while` loop repeats its body for as long as a condition holds, however many passes that takes, and a `do`-`while` loop does the same but tests the condition after each pass instead of before it.
+
+The *jump statements* `break` and `continue` change the course of any loop from inside its body: `break` leaves the loop at once, and `continue` skips to the next pass.
+
+## Why it matters
+
+Stopping rules are part of a model. A stochastic simulation runs until its end time or until the population is extinct, whichever comes first. A numerical method iterates until successive estimates agree to a tolerance. A search tries parameter values until one meets a criterion. These are all "repeat until" loops, and they share one danger: if the condition never becomes false, the program never stops.
+
+## How it works in C++
+
+### The while loop
+
+```cpp
+while (condition) {
+    body
+}
+```
+
+The condition is tested first. If it is true the body runs, and then the condition is tested again; as soon as it is false, the loop ends. If the condition is false at the very beginning, the body never runs at all. A `while` loop is therefore a *pre-test* loop.
+
+<Example file="foundations/while_decline.cpp" mark="17-20" />
+
+Nothing in the header advances the loop. Something in the body must eventually make the condition false: here, the population shrinks on every pass. The counter `t` is updated by hand, and because it was declared before the loop it still holds the number of generations afterwards.
+
+The figure shows what the loop computed and where it stopped.
+
+<Figure id="while-and-jumps-threshold" />
+
+### Always guard a while loop
+
+The condition above has a second part: `t < max_generations`. With λ = 0.8 the population is certain to fall below the threshold, so the guard is never needed. Change λ to 1.05 and the population grows for ever; without the guard, the loop would never end and the program would appear to hang. With it, the loop stops after 1000 generations, and the `if` after the loop reports which of the two conditions ended it.
+
+In a model, put an upper bound on every loop whose end depends on the model's behaviour. The model may behave differently from what you expect, which is precisely why you are simulating it.
+
+### The do-while loop
+
+```cpp
+do {
+    body
+} while (condition);
+```
+
+Here the body runs first and the condition is tested afterwards, so the body always runs at least once: a *post-test* loop. Note the semicolon after the closing parenthesis, which the `while` loop does not have.
+
+A `do`-`while` loop fits when the condition can only be evaluated after one pass. Iterating a model to its equilibrium is an example: the change between two generations does not exist until one step has been taken.
+
+<Example file="foundations/dowhile_equilibrium.cpp" mark="19-24" />
+
+The Beverton–Holt model approaches its equilibrium $(R_0 - 1)M = 50$, and the loop stops once a generation changes $N$ by less than 0.01. The result, 49.993, is close to the equilibrium but not on it: a stopping tolerance on the *change* is not a guarantee about the *distance* to the answer. Another classic use is asking for input until it is acceptable, since the question has to be asked at least once:
+
+```cpp
+double survival = -1.0;
+do {
+    std::cout << "Annual survival probability (0 to 1): ";
+    std::cin >> survival;
+} while (survival < 0.0 || survival > 1.0);
+```
+
+(If the user types something that is not a number at all, `std::cin` enters a failed state, reads nothing further and the loop never ends. <Concept id="stream-state" /> shows how to detect and recover from that.)
+
+Variables used in the condition, such as `change` and `survival`, must be declared before the `do`, because variables declared inside the body are out of scope in the `while (…)` that follows it.
+
+### Choosing a loop
+
+| Loop | Tests | Use when |
+|---|---|---|
+| `for` | before each pass | the number of passes is known: generations, days, individuals |
+| `while` | before each pass | you repeat until something happens, and possibly zero times |
+| `do`-`while` | after each pass | the body must run once before the condition makes sense |
+
+Any loop can be written with any of the three constructs; the choice is about saying clearly what the loop is for. A `for` loop with only a condition, `for (; N >= threshold;)`, is a `while` loop in disguise.
+
+<Anchor id="jumps" />
+
+### break, continue and goto
+
+**`break`** ends the innermost enclosing loop (or `switch`) immediately; execution continues after it. **`continue`** abandons the rest of the current pass. In a `for` loop it jumps to the update and then the condition; in a `while` or `do`-`while` loop it jumps straight to the condition.
+
+<Example file="foundations/jumps_extinction.cpp" mark="20-26" />
+
+`break` stops the simulation the moment the population is extinct: there is nothing left to simulate, and continuing would only waste time (or, in a model with immigration, give a misleading result). `continue` skips the output in generations that are not recorded. The same effect could be had with `if (t % record_every == 0) { … }` around the output; which reads better is a matter of judgement. `continue` is most useful near the top of a long body, to dismiss the cases that need no work.
+
+`break` and `continue` keep a loop single-exit in spirit: the reader can still see where the loop starts and where it ends. Use them for genuine early exits, not as a substitute for a clear loop condition.
+
+#### Leaving nested loops
+
+`break` leaves only the innermost loop. In the program below, the outer loop tries increasing harvest percentages and the inner loop simulates 50 years at each one. When a harvest drives the population below one individual, `break` ends that simulation, and a `bool` flag tells the outer loop that the search is over:
+
+<Example file="foundations/jumps_nested_flag.cpp" mark="14-15,23-24" />
+
+The flag appears in the outer loop's condition, `percent <= 90 && !collapsed`, so the outer loop ends as soon as the flag is set. (The result is instructive too: at 60 %, the harvest exactly cancels the growth factor at low density, and the population declines slowly but surely.)
+
+Often the cleanest way to leave several loops at once is to put them in a function and `return` from it as soon as the answer is known. `return` leaves the whole function, however deeply the loops are nested:
+
+```cpp
+// The smallest harvest percentage that collapses the population, or 0 if none does
+int first_collapsing_harvest(double R0, double M, int years) {
+    for (int percent = 10; percent <= 90; percent += 10) {
+        double N = (R0 - 1.0) * M;
+        for (int year = 1; year <= years; ++year) {
+            N = (1.0 - percent / 100.0) * (R0 * N / (1.0 + N / M));
+            if (N < 1.0) {
+                return percent;   // leaves both loops at once
+            }
+        }
+    }
+    return 0;
+}
+```
+
+Functions are the subject of <Concept id="functions" />. The same holds for `main`: returning from it ends the program, and returning a non-zero value such as `return 1;` tells the operating system that the run failed, for example because an input file was missing.
+
+#### goto
+
+C++ also has `goto label;`, which jumps to the statement marked `label:` anywhere in the same function:
+
+```cpp
+for (...) {
+    for (...) {
+        if (N < 1.0) {
+            goto search_done;   // jump out of both loops
+        }
+    }
+}
+search_done:
+std::cout << "finished\n";
+```
+
+It works, and leaving deeply nested loops is the one use that is sometimes defended. But a `goto` can jump anywhere, backwards as well as forwards, so a reader can no longer rely on the shape of the code to understand its flow. Jumping forward past the initialisation of a variable into its scope is an error. A flag, or a function with an early `return`, does the same job and keeps the structure visible. Do not use `goto` in new code.
+
+## Explore it
+
+<Check
+  id="pre-post"
+  kind="predict"
+  question="N is 40.0 and the threshold is 50.0. How many times does each body run?"
+  code={`while (N > threshold) {        // loop A
+    N = 0.9 * N;
+}
+
+do {                           // loop B
+    N = 0.9 * N;
+} while (N > threshold);`}
+  options={["A: 0, B: 0", "A: 0, B: 1", "A: 1, B: 1", "Both run for ever"]}
+  answer={1}
+  feedback={[
+    "The do-while tests its condition only after the body, so it always runs at least once.",
+    "40 > 50 is false, so the while loop never enters its body. The do-while runs the body once (N becomes 36) and only then finds the condition false.",
+    "The while loop tests first; the body is skipped entirely when the condition is false at the start.",
+    "Both loops reduce N, and the condition is already false, so both end.",
+  ]}
+/>
+
+<Check
+  id="continue-while"
+  kind="debug"
+  question="This loop was meant to print the generations from 1 to 9 that are not multiples of 5. It prints nothing and never ends. Why?"
+  code={`int t = 0;
+while (t < 10) {
+    if (t % 5 == 0) {
+        continue;
+    }
+    std::cout << t << ' ';
+    ++t;
+}`}
+  options={[
+    "0 % 5 is undefined",
+    "continue jumps to the condition without running ++t, so t stays 0 for ever",
+    "continue leaves the loop, so nothing is printed",
+    "The condition t < 10 is tested only once",
+  ]}
+  answer={1}
+  feedback={[
+    "0 % 5 is 0, a well-defined result. That is what triggers the continue.",
+    "In a while loop, continue skips everything after it in the body, including the update. t is 0, 0 % 5 == 0, continue, and the same again. Put ++t before the test, or use a for loop, whose continue still runs the update.",
+    "That is break. continue starts the next pass.",
+    "A while loop tests its condition before every pass.",
+  ]}
+/>
+
+<Check
+  id="break-inner"
+  kind="read"
+  question="In jumps_nested_flag.cpp, what would happen if the flag were removed and the outer condition were just percent <= 90?"
+  options={[
+    "The program would stop after the first collapse, as before",
+    "break would leave both loops, so nothing would change",
+    "The search would continue: 70 %, 80 % and 90 % would also be simulated and reported",
+    "The program would not compile",
+  ]}
+  answer={2}
+  feedback={[
+    "Only the flag stops the outer loop. break ends the inner loop alone.",
+    "break always leaves just the innermost loop that contains it.",
+    "Right. Each further harvest would collapse the population too, and each would be reported. That might even be useful, but it is not the search for the first collapsing harvest.",
+    "The program is still valid; it just does more work.",
+  ]}
+/>
+
+## In biological modelling
+
+- **Run until an absorbing state.** Extinction is absorbing: once there, a population without immigration stays there. Stochastic simulations typically loop `while (t < t_end && N > 0)`, and the <Concept id="gillespie" /> algorithm is built around exactly this loop.
+- **Iterate to convergence.** Equilibria, dominant eigenvalues found by repeated multiplication (see <Concept id="power-iteration" />) and fixed points of numerical methods are found with `do`-`while` or `while` loops and a tolerance. Always add a maximum number of iterations and report whether it was reached.
+- **First-passage times.** "How long until the population doubles?" or "which generation first drops below the threshold?" are questions about when a condition first becomes false: a `while` loop with a counter answers them directly.
+- **Integrate until the end time.** Adaptive ODE solvers take steps of varying length, so the number of steps is unknown: `while (t < t_end)`. See <Concept id="adaptive-step" />.
+- **Report why a loop ended.** After a guarded loop, check which condition ended it, as `while_decline.cpp` does. A result that reached the iteration cap is not the same result as one that converged.
+
+## Common mistakes
+
+- **No progress in the body.** If nothing in a `while` body moves the condition towards false, the loop never ends.
+- **No guard.** A loop that ends only if the model behaves as you expect will one day run for ever. Add a maximum.
+- **`continue` in a `while` loop that skips the update.** The loop variable no longer changes. Update first, or use a `for` loop.
+- **Expecting `break` to leave all loops.** It leaves only the innermost one; use a flag or `return` from a function.
+- **A semicolon after `while (…)`.** `while (N > 1.0);` repeats an empty statement. If the condition is true, that never ends.
+- **Forgetting the semicolon after `do { … } while (…)`.** This one is required.
+- **Testing for exact equality to stop.** `while (change != 0.0)` may never end. Use a tolerance.
+
+## Practice
+
+<Practice>
+
+1. A population of 30 grows by a factor λ = 1.07 per generation. Use a `while` loop to find the number of generations until it has at least doubled. Compare with the doubling time $\ln 2 / \ln \lambda$, and explain why the loop's answer is a whole number above it.
+2. Modify `dowhile_equilibrium.cpp` to report the number of generations needed for $R_0$ = 1.5, 2, 4 and 8. How does the number of generations depend on $R_0$? (Near equilibrium, each generation reduces the distance to it by a factor of about $1/R_0$.)
+3. A 10 × 10 grid of habitat cells has suitability `row * col` for rows and columns numbered from 1. Find the first cell, in reading order, with suitability of at least 30. Write it twice: once with nested loops and a flag, once as a function that returns as soon as the cell is found.
+4. Rewrite `jumps_extinction.cpp` without `continue` and without `break`, using only the loop conditions and `if` statements. Which version do you find easier to check?
+
+<details>
+<summary>Hints</summary>
+
+1. Keep `N0` and `N` separate, loop `while (N < 2.0 * N0 && t < 1000)`. The loop counts whole generations, so it reports the first generation at or after the continuous doubling time of about 10.2 generations, here 11.
+2. Put the do-while inside a for loop over the four values of $R_0$, and reset N and t at the start of each pass. Larger $R_0$ converges faster.
+3. With the flag, the outer condition becomes `row <= 10 && !found`. Store the row and column in variables declared before the loops. The function can return the row and column as two reference parameters (see <Concept id="references" />) or simply print them before returning. The answer is row 3, column 10.
+4. The extinction test can join the loop condition: `for (int t = 1; t <= max_generations && N >= 1.0; ++t)`. Then you must work out after the loop whether, and when, extinction occurred.
+
+</details>
+
+</Practice>

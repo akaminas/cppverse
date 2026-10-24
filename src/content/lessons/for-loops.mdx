@@ -1,0 +1,275 @@
+---
+title: Repeating with for loops
+summary: A for loop repeats a statement a known number of times. Repeating one population update turns it into a simulation.
+level: beginner
+module: 5
+manual: ["M5.1", "M11.2"]
+minutes: 40
+objectives:
+  - Write a for loop and say in which order its initialisation, condition, body and update run
+  - Choose loop bounds that give exactly the intended number of passes
+  - Accumulate a running total across the passes of a loop
+  - Nest loops, for example one simulation per parameter value
+  - Turn a one-step update rule into a simulation over many time steps
+references:
+  - "cppreference.com: for loop"
+---
+
+## What it is
+
+A loop repeats a statement. The `for` loop is the one to use when the number of repetitions is known before the loop starts: twenty generations, 365 days, one pass per individual in a sample. It keeps a *loop variable* that counts the passes, and its header says in one line where the count starts, when it stops and how it advances.
+
+## Why it matters
+
+Most models in this atlas are update rules: from the state now, compute the state one step later. Applying a rule once is a calculation. Applying it again and again, each time to the result of the previous step, is a simulation. Here is geometric growth, $N_{t+1} = \lambda N_t$, with the update written out by hand:
+
+<Example file="foundations/for_one_generation.cpp" mark="11-16" />
+
+This works for three generations, but not for three hundred. The program grows with every generation simulated, and a change to the update rule has to be made in every copy. The rule should be written *once*, and the computer told how many times to apply it. That is what a loop does.
+
+## How it works in C++
+
+### From one generation to many
+
+<Example file="foundations/for_geometric_growth.cpp" mark="14-17" />
+
+The update `N = lambda * N;` appears once, inside the loop. The loop variable `t` runs through 1, 2, 3 and 4, so the body runs four times, and each pass turns $N_t$ into $N_{t+1}$. To simulate 400 generations, change one number.
+
+Notice what the loop does *not* do: it does not store the earlier values. `N` always holds the current state, and each pass overwrites it. If you need the whole trajectory afterwards, store it in a <Concept id="std-vector" /> or write each state to a file as it is computed.
+
+### The parts of a for loop
+
+Select each part of the header to see what it does.
+
+<Anatomy id="for-loops-header" />
+
+In general:
+
+```cpp
+for (initialisation; condition; update) {
+    body
+}
+```
+
+### The order of execution
+
+The four parts do not run in the order they are written. A `for` loop runs like this:
+
+1. **Initialisation**, once: `int t = 1` creates the loop variable.
+2. **Condition**: if `t <= generations` is false, the loop ends and the program continues after the closing brace (step 5). If it is true, carry on.
+3. **Body**: the statements between the braces run.
+4. **Update**: `++t`, and then back to step 2.
+5. **End**: execution continues with the first statement after the loop.
+
+The condition is tested *before* each pass, including the first. A loop whose condition is false from the start, such as `for (int t = 1; t <= 0; ++t)`, runs zero times. The trace in [Explore it](#explore-it) walks through these steps one at a time.
+
+### Counting correctly
+
+Most loop bugs are off by one: the loop runs once too often or once too rarely. Two forms cover nearly every case. Use them consistently and check the bounds with a small example.
+
+| Header | Values of the variable | Passes |
+|---|---|---|
+| `for (int i = 0; i < n; ++i)` | 0, 1, …, n − 1 | n |
+| `for (int t = 1; t <= n; ++t)` | 1, 2, …, n | n |
+| `for (int t = 0; t <= n; ++t)` | 0, 1, …, n | n + 1 |
+
+The first form is the standard one for counting n things, and the one you will use for indices of a vector, which start at 0. The second suits "generation 1 to generation n", as above. The third is correct when you really mean n + 1 values: a trajectory from generation 0 to generation n has n + 1 states but only n updates. Getting this "fencepost" count wrong is the most common way to simulate one generation too many.
+
+### The loop variable and its scope
+
+A variable declared in the initialisation belongs to the loop. It can be used in the condition, the update and the body, and it is destroyed when the loop ends. After the loop, the name `t` is unknown, and a second loop can declare its own `t` without any conflict.
+
+If you need the counter after the loop, for example to know at which generation the loop stopped, declare it before the loop:
+
+```cpp
+int t = 0;
+for (; t < max_generations; ++t) {   // empty initialisation: t already exists
+    // ...
+}
+// t still exists here and holds the final count
+```
+
+Do not change the loop variable inside the body. The header promises the reader how the variable advances, and a hidden `t += 2` in the middle of the body breaks that promise.
+
+### Accumulating a total
+
+To add something up over the passes of a loop, declare the total *before* the loop, give it a starting value, and update it inside:
+
+<Example file="foundations/for_degree_days.cpp" mark="11,14-17" />
+
+Each day, the part of the temperature above the 10-degree threshold is added to `degree_days`. The temperature itself is a fresh variable on every pass, declared inside the body, because it belongs to one day only. Had `degree_days` been declared inside the body, it would be reset to zero every day and the program would only ever report one day's contribution.
+
+The same pattern counts (`++count` when a condition holds), finds a maximum (`if (x > largest) largest = x;`) or multiplies probabilities (`survival *= daily_survival;`).
+
+### Nested loops
+
+The body of a loop may contain another loop. The inner loop then runs completely on every pass of the outer loop:
+
+<Example file="foundations/for_nested_growth.cpp" mark="13-21" />
+
+The outer loop chooses a growth factor; the inner loop runs a complete ten-generation simulation with it. `N` is declared inside the outer loop, so that every simulation starts afresh from 100. With 3 outer and 10 inner passes the update runs 30 times in total. Nested loops are how you explore a model over a range of parameter values, run replicates, or visit every cell of a spatial grid (see <Concept id="nested-vectors" />).
+
+Note how `lambda` is computed from the integer `k` rather than used as the loop variable itself. Counting with integers and computing the real-valued parameter from the count avoids the rounding trap described under [Common mistakes](#common-mistakes).
+
+### Variations on the header
+
+All three parts of the header are optional; only the two semicolons are required. A few variations are common:
+
+```cpp
+for (int t = 10; t > 0; --t) { … }          // count down: 10, 9, …, 1
+for (int day = 0; day < 365; day += 7) { … } // a weekly census: 0, 7, 14, …
+for (int t = 0, size = 1; t < 10; ++t, size *= 2) { … }   // two variables
+for (; eggs_left > 0; --eggs_left) { … }     // count an existing variable down
+for (; remaining > 0;) { … }                 // only a condition: like a while loop
+for (;;) { … }                               // no condition: runs until a break
+```
+
+The two-variable form uses the *comma operator*: in the initialisation it declares two variables of the same type, and in the update it evaluates two expressions, one after the other. Use it sparingly; one loop variable is easier to follow.
+
+A loop with no condition, `for (;;)`, runs for ever unless something inside it ends it. The statement `break;` leaves the innermost loop immediately:
+
+```cpp
+for (int t = 1; t <= max_generations; ++t) {
+    N = lambda * N;
+    if (N < 1.0) {
+        break;   // extinct: no point in simulating further
+    }
+}
+```
+
+Loops that run until a condition is met, rather than a fixed number of times, are usually clearer as `while` loops; <Concept id="while-loop" /> covers them and <Concept id="jump-statements" /> covers `break` and its relatives in detail.
+
+## Explore it
+
+Step through the growth program. Watch the loop header: it is visited once more than the body, because the final test is the one that fails.
+
+<Trace id="for-loops-growth" />
+
+<Check
+  id="count"
+  kind="predict"
+  question="How many times does the body of this loop run?"
+  code={`for (int t = 0; t <= 10; ++t) {
+    N = lambda * N;
+}`}
+  options={["9", "10", "11", "It never stops"]}
+  answer={2}
+  feedback={[
+    "Count the values t takes: 0, 1, …, 10.",
+    "That would be t < 10 (0 to 9) or t = 1; t <= 10 (1 to 10).",
+    "t takes the values 0, 1, …, 10: eleven values, so eleven passes. If the aim was to go from generation 0 to generation 10, this is one update too many.",
+    "t increases by one each pass, so t <= 10 eventually becomes false.",
+  ]}
+/>
+
+<Check
+  id="stray-semicolon"
+  kind="debug"
+  question="This program was meant to simulate five generations, but N is multiplied by lambda only once. Why?"
+  code={`for (int t = 1; t <= 5; ++t);
+{
+    N = lambda * N;
+}`}
+  options={[
+    "The loop variable should start at 0",
+    "The semicolon after the header is an empty body: the loop runs five times doing nothing, then the block runs once",
+    "The block cannot see t, so it is skipped",
+    "++t should be t++",
+  ]}
+  answer={1}
+  feedback={[
+    "Starting at 0 would change the number of passes to six, but the update would still run only once.",
+    "for (…); repeats an empty statement. The block that follows is not part of the loop and runs once, after the loop has finished. Remove the semicolon.",
+    "The block does not use t, so it compiles; it is simply not part of the loop.",
+    "In an update on its own, ++t and t++ have exactly the same effect.",
+  ]}
+/>
+
+<Check
+  id="nested-reset"
+  kind="predict"
+  question="What does this print?"
+  code={`for (int site = 1; site <= 3; ++site) {
+    double total = 0.0;
+    for (int day = 1; day <= 4; ++day) {
+        total += 2.0;
+    }
+    std::cout << total << ' ';
+}`}
+  options={["8 8 8", "8 16 24", "24", "2 2 2"]}
+  answer={0}
+  feedback={[
+    "total is declared inside the outer loop, so it starts again at zero for every site. The inner loop adds 2 four times: 8 for each site.",
+    "That would happen if total were declared once, before the outer loop.",
+    "The print statement is inside the outer loop, so there is one number per site.",
+    "The inner loop runs four times per site, and total keeps its value between those passes.",
+  ]}
+/>
+
+<Check
+  id="float-counter"
+  kind="model"
+  question="A model uses a time step of 0.1 days. Which loop runs exactly 50 steps from t = 0 to t = 5?"
+  options={[
+    "for (double t = 0.0; t != 5.0; t += 0.1) { … }",
+    "for (int i = 0; i < 50; ++i) { const double t = i * 0.1; … }",
+    "for (double t = 0.0; t <= 5.0; t += 0.1) { … }",
+    "for (int t = 0; t < 5; t += 0.1) { … }",
+  ]}
+  answer={1}
+  feedback={[
+    "0.1 is not exactly representable in binary, so t never becomes exactly 5.0 and this loop never ends.",
+    "An integer counter makes the number of steps exact. The time is computed from it, so rounding errors cannot accumulate or change the count.",
+    "After 50 additions of 0.1, t is slightly different from 5.0, so whether a 51st pass happens depends on rounding.",
+    "t is an int, so t += 0.1 adds 0.1 and truncates back to 0. The loop never advances.",
+  ]}
+/>
+
+## In biological modelling
+
+A `for` loop over time steps is the skeleton of every discrete-time simulation in this atlas: set the parameters and the initial state, then repeat *update, record* for the chosen number of steps. The figure below was computed exactly this way, for three growth factors.
+
+<Figure id="for-loops-geometric" />
+
+Some habits make such loops trustworthy:
+
+- **Count steps with an integer.** Compute times from the count (`t = i * dt`) instead of adding `dt` to a `double` counter.
+- **Print or store the initial state too.** A run of $T$ steps has $T + 1$ states. Recording the initial state before the loop and each new state inside it gives all of them.
+- **Keep the update in one place.** The body should read like the model's equations. In the lesson on <Concept id="functions" /> the update moves into its own function, and the loop becomes a single line.
+- **Update all variables of a state together.** When the state has several variables, compute all the new values from the old ones before overwriting any. See <Concept id="update-order" />.
+- **Nest for parameter sweeps and replicates.** An outer loop over parameter values or random seeds, an inner loop over time.
+
+The general pattern is developed further in <Concept id="time-stepping" />.
+
+## Common mistakes
+
+- **A semicolon after the header.** `for (…);` repeats nothing; the block that follows runs once.
+- **Off by one.** `<=` where `<` was meant, or the fencepost confusion between $T$ steps and $T + 1$ states. Check the loop with a small count, say 2, by hand.
+- **A `double` as the loop counter.** Accumulated rounding error can change the number of passes or prevent the loop from ending. Count with an integer.
+- **An accumulator declared inside the loop.** It is reset on every pass. Declare it before the loop.
+- **Changing the loop variable in the body.** Leave the counting to the header.
+- **Mixing signed and unsigned in the condition.** `for (int i = 0; i < v.size(); ++i)` compares an `int` with the unsigned result of `size()`, and the compiler warns. Use `std::size_t i` (see <Concept id="std-vector" />).
+
+## Practice
+
+<Practice>
+
+1. Modify `for_geometric_growth.cpp` to simulate a declining population with λ = 0.92 for 30 generations, printing every generation. In which generation does N first fall below 5? Then change the program so that it prints only every fifth generation, without changing the update.
+2. Without running them, write down the values the loop variable takes in each header, and the number of passes. Then check with a program that prints the variable.
+   - `for (int t = 10; t > 0; t -= 3)`
+   - `for (int day = 1; day < 365; day += 30)`
+   - `for (int i = 5; i < 5; ++i)`
+3. Germination of a seed is often modelled with a thermal time: the seed germinates once the sum of daily mean temperatures above a base temperature exceeds a requirement. With a base of 4 degrees, a requirement of 90 degree-days and a daily mean temperature that starts at 2 degrees and rises by 0.3 degrees per day, find the first day on which the requirement is met. Use a for loop over days with a `break`.
+4. Using nested loops, print a table of the population size after 5, 10, 15 and 20 generations (columns) for λ = 0.95, 1.00 and 1.05 (rows), starting from N = 50. Compute λ from an integer counter.
+
+<details>
+<summary>Hints and partial answers</summary>
+
+1. Since $N_t = 20 \times 0.92^t$, N first falls below 5 when $0.92^t < 0.25$, that is, in generation 17. To print every fifth generation, wrap the output statement in `if (t % 5 == 0)`.
+2. 10, 7, 4, 1 (4 passes); 1, 31, 61, …, 361 (13 passes: 361 is still below 365); no values (0 passes, because the condition is false from the start).
+3. Inside the loop, compute the day's temperature, add `temperature - base` only if it is positive, then test `if (thermal_time >= requirement) { … break; }`. Declare the day counter before the loop if you want to print it afterwards.
+4. The outer loop runs over `k = 0, 1, 2` with `lambda = 0.95 + 0.05 * k`. The inner loop runs 20 generations and prints `N` when `t % 5 == 0`. Print `'\n'` after the inner loop to end each row.
+
+</details>
+
+</Practice>

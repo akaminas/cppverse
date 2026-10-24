@@ -1,0 +1,3 @@
+lambda = 0.90  N after 10 generations = 34.87
+lambda = 1.00  N after 10 generations = 100.00
+lambda = 1.10  N after 10 generations = 259.37

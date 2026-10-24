@@ -1,0 +1,226 @@
+---
+title: Making decisions with if and else
+summary: Run code only when a condition holds, choose between alternatives with else and else if, and avoid the classic pairing and semicolon traps.
+level: beginner
+module: 4
+manual: ["M4.1", "M11.2"]
+minutes: 25
+objectives:
+  - Write if, if-else and else-if statements with correctly placed braces
+  - Predict which branch of an else-if chain runs, and order its tests accordingly
+  - Explain which if an else belongs to, and use braces to make the pairing explicit
+  - Encode a threshold rule of a biological model, such as an extinction check
+references:
+  - "cppreference.com: if statement"
+---
+
+## What it is
+
+So far every program has run straight down from the first statement of `main` to the last. Models are not like that. A seed germinates *if* the soil is warm enough; a population is declared extinct *if* fewer than one individual remains; a larva pupates *once* it has accumulated enough warmth. The `if` statement lets a program take such decisions: it runs a statement only when a condition is true, and with `else` it can run a different statement when the condition is false.
+
+## Why it matters
+
+Decisions and repetition are the two ingredients that turn a list of calculations into an algorithm. With `if` and the loops of the next lessons you can, in principle, express any computation. In a model, conditionals encode the rules that switch behaviour on and off: thresholds, stage transitions, boundary conditions and checks that the state is still valid.
+
+## How it works in C++
+
+### The if statement
+
+```cpp
+if (N < 1.0)
+    std::cout << "extinct\n";
+```
+
+The keyword `if` is followed by a condition in parentheses and then by one statement. The condition is evaluated; if it is true, the statement runs, otherwise it is skipped. Either way, the program then carries on after the `if`. The parentheses are part of the syntax and cannot be left out.
+
+Conditions are usually comparisons such as `N < 1.0`, `degree_days >= 250.0` or `count == 0` (note the double `==` for "is equal to"). The next lesson, <Concept id="boolean-logic" />, covers comparisons and how to combine them.
+
+### Adding an else
+
+An `else` gives the statement to run when the condition is false. Exactly one of the two branches runs, never both and never neither:
+
+<Example file="foundations/conditionals_extinction.cpp" mark="16-20" />
+
+The expected size after one winter is 1.2 × 0.3 × 2.5 = 0.9 individuals, so the first branch runs. Change the starting size to 2.0 and the second branch runs instead.
+
+### Blocks: several statements per branch
+
+A branch is a single statement, but that statement may be a *compound statement* (a block): any number of statements wrapped in braces. The braces in the example above are blocks with one statement each. Blocks matter as soon as a branch must do two things:
+
+```cpp
+if (N < 1.0) {
+    N = 0.0;                       // set the population to exactly zero
+    std::cout << "extinct\n";      // and report it
+}
+```
+
+Without the braces only the first statement would belong to the `if`; the second would run every time, whatever its indentation suggests. This site always uses braces, even around a single statement, so that adding a line later cannot silently change the logic.
+
+A block is also a scope (see <Concept id="scope" />): a variable declared inside a branch exists only until that branch's closing brace.
+
+```cpp
+if (N >= 1.0) {
+    const double surplus = N - 1.0;   // exists only inside this block
+    std::cout << surplus << '\n';
+}
+// surplus is not visible here
+```
+
+### Chains of alternatives: else if
+
+When there are more than two possibilities, put another `if` after the `else`. The conditions are tested from the top, and the first one that is true wins; its branch runs and the rest of the chain is skipped. A final plain `else` catches everything that matched none of the tests.
+
+<Example file="foundations/conditionals_stage.cpp" mark="16-24" />
+
+Because the tests run in order, each later branch can assume that the earlier conditions were false. The pupa branch does not need to say "at least 250 *and below 400*": it is reached only when the adult test has already failed. This is also why the order matters. If `degree_days >= 100.0` came first, every individual past 100 degree-days would be called a larva, adults included.
+
+`else if` is not a separate keyword. It is an `else` whose single statement happens to be another `if`. Written out with braces, the same chain is a nest of ifs inside elses, which is why the flat layout above is easier to read.
+
+### Nesting, and which if an else belongs to
+
+An `if` can sit inside a branch of another `if`. That is fine, but it creates a trap known as the *dangling else*:
+
+```cpp
+// Intended: report "too cold" when the temperature is not above the threshold
+if (temperature > base)
+    if (degree_days > 400.0)
+        std::cout << "adult\n";
+else
+    std::cout << "too cold to develop\n";
+```
+
+The indentation suggests that the `else` belongs to the first `if`. The compiler ignores indentation: an `else` always pairs with the nearest preceding `if` in the same block that does not yet have one, here the inner `if`. The program therefore prints "too cold to develop" on a warm day before the degree-day threshold is reached, and nothing at all on a cold day. Braces fix the pairing:
+
+```cpp
+if (temperature > base) {
+    if (degree_days > 400.0) {
+        std::cout << "adult\n";
+    }
+} else {
+    std::cout << "too cold to develop\n";
+}
+```
+
+With `-Wall`, GCC and Clang warn about the unbraced version ("suggest explicit braces to avoid ambiguous else"). Treat the warning as an error, as this site's programs do.
+
+<Callout kind="tip" title="Indentation">
+The compiler does not care how you indent, but readers do. Indent each branch one level deeper than its `if`, keep the style consistent, and let your editor do it for you. With nested conditions, consistent indentation makes a misplaced brace stand out at once.
+</Callout>
+
+<Callout kind="modern" title="if with an initialiser (C++17)">
+Since C++17 an `if` may declare a variable just for itself: `if (const double next = lambda * N; next < 1.0) { … }`. The variable `next` is visible in the condition and in both branches, and nowhere else. It is handy for keeping a temporary result out of the surrounding scope.
+</Callout>
+
+## Explore it
+
+Step through the else-if chain. Watch which conditions are tested and which are never looked at.
+
+<Trace id="conditionals-stage" />
+
+<Check
+  id="order"
+  kind="predict"
+  question="An individual has accumulated 450 degree-days. What does this chain print?"
+  code={`if (degree_days >= 100.0) {
+    std::cout << "larva\\n";
+} else if (degree_days >= 250.0) {
+    std::cout << "pupa\\n";
+} else if (degree_days >= 400.0) {
+    std::cout << "adult\\n";
+}`}
+  options={["adult", "larva", "larva, pupa and adult on three lines", "Nothing"]}
+  answer={1}
+  feedback={[
+    "450 ≥ 400 is true, but that test is never reached: an earlier condition was already true.",
+    "The first test, 450 ≥ 100, is true, so the larva branch runs and the rest of the chain is skipped. In a chain of thresholds, test the largest first (or the smallest with ≤).",
+    "At most one branch of an if-else chain runs. Separate if statements, without else, would test all three conditions.",
+    "The first condition is true, so its branch runs.",
+  ]}
+/>
+
+<Check
+  id="semicolon"
+  kind="debug"
+  question="With N equal to 35.0, this fragment prints “extinct”. Why?"
+  code={`if (N < 1.0);
+{
+    std::cout << "extinct\\n";
+}`}
+  options={[
+    "N is converted to an integer before the comparison",
+    "The semicolon after the condition is an empty statement, which is all the if controls; the block always runs",
+    "A block cannot follow an if; only a single statement can",
+    "The braces must be on the same line as the if",
+  ]}
+  answer={1}
+  feedback={[
+    "No conversion happens: 35.0 < 1.0 is simply false.",
+    "if (N < 1.0); means “if N is below one, do nothing”. The block after it is an ordinary block that runs unconditionally. GCC and Clang warn about this with -Wextra (an empty body); remove the semicolon.",
+    "A block is a single (compound) statement, so it can follow an if. The problem is what comes between them.",
+    "Line breaks and brace placement are a matter of style; the compiler ignores them.",
+  ]}
+/>
+
+<Check
+  id="dangling"
+  kind="read"
+  question="Which if does the else belong to?"
+  code={`if (is_breeding_season)
+    if (clutch_size > 0)
+        std::cout << "nest active\\n";
+else
+    std::cout << "outside the breeding season\\n";`}
+  options={[
+    "The first if, as the indentation shows",
+    "The second if, the nearest one without an else",
+    "Neither: the code does not compile",
+    "Both: it runs when either condition is false",
+  ]}
+  answer={1}
+  feedback={[
+    "Indentation is invisible to the compiler. It pairs an else with the nearest unmatched if in the same block.",
+    "Right. The message “outside the breeding season” is printed during the breeding season for an empty nest. Braces around the inner if make the intended pairing explicit.",
+    "It compiles, although -Wall warns about the ambiguous else. That is one reason to compile with warnings enabled.",
+    "An else belongs to exactly one if.",
+  ]}
+/>
+
+## In biological modelling
+
+Conditionals are where a model's rules live. Some common patterns:
+
+- **Extinction and quasi-extinction.** A deterministic model can produce 0.3 individuals. Many models treat a population below one individual (or below a small quasi-extinction threshold) as extinct: `if (N < 1.0) { N = 0.0; }`.
+- **Thresholds and switches.** Germination when soil temperature exceeds a minimum, migration when day length passes a critical value, a harvest only when the stock is above a reference level.
+- **Stage transitions.** An individual moves from egg to larva to pupa once its accumulated degree-days pass each threshold, an else-if chain like the one above.
+- **Validity checks.** Before running a simulation, check that the parameters make sense, for example that a survival probability lies between 0 and 1, and stop with a message if not.
+- **Events in stochastic models.** In a stochastic simulation the program first draws which event happens and then applies its effect with a conditional. The <Concept id="gillespie" /> lesson does exactly that.
+
+Keep the conditions close to the language of the model description. If the paper says "individuals mature at 250 degree-days", the code should say `degree_days >= 250.0`, with the 250 stored in a named constant that the reader can check.
+
+## Common mistakes
+
+- **A semicolon too many.** `if (condition);` controls an empty statement; the block that follows always runs. See the second check above.
+- **Missing braces.** Two statements indented under an `if` without braces: only the first is conditional.
+- **The dangling else.** An `else` pairs with the nearest unmatched `if`, not with the one its indentation suggests. Use braces whenever ifs are nested.
+- **Chains in the wrong order.** In an else-if chain only the first true condition counts. Order threshold tests so that the most demanding comes first, or reverse the comparisons.
+- **`=` instead of `==`.** `if (count = 0)` assigns zero and then tests it, so it is always false. The compiler warns about it; <Concept id="boolean-logic" /> explains why it compiles at all.
+- **Comparing computed doubles for exact equality.** `if (N == 0.3)` is rarely what you want after arithmetic; compare with a tolerance (see <Concept id="boolean-logic" />).
+
+## Practice
+
+<Practice>
+
+1. A fish matures when its body length reaches 24 cm. Write a program that stores a length in a `const double` and prints either "mature" or "immature". Test it with 23.9, 24.0 and 31.5. Which comparison operator makes 24.0 count as mature?
+2. A harvest rule: if the stock is at least 500 tonnes, 20 % may be taken; if it is between 200 and 500 tonnes, 10 %; below 200, nothing. Write the else-if chain, print the permitted catch, and test values on both sides of each boundary.
+3. Rewrite the dangling-else fragment from the third check so that it does what the indentation suggests, then add a third message for an active breeding season with an empty nest.
+
+<details>
+<summary>Hints</summary>
+
+1. `length >= 24.0` includes the boundary; `length > 24.0` does not. Decide which the biology means and test the boundary value itself.
+2. Start with the highest threshold: `if (stock >= 500.0) … else if (stock >= 200.0) … else …`. The middle branch needs no upper limit, because it is reached only when the first test failed. Testing 199.9, 200.0, 499.9 and 500.0 exercises every boundary.
+3. Put braces around the inner `if` and attach the first `else` to the outer `if`. The new message needs an `else` on the inner `if`, inside the braces.
+
+</details>
+
+</Practice>

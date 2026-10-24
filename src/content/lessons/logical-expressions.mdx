@@ -1,0 +1,211 @@
+---
+title: Logical expressions and bool
+summary: Comparisons and the operators &&, || and ! produce true or false; short-circuit evaluation, = versus ==, and comparing doubles safely.
+level: beginner
+module: 4
+manual: ["M4.2"]
+minutes: 30
+objectives:
+  - Write conditions with relational operators and combine them with &&, || and !
+  - Store and name a condition in a bool variable
+  - Use short-circuit evaluation to guard an expression that would otherwise fail
+  - Recognise the = versus == and chained-comparison mistakes
+  - Compare floating-point values with a tolerance instead of ==
+references:
+  - "cppreference.com: Comparison operators"
+  - "cppreference.com: Logical operators"
+---
+
+## What it is
+
+The condition of an `if` is an expression whose value is either true or false. C++ has a type for exactly these two values, `bool`, and two families of operators that produce them: *relational* operators compare two values (`N < 1.0`), and *logical* operators combine conditions (`warm && wet`). Together they let a program express rules such as "breed if the water is warm enough, the days are long enough and the pond has not dried out".
+
+## Why it matters
+
+Model rules are rarely a single comparison. A seed germinates when it is warm *and* moist; an individual dies if it starves *or* is predated; a site is suitable *unless* it is flooded. Getting the logic right matters as much as getting the arithmetic right, and some of the most persistent bugs in scientific code are conditions that compile perfectly and test the wrong thing.
+
+## How it works in C++
+
+### Relational operators
+
+| Operator | Meaning | Example |
+|---|---|---|
+| `<` | less than | `N < threshold` |
+| `<=` | less than or equal to | `age <= 3` |
+| `>` | greater than | `temperature > base` |
+| `>=` | greater than or equal to | `degree_days >= 250.0` |
+| `==` | equal to | `eggs == 0` |
+| `!=` | not equal to | `stage != 3` |
+
+Each produces a `bool`. Note that "equal to" is written with two equals signs. A single `=` is assignment (see the pitfall below).
+
+### The type bool
+
+A `bool` variable holds `true` or `false`. Storing a condition in a well-named `bool` makes the rule that uses it read almost like the model description:
+
+<Example file="foundations/logic_spawning.cpp" mark="13-15" />
+
+Two details of the output are worth noticing. By default `std::cout` prints a `bool` as `1` or `0`; after `std::cout << std::boolalpha` it prints `true` and `false`. And the condition of the `if` is just the variable `can_spawn`: writing `can_spawn == true` would add nothing.
+
+### Logical operators: &&, || and !
+
+| Operator | Name | True when |
+|---|---|---|
+| `a && b` | AND | both `a` and `b` are true |
+| `a \|\| b` | OR | at least one of `a` and `b` is true |
+| `!a` | NOT | `a` is false |
+
+A range test needs two comparisons joined by AND: "temperature between 12 and 25 degrees" is `temperature >= 12.0 && temperature <= 25.0`. Its opposite, "outside that range", can be written either as `!(temperature >= 12.0 && temperature <= 25.0)` or, by De Morgan's rule, as `temperature < 12.0 || temperature > 25.0`. Negating an AND gives an OR of the negations, and vice versa.
+
+Precedence: `!` binds most tightly, then arithmetic, then the relational operators, then `&&`, then `||`. So `a || b && c` means `a || (b && c)`. The compiler gets this right every time, but readers do not; put parentheses around any mix of `&&` and `||`. (C++ also accepts the words `and`, `or` and `not` for these operators. They are rarely used, and this site does not use them.)
+
+Do not confuse `&&` and `||` with the single `&` and `|`. Those are bitwise operators that work on the individual bits of integers (see <Concept id="bitwise" />). They often compile in a condition, but they evaluate both sides and mean something else.
+
+### A range is two comparisons, not one
+
+In mathematics, $12 < T < 25$ is a single statement about $T$. In C++, `12.0 < T < 25.0` compiles but means something else. Operators of equal precedence are applied from left to right, so it is read as `(12.0 < T) < 25.0`:
+
+1. `12.0 < T` is evaluated first and gives a `bool`, true or false;
+2. that `bool` is converted to a number, 1 or 0, so that it can be compared with `25.0`;
+3. both 1 and 0 are less than 25, so the whole expression is `true` for *every* temperature.
+
+The test that was meant is `12.0 < T && T < 25.0`. GCC warns about the chained form with `-Wall`, one more reason to keep warnings switched on.
+
+### Short-circuit evaluation
+
+`&&` and `||` evaluate their left operand first, and they evaluate the right operand only if it can still change the result:
+
+- in `a && b`, if `a` is false the whole expression is false, and `b` is never evaluated;
+- in `a || b`, if `a` is true the whole expression is true, and `b` is never evaluated.
+
+This is not just an optimisation. It lets the left side *guard* the right side:
+
+<Example file="foundations/logic_short_circuit.cpp" mark="20" />
+
+In plot B no nests were found, so `nests_b > 0` is false and the division `eggs_b / nests_b` is never performed. Without the guard, dividing by zero would give a meaningless result: for `double` values a special "not a number" or infinity that silently spreads through later calculations, and for integers undefined behaviour, which may crash the program. The order is essential: `eggs_b / nests_b > 3.0 && nests_b > 0` performs the division first.
+
+Select the parts of a compound condition to see how it is evaluated:
+
+<Anatomy id="logical-expressions-guard" />
+
+### Numbers as conditions
+
+A condition need not be a `bool`. Any number is converted: zero becomes `false` and every other value becomes `true`. The reverse conversion also happens: in arithmetic, `true` counts as 1 and `false` as 0.
+
+```cpp
+const int eggs = 4;
+if (eggs) {                  // true, because eggs is not zero
+    std::cout << "nest occupied\n";
+}
+const int occupied = (eggs > 0) + (eggs > 10);   // 1 + 0 = 1
+```
+
+`if (eggs)` is common in older code. `if (eggs != 0)` says the same thing explicitly and is easier to read, so prefer it.
+
+
+### Comparing floating-point numbers
+
+A `double` stores most decimal fractions only approximately, so results that are equal on paper often differ in the last binary digit. Testing them with `==` is therefore fragile:
+
+<Example file="foundations/logic_tolerance.cpp" mark="16,19-20" />
+
+Instead, test whether two values are *close enough*: `std::abs(a - b) <= tolerance`, with `std::abs` from `<cmath>`. Choose the tolerance from the scale of the problem. An absolute tolerance such as `1e-9` suits values of order one; for values that may be very large or very small, scale it: `std::abs(a - b) <= 1e-9 * std::max(std::abs(a), std::abs(b))`. The lesson on <Concept id="numeric-limits" /> explains where the rounding comes from and how small it is.
+
+Comparisons with `<` and `>` against a threshold are fine; the concern is exact equality of computed values. Comparing with a value that was stored exactly, such as a count of zero entered as `0.0`, is also safe.
+
+## Explore it
+
+<Check
+  id="print-bool"
+  kind="predict"
+  question="What does this print?"
+  code={`const double N = 42.0;
+std::cout << (N > 40.0) << ' ' << (N < 40.0) << '\\n';`}
+  options={["true false", "1 0", "42 0", "It does not compile"]}
+  answer={1}
+  feedback={[
+    "That is what it prints after std::cout << std::boolalpha. Without it, a bool is printed as a number.",
+    "Each comparison yields a bool, and std::cout prints true as 1 and false as 0 by default.",
+    "The comparison does not return the value of N, only whether the comparison holds.",
+    "It compiles. The parentheses are needed because << binds more tightly than < and >.",
+  ]}
+/>
+
+<Check
+  id="chained"
+  kind="predict"
+  question="A body temperature of 50 degrees is clearly outside the range 10 to 20. What does this condition evaluate to?"
+  code={`const double t = 50.0;
+const bool in_range = 10.0 < t < 20.0;`}
+  options={["false, as intended", "true", "It does not compile", "It depends on the compiler"]}
+  answer={1}
+  feedback={[
+    "That would be the mathematical meaning, but C++ does not read chained comparisons that way.",
+    "The expression is evaluated as (10.0 < t) < 20.0. The first comparison is true, which converts to 1, and 1 < 20.0 is true. The correct test is 10.0 < t && t < 20.0. GCC warns about this with -Wall.",
+    "It compiles, because a bool can be converted to a number. GCC does warn that the comparison does not have its mathematical meaning.",
+    "The result is fully defined by the language: always true here, whatever t is.",
+  ]}
+/>
+
+<Check
+  id="guard-order"
+  kind="debug"
+  question="A program sometimes stops with “Floating point exception” when a plot has no individuals. Which condition fixes it?"
+  code={`int captured = 0;
+int marked = 0;
+// ... counts filled in from the field data ...
+if (marked / captured > 0 && captured > 0) { ... }`}
+  options={[
+    "if (captured > 0 && marked / captured > 0)",
+    "if (marked / captured > 0 || captured > 0)",
+    "if ((marked / captured > 0) && (captured > 0))",
+    "if (captured > 0 & marked / captured > 0)",
+  ]}
+  answer={0}
+  feedback={[
+    "With the guard first, && never evaluates the integer division when captured is zero.",
+    "|| evaluates the left side first too, so the division still happens. It also changes the meaning of the rule.",
+    "Parentheses change grouping, not the order of evaluation: the division is still attempted first.",
+    "The single & is the bitwise operator. It does not short-circuit, so both sides are evaluated and the division still happens.",
+  ]}
+/>
+
+## In biological modelling
+
+- **Name the conditions of the model.** `const bool can_germinate = soil_temperature > t_min && soil_moisture > m_min;` keeps the rule in one place, and the `if` that uses it stays short.
+- **Guard calculations.** Mean clutch size, sex ratio and per-capita rates all divide by a count that can be zero in a small or extinct population. Put the count test first, joined with `&&`.
+- **Ranges and windows.** Thermal tolerance windows, breeding seasons and size classes are range tests: two comparisons and an `&&`, never a chained comparison.
+- **Stopping rules.** Loops in the next lessons run while a condition such as `N >= threshold && t < max_generations` holds. Logical expressions decide when a simulation ends.
+- **Convergence.** "Stop when the population no longer changes" must be written with a tolerance: `std::abs(N_next - N) < 1e-6`, not `N_next == N`.
+
+## Common mistakes
+
+<Callout kind="pitfall" title="= instead of ==">
+`if (eggs = 0)` assigns zero to `eggs` and then tests the result, which is zero, so the branch never runs and the egg count has been destroyed. `if (eggs = 5)` would always run. Both compile, because an assignment is itself an expression with a value. GCC and Clang warn ("suggest parentheses around assignment used as truth value"); with warnings treated as errors the mistake cannot slip through.
+</Callout>
+
+- **Chained comparisons.** `a < x < b` compiles and is wrong. Write `a < x && x < b`.
+- **Guard in the wrong place.** In `total / n > 2.0 && n > 0` the division happens before the test.
+- **`&` and `|` instead of `&&` and `||`.** The single-character operators are bitwise and do not short-circuit.
+- **Exact equality of doubles.** Use a tolerance.
+- **Mixing `&&` and `||` without parentheses.** The result is well defined, but rarely what the reader expects.
+- **Negating a compound condition by hand.** `!(a && b)` is `!a || !b`, not `!a && !b`. When in doubt, keep the `!` outside the parentheses.
+
+## Practice
+
+<Practice>
+
+1. A frog species calls when the air temperature is between 8 and 22 degrees (inclusive) and it is not raining heavily. Write the condition with named `bool` variables, then write its negation twice: once with `!` around the whole expression and once using De Morgan's rule. Print all three with `std::boolalpha` for a few test values and check that the two negations always agree.
+2. A plot is worth revisiting if it held more than 20 individuals at the last count, or if it has never been counted. A count of zero must not trigger a revisit by itself. Represent "never counted" with a `bool`, write the condition, and test the four combinations.
+3. Write a program that adds 0.1 to a `double` ten times (ten statements are fine) and compares the result with 1.0 both with `==` and with a tolerance. Print the result with `std::setprecision(17)` to see why they differ.
+
+<details>
+<summary>Hints</summary>
+
+1. `const bool calling = temperature >= 8.0 && temperature <= 22.0 && !heavy_rain;` The De Morgan form is `temperature < 8.0 || temperature > 22.0 || heavy_rain`.
+2. `const bool revisit = !counted || last_count > 20;` Putting `!counted` first also means `last_count` is never consulted for a plot that has no count, which is what you want if its value is meaningless.
+3. The sum is 0.99999999999999989 in binary floating point, so `==` is false while `std::abs(sum - 1.0) <= 1e-9` is true.
+
+</details>
+
+</Practice>

@@ -1,0 +1,204 @@
+---
+title: switch and the conditional operator
+summary: "Choose a value with cond ? a : b, and dispatch on an event type or field code with switch, break, default and deliberate fall-through."
+level: intermediate
+module: 4
+manual: ["M4.adv"]
+minutes: 30
+optional: true
+objectives:
+  - "Initialise a const variable conditionally with the ?: operator"
+  - Write a switch with case labels, break and default, and predict where execution goes
+  - Use stacked labels and [[fallthrough]] deliberately, and recognise accidental fall-through
+  - Name the events of a model with an enum class and dispatch on them with a switch
+references:
+  - "cppreference.com: switch statement"
+  - "cppreference.com: Other operators (conditional operator)"
+  - "cppreference.com: C++ attribute: fallthrough"
+---
+
+## What it is
+
+`if` and `else` can express every decision, but two special cases are common enough to have their own syntax. The *conditional operator* `condition ? a : b` chooses between two **values** inside a single expression. The `switch` statement chooses between many **branches** according to the value of an integer, a character or an enumeration, and is the natural way to say "apply whichever event has just happened".
+
+## Why it matters
+
+Both make a frequent pattern shorter and its intent clearer. `?:` lets a parameter that depends on a condition still be `const`. A `switch` over a named list of events reads like the event table of a model, and the compiler can check that no event has been forgotten. Stochastic simulations are built around this: draw which event occurs, then dispatch on it.
+
+## How it works in C++
+
+<Anchor id="conditional-operator" />
+
+### The conditional operator
+
+```cpp
+const double growth_factor = rainfall > 600.0 ? 1.3 : 0.8;
+```
+
+reads "if rainfall exceeds 600 mm, then 1.3, otherwise 0.8". The condition is evaluated first; then exactly one of the two other operands is evaluated, and its value becomes the value of the whole expression. Because `?:` has three operands it is also called the *ternary* operator.
+
+The point of an expression, as opposed to an `if` statement, is that it can appear where a value is needed. With `if` the growth factor could not be `const`, because it would have to be declared first and assigned afterwards. With `?:` it is initialised once, correctly, and protected from accidental change. The same property makes `?:` useful inside output:
+
+<Example file="foundations/ternary_wet_year.cpp" mark="10,16,18" />
+
+Three rules to remember:
+
+- **Parenthesise it.** `?:` has very low precedence, lower than `<<`. `std::cout << n == 1 ? "a" : "b";` is parsed as `(std::cout << n) == 1 ? …` and does not compile. Inside an output statement, always put the whole conditional expression in parentheses.
+- **Both alternatives need a common type.** In `n > 0 ? 1 : 0.5` the `1` is converted to `double`, so the expression is a `double` whichever branch is taken.
+- **Keep it simple.** `?:` is for choosing between two values. Nested conditional operators and alternatives with side effects are much easier to read as an `if` statement.
+
+### The switch statement
+
+A `switch` evaluates one expression and jumps to the `case` label with the same value:
+
+<Example file="foundations/switch_events.cpp" mark="18-31" />
+
+The parts:
+
+- **The controlling expression**, `switch (e)`, must have an integer, character or enumeration type. Doubles and strings are not allowed.
+- **Case labels**, `case Event::birth:`, must be constants known at compile time, and no two may have the same value. A label is only a *target*: it is not a test that is carried out in turn, and it marks a position rather than enclosing a block.
+- **`break`** leaves the `switch` and continues after its closing brace. Without it, execution runs on into the statements of the next case (see below).
+- **`default:`** is the target when no label matches. It is optional; without it, an unmatched value simply skips the whole `switch`.
+
+A `switch` is the tidy replacement for a long ladder of `if (code == 1) … else if (code == 2) … else if (code == 3) …`, in which the same variable is compared with one constant after another. It tests for equality with fixed values only, though. A rule such as "adult at 400 degree-days or more" is a range and needs an `if`/`else if` chain (see <Concept id="if-else" />).
+
+### enum class: giving events names
+
+The events above are not coded as 0, 1 and 2 but as an *enumeration*:
+
+```cpp
+enum class Event { birth, death, immigration };
+```
+
+`enum class` creates a new type, `Event`, whose only values are the three listed enumerators, written `Event::birth` and so on. Compared with plain integer codes this has three advantages: the code says what it means, an `Event` cannot be mixed up accidentally with a population size or an index, and the compiler knows the complete list. With `-Wall`, a `switch` on an enumeration that has no `default` and misses one of the enumerators produces a warning. If a fourth event, say `Event::emigration`, is added to the model later, the compiler points at every `switch` that does not yet handle it. For that reason, a switch over an `enum class` usually lists every enumerator and has no `default`.
+
+### Fall-through, stacked labels and [[fallthrough]]
+
+Because labels are only jump targets, a case without `break` continues into the next case. Usually that is a bug. Sometimes it is exactly what is needed:
+
+<Example file="foundations/switch_stage_tally.cpp" mark="19-37" />
+
+Two techniques appear here:
+
+- **Stacked labels.** `case 'A': case 'a':` puts two labels on the same position, so both codes run the same statements. There is nothing between the labels to fall through.
+- **Deliberate fall-through.** An adult has also passed through the pupal and larval stages, so after counting it as an adult the code continues into the pupa and larva cases. The C++17 attribute `[[fallthrough]];` placed just before the next label states that this is intended.
+
+GCC's `-Wextra` warns about every fall-through between non-empty cases that lacks `[[fallthrough]]`. That is how accidental fall-through, the classic `switch` bug, is caught: a missing `break` produces a warning, an intended one is annotated.
+
+### Variables inside a case
+
+A variable declared directly under a case label is in scope for the rest of the `switch`, and jumping to a later label past its initialisation is an error. Give such a case its own block:
+
+```cpp
+case Event::death: {
+    const int lost = 1;   // local to this block
+    n -= lost;
+    break;
+}
+```
+
+<Callout kind="manual" title="Limits and newer features">
+The manual states that a `switch` may have "no more than 16384 cases". That number is the *minimum* the standard recommends that every compiler support, not a maximum; real compilers accept far more. The manual's examples switch on integers and characters; `enum class` (C++11) and `[[fallthrough]]` (C++17), used here, are later additions that make switches safer.
+</Callout>
+
+## Explore it
+
+Step through the tally. Watch the jump into the middle of the `switch` and the fall-through from case to case.
+
+<Trace id="switch-and-ternary-tally" />
+
+<Check
+  id="missing-break"
+  kind="predict"
+  question="What does this print when stage is 1?"
+  code={`switch (stage) {
+case 1:
+    std::cout << "larva ";
+case 2:
+    std::cout << "pupa ";
+    break;
+default:
+    std::cout << "unknown ";
+}`}
+  options={["larva ", "larva pupa ", "larva pupa unknown ", "pupa "]}
+  answer={1}
+  feedback={[
+    "Without break after case 1, execution does not stop at the next label.",
+    "The switch jumps to case 1, prints larva, and falls through into case 2 because there is no break. The break after pupa then leaves the switch. GCC's -Wextra warns about this unannotated fall-through.",
+    "The break in case 2 stops execution before default is reached.",
+    "Execution starts at the matching label, case 1, so larva is printed first.",
+  ]}
+/>
+
+<Check
+  id="ternary-precedence"
+  kind="debug"
+  question="Why does this line fail to compile?"
+  code={`std::cout << "Plot A: " << n << n == 1 ? " seedling\\n" : " seedlings\\n";`}
+  options={[
+    "A conditional operator cannot produce text",
+    "The two alternatives have different lengths",
+    "<< binds more tightly than == and ?:, so the stream itself ends up being compared with 1",
+    "n must be a bool",
+  ]}
+  answer={2}
+  feedback={[
+    "?: can produce any type, including string literals; the example program does exactly that.",
+    "The two string literals have different array types, but both decay to const char*, so they have a common type.",
+    "The line is parsed as ((std::cout << … << n) == 1) ? … : …, which compares an output stream with an integer. Parentheses around the whole conditional expression fix it.",
+    "The condition is n == 1, which is already a bool. The problem is how the line is grouped.",
+  ]}
+/>
+
+<Check
+  id="which-construct"
+  kind="model"
+  question="An insect develops from egg to larva at 100 degree-days, to pupa at 250 and to adult at 400. Which construct fits best for choosing its stage from the accumulated degree-days?"
+  options={[
+    "A switch on degree_days with a case for each threshold",
+    "An if / else if chain testing the thresholds from the highest down",
+    "Four nested conditional operators",
+    "A switch on an enum class Stage with a default",
+  ]}
+  answer={1}
+  feedback={[
+    "A switch tests equality with constants, and degree_days is a double, which a switch does not accept. It cannot express a range.",
+    "Thresholds are ranges, which is what if/else if chains express. Once the stage is known it can be stored as an enum class value and later dispatched on with a switch.",
+    "It would work, but nested ?: are hard to read and to check against the model.",
+    "A switch on Stage is useful once the stage is known, for example to apply stage-specific survival. It cannot work out the stage from a temperature sum.",
+  ]}
+/>
+
+## In biological modelling
+
+- **Event dispatch.** In a stochastic birth–death–immigration model the simulation repeatedly draws which event happens next and when (the <Concept id="gillespie" /> algorithm), then applies its state change. The `switch` over an `enum class Event` above is exactly that second half, with a fixed sequence standing in for the random draws.
+- **Stage-specific rules.** Once an individual's stage is stored as an enumeration, a `switch` selects its survival probability, its diet or the output label.
+- **Reading coded data.** Field sheets and data files use letters or numbers for categories. A `switch` with stacked upper- and lower-case labels and a counting `default` turns them into model categories and catches unreadable codes rather than ignoring them.
+- **Conditional parameters.** `const double r = is_wet_year ? r_wet : r_dry;` keeps a year-dependent parameter `const`.
+
+## Common mistakes
+
+- **A forgotten `break`.** Execution falls into the next case. Compile with `-Wextra`, and mark intended fall-through with `[[fallthrough]];`.
+- **Expecting a switch to test ranges or doubles.** It compares an integral or enumeration value with constants; use `if`/`else if` for thresholds.
+- **A `default` on an `enum class` switch that hides a missing case.** When every enumerator is listed, leave the `default` out so that the compiler can tell you when a new one is added.
+- **Declaring a variable directly under a label.** Wrap the case in braces.
+- **An unparenthesised `?:` in an output statement.** Put the whole conditional expression in parentheses.
+
+## Practice
+
+<Practice>
+
+1. In scan sampling, an observer records each animal's behaviour as F (foraging), R (resting), T (travelling) or V (vigilance), in either case. Store a string of codes such as `"FfRTvXFr"` and tally the four behaviours with a `switch`, using stacked labels for upper and lower case and `default` to count unreadable codes. Print the proportion of readable scans spent foraging.
+2. Define `enum class Habitat { forest, grassland, wetland };` and write a function `double capacity(Habitat h)` that returns a carrying capacity for each habitat with a `switch` that has no `default`. Then add `heathland` to the enumeration without changing the function and read the compiler's warning.
+3. Rewrite `switch_events.cpp` so that the message is chosen with a conditional operator inside a single output statement after the switch. Was the change an improvement? Why, or why not?
+
+<details>
+<summary>Hints</summary>
+
+1. Loop over the string with `for (const char c : codes)`. The proportion is `static_cast<double>(foraging) / readable`, where `readable` is the number of codes that were not unrecognised.
+2. The function needs a `return` after the switch to avoid a warning about reaching the end of a non-void function; GCC's `-Wswitch` then reports the unhandled `Habitat::heathland`.
+3. With three events, a single `?:` cannot choose between three messages without nesting. That is a sign that the switch, which already distinguishes the cases, is the right place for the message.
+
+</details>
+
+</Practice>

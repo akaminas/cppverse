@@ -1,0 +1,344 @@
+---
+title: Gillespie's direct method
+summary: Simulate a biological process one event at a time, from propensities, exponential waiting times and a weighted lottery, exactly and without a time step.
+level: intermediate
+module: 16
+manual: ["M16.3"]
+minutes: 55
+objectives:
+  - Describe a biological process as events with state-dependent propensities
+  - Explain why the waiting time to the next event is exponential with the total propensity as its rate
+  - Implement the direct method, stopping correctly at the end time and in an absorbing state
+  - Record a continuous-time stochastic path on a regular output grid
+standard: c++17
+lab: gillespie
+references:
+  - "Gillespie DT (1976) A general method for numerically simulating the stochastic time evolution of coupled chemical reactions. Journal of Computational Physics 22: 403–434"
+  - "Gillespie DT (1977) Exact stochastic simulation of coupled chemical reactions. Journal of Physical Chemistry 81: 2340–2361"
+  - "Allen LJS (2010) An Introduction to Stochastic Processes with Applications to Biology, 2nd ed. CRC Press"
+---
+
+## What it is
+
+Many biological processes are made of discrete events that happen at random moments: an individual is born or dies, a host is infected or recovers, a molecule of mRNA is transcribed or degraded, a patch is colonised or goes extinct. Each kind of event happens at a rate that depends on the current state of the system: the more individuals, the more births per year.
+
+**Gillespie's direct method**, also called the stochastic simulation algorithm, simulates such a process exactly. It does not advance time in fixed steps. It asks two questions, again and again: *when* does the next event happen, and *which* event is it? Then it jumps straight to that moment, applies that event, and asks again. Daniel Gillespie published the method in 1976 for chemical reactions in a well-mixed solution; the same mathematics describes populations, epidemics and gene expression.
+
+## Why it matters
+
+- **Individuals are whole.** The state is a set of counts, so populations can reach exactly zero and stay there. Extinction, fade-out of an epidemic and loss of a gene product are possible outcomes, not artefacts of rounding.
+- **Time is continuous.** There is no time step to choose, and no question of what happens when two events fall in the same step.
+- **It is exact.** Each simulated path is a draw from precisely the probability distribution that the model defines. Time-stepped approximations are only correct in the limit of a vanishing step.
+- **It connects to deterministic models.** The rates of a Gillespie model are the terms of an ODE model. For large populations the stochastic paths approach the ODE solution, which <Concept id="replicates" /> examines.
+
+## How it works in C++
+
+<Anchor id="propensities" />
+
+### Events and propensities
+
+A Gillespie model is a list of events. Each event $j$ has
+
+- a **state change** $\nu_j$: what it adds to or removes from each count, and
+- a **propensity** $a_j(x)$: its rate in the current state $x$, in events per unit time. For a short interval $dt$, $a_j(x)\,dt$ is the probability that event $j$ happens during that interval.
+
+The **linear birth–death process** has one count, the population size $N$. Each individual gives birth at rate $b$ and dies at rate $d$, both per individual per year:
+
+| Event | Reaction | State change | Propensity |
+|---|---|---|---|
+| birth | $X \xrightarrow{\;b\;} 2X$ | $N \to N + 1$ | $a_1 = b\,N$ |
+| death | $X \xrightarrow{\;d\;} \varnothing$ | $N \to N - 1$ | $a_2 = d\,N$ |
+
+The **SIR epidemic** in a closed population of $N$ hosts has three counts: susceptible $S$, infectious $I$ and recovered $R$, with $S + I + R = N$:
+
+| Event | Reaction | State change | Propensity |
+|---|---|---|---|
+| infection | $S + I \xrightarrow{\;\beta\;} 2I$ | $(S, I, R) \to (S - 1, I + 1, R)$ | $a_1 = \beta\, S I / N$ |
+| recovery | $I \xrightarrow{\;\gamma\;} R$ | $(S, I, R) \to (S, I - 1, R + 1)$ | $a_2 = \gamma\, I$ |
+
+Here $\beta$ is the transmission rate per day: each infectious host makes potentially infectious contacts at rate $\beta$, and a fraction $S/N$ of those contacts are with susceptible hosts. $\gamma$ is the recovery rate per day, so the mean infectious period is $1/\gamma$ days.
+
+The **total propensity** is the rate at which *anything* happens:
+
+$$
+a_0(x) = \sum_j a_j(x).
+$$
+
+Writing down the events and their propensities *is* the modelling. Propensities proportional to a single count, like $bN$ and $\gamma I$, describe individuals acting independently; products such as $SI$ describe interactions. A propensity must be zero whenever its event is impossible: $dN$ is zero when $N = 0$, and $\beta SI/N$ is zero when either $S$ or $I$ is zero, so no count can ever become negative.
+
+<Anchor id="waiting-times" />
+
+### Waiting times are exponential
+
+Suppose the state does not change. Then each event $j$ behaves like an alarm clock that rings after a random time $T_j$, exponentially distributed with rate $a_j$:
+
+$$
+P(T_j > s) = e^{-a_j s}.
+$$
+
+The clocks run independently, and the next event is the one whose clock rings first. Nothing has happened by time $s$ only if no clock has rung, so the waiting time $\tau = \min_j T_j$ satisfies
+
+$$
+P(\tau > s) = \prod_j e^{-a_j s} = e^{-a_0 s}.
+$$
+
+The waiting time to the next event is therefore **exponential with the total propensity as its rate**, with mean $1/a_0$. The more that can happen, the sooner something does. The probability that event $j$ is the one that rings first is
+
+$$
+P(\text{event } j \text{ first}) = \int_0^\infty a_j e^{-a_j s} \prod_{k \ne j} e^{-a_k s}\, ds = \int_0^\infty a_j e^{-a_0 s}\, ds = \frac{a_j}{a_0},
+$$
+
+a weighted lottery with the propensities as weights (<Concept id="weighted-lottery" />). Both results use the same clocks, and the choice of event turns out to be independent of the waiting time.
+
+After the event the state changes, and so do the propensities. Why may we throw away the clocks that did not ring and start new ones? Because exponential clocks have **no memory**:
+
+$$
+P(T > s + u \mid T > s) = \frac{e^{-a(s + u)}}{e^{-a s}} = e^{-a u} = P(T > u).
+$$
+
+A clock that has already run for a time $s$ without ringing is, statistically, as good as new. So at every moment, the future of the process depends only on the current state. That is what makes the simulation exact, and it means the program never needs to remember how long ago anything happened.
+
+The waiting time is drawn with `std::exponential_distribution<double>(a0)`, whose parameter is the **rate** (<Concept id="random-library" />). The library does the equivalent of inversion: if $u$ is uniform on $(0, 1]$, then $\tau = -\ln(u) / a_0$ is exponential with rate $a_0$. The figure checks the simulator's waiting times against $e^{-a_0 s}$.
+
+<Figure id="gillespie-waiting-times" />
+
+### The direct method
+
+Put together, one run of the direct method from state $x$ at time $t$ to an end time $T$ is:
+
+1. Compute every propensity $a_j(x)$ and their sum $a_0$.
+2. If $a_0 = 0$, no event can ever happen: the process is in an **absorbing state**. Stop.
+3. Draw the waiting time $\tau \sim \text{Exponential}(a_0)$.
+4. If $t + \tau > T$, the next event falls after the end of the simulation. Stop **without** applying it.
+5. Choose event $j$ with probability $a_j / a_0$.
+6. Set $t \leftarrow t + \tau$ and $x \leftarrow x + \nu_j$. Return to step 1.
+
+Only steps 1 and 6 depend on the model: the propensities and the state changes. Everything else is the same for every model, which is why the algorithm is usually written once and reused.
+
+### Stopping correctly
+
+**At the end time.** The state at time $T$ is the state after the last event *before* $T$. An event drawn for $t + \tau > T$ has not happened yet at $T$. Applying it anyway records, as the state at $T$, the state at some later time. The error is at most one event per run, but it is systematic: when $b > d$ the extra event is more often a birth than a death, so the recorded population sizes are biased upwards on average.
+
+**In an absorbing state.** When $N = 0$ in the birth–death process, or $I = 0$ in the epidemic, every propensity is zero and nothing can ever happen again. That is extinction, or the end of the epidemic: a normal, often the most important, outcome. Stop the run and record it. Test $a_0$ *before* drawing a waiting time, because `std::exponential_distribution` requires a positive rate; a rate of zero violates its precondition. A zero total propensity is an error only in a model where it cannot legitimately occur, and there throwing an exception (<Concept id="exceptions" />) is the right response.
+
+<Callout kind="manual" title="Two differences from the course manual">
+The manual's Gillespie program loops `while (t < tEnd)` and advances the time before applying each event, so the last event of a run, which falls after `tEnd`, is still applied. It also throws an exception when the total rate is zero. For the models here that state is extinction or the end of an epidemic, a result to be recorded rather than an error, so this site stops the run instead.
+</Callout>
+
+### Why no time step is needed
+
+A common alternative divides time into steps of length $dt$ and lets a birth happen with probability $bN\,dt$ in each step. That is an approximation: it allows at most one event per step, treats the rates as constant during the step, and is accurate only when $a_0\,dt$ is much smaller than 1. The direct method has no $dt$. Between events nothing changes, so it jumps directly from one event to the next, and its paths have exactly the distribution defined by the propensities. "Exact" here means exact *for the model*, given good random numbers; whether the model describes the biology is a separate question.
+
+## A minimal example
+
+This program simulates the linear birth–death process with $b = 1$ and $d = 0.8$ per individual per year from $N_0 = 5$ until $T = 4$ years, many times, and compares the results with exact formulas. The function `simulateOnce` is the direct method.
+
+<Example file="stochastic/birth_death_gillespie.cpp" mark="36-48" />
+
+With two events, the weighted lottery of step 5 needs no `std::discrete_distribution`: a uniform number $u$ on $[0, 1)$ chooses a birth when $u\,a_0 \lt a_1$, which has probability $a_1 / a_0$. The output is random, so the program has no fixed expected output; with the default 20 000 replicates, `mean_N` should be close to the exact 11.13 and `fraction_extinct` close to 0.154. How close they should be is the subject of <Concept id="replicates" />.
+
+## Explore it
+
+Select a term of the algorithm to see the C++ that implements it, or a line of code to see which term it belongs to.
+
+<MathCode id="gillespie-birth-death" />
+
+Three runs of this model with different seeds:
+
+<Figure id="gillespie-three-paths" />
+
+Each path is a staircase: constant between events, jumping by exactly one individual at irregular times. Two of these three runs end in extinction although births outnumber deaths on average. With only five individuals at the start, a short run of deaths is enough. Try the same in the laboratory below, and vary the population size, the rates and the seed.
+
+<Lab id="gillespie" />
+
+<Check
+  id="sir-rates"
+  kind="predict"
+  question="An SIR model has β = 0.4 and γ = 0.1 per day, N = 100 hosts, and the current state S = 90, I = 10, R = 0. What is the mean waiting time to the next event, and the probability that it is an infection?"
+  options={[
+    "About 0.22 days; about 0.78",
+    "4.6 days; about 0.78",
+    "About 0.22 days; 0.5, because there are two events",
+    "About 0.28 days; 1.0, because infection is faster",
+  ]}
+  answer={0}
+  feedback={[
+    "a_inf = 0.4 × 90 × 10 / 100 = 3.6 and a_rec = 0.1 × 10 = 1.0 per day, so a₀ = 4.6 per day. The mean waiting time is 1/a₀ ≈ 0.22 days, and P(infection) = 3.6/4.6 ≈ 0.78.",
+    "4.6 per day is the total rate. The mean waiting time is its reciprocal.",
+    "The events are not equally likely: each is chosen in proportion to its propensity.",
+    "1/3.6 is the mean waiting time if infection were the only event. The waiting time uses the total rate, and recovery can still happen first.",
+  ]}
+/>
+
+<Check
+  id="overshoot"
+  kind="debug"
+  question="What is wrong with this loop, apart from style?"
+  code={`while (t < endTime) {
+    const double total = (b + d) * N;
+    std::exponential_distribution<double> waiting(total);
+    t += waiting(rng);
+    if (uniform(rng) * total < b * N) ++N;
+    else --N;
+}`}
+  options={[
+    "Nothing: the loop stops as soon as t reaches endTime",
+    "The last event falls after endTime but is still applied, and when N reaches 0 the waiting time is drawn with a rate of zero",
+    "The time should increase by a fixed step instead of a random waiting time",
+    "The birth test should use the exponential distribution instead of the uniform one",
+  ]}
+  answer={1}
+  feedback={[
+    "The test t < endTime happens before the waiting time is added. The event that carries t past endTime is applied before the loop notices.",
+    "Draw τ first, stop if t + τ exceeds endTime, and only then apply the event. And test total > 0 before constructing the exponential distribution: at N = 0 the population is extinct and the run is over.",
+    "Random exponential waiting times are what make the method exact; a fixed step would turn it into an approximation.",
+    "Which event happens is a weighted lottery; a uniform number compared with the propensities implements it correctly.",
+  ]}
+/>
+
+<Check
+  id="extinction-result"
+  kind="interpret"
+  question="In 20 000 runs of the birth–death program, about 15 % of runs reach N = 0 before t = 4. How should these runs be treated?"
+  options={[
+    "As failed runs, to be discarded before computing the mean",
+    "As outcomes of the model: they are extinctions and must be counted, including in the mean (with N = 0)",
+    "They should be restarted with a new seed until they survive",
+    "They indicate a bug, because b is larger than d",
+  ]}
+  answer={1}
+  feedback={[
+    "Discarding extinct runs conditions the result on survival and overestimates the mean. The exact mean N₀e^((b−d)t) includes the zeros.",
+    "Extinction is the absorbing state of the process and a central result. The fraction of extinct runs estimates the extinction probability, and the mean population size includes them as zeros.",
+    "Restarting until survival also conditions on survival; the resulting statistics describe a different question.",
+    "A positive growth rate makes growth likely on average, not certain. Small populations go extinct by chance; for these parameters the exact probability by t = 4 is about 0.154.",
+  ]}
+/>
+
+<Check
+  id="why-exact"
+  kind="model"
+  question="Why is the direct method called exact, while a simulation that lets a birth happen with probability b N dt in each step of length dt is not?"
+  options={[
+    "Because the direct method uses a better random number generator",
+    "Because the direct method samples event times from their exact distribution, while the time-stepped version allows at most one event per step and holds the rates fixed during it, which is correct only as dt approaches 0",
+    "Because the direct method rounds population sizes to whole numbers",
+    "Because the direct method gives the same result as the ODE",
+  ]}
+  answer={1}
+  feedback={[
+    "Both can use the same generator. The difference is in how time is handled.",
+    "The exponential waiting time and the weighted lottery follow exactly from the rates. The time-stepped scheme has an error that shrinks with dt but never vanishes for a finite step.",
+    "Both versions keep whole numbers of individuals.",
+    "A single stochastic run differs from the ODE solution; that difference is the point of a stochastic model.",
+  ]}
+/>
+
+## In biological modelling
+
+### A stochastic SIR epidemic
+
+The program below simulates an epidemic in 500 hosts with $\beta = 0.3$ and $\gamma = 0.1$ per day (a basic reproduction number $R_0 = \beta/\gamma = 3$), starting with 5 infectious hosts. It uses `std::discrete_distribution` for the choice between infection and recovery and a `switch` to apply the chosen state change (<Concept id="switch" />). Because events happen at irregular times, the program records the state every 10 days, which lets runs with different seeds be compared at the same times.
+
+<Example file="stochastic/sir_gillespie.cpp" mark="37-54" />
+
+<MathCode id="gillespie-sir" />
+
+Recording on a grid uses the memorylessness once more. Before every save time, the inner loop applies all events that happen before it. When the next event would fall after the save time, it is not applied: the clock is set to the save time, and a fresh waiting time is drawn from there. The time already waited has no influence on the time still to wait, so this changes nothing about the process. Once $I = 0$, the epidemic is over and every remaining save time records the final state.
+
+Run the program with a few seeds. Almost every run produces a large outbreak that has infected most hosts by about day 80, but the timing and the final number infected vary. Now change the start to a single infectious host (`Hosts x{N - 1, 1, 0}`). About one run in three now fizzles out after a handful of infections, because the first infectious hosts recover before passing the infection on; for an epidemic started by $I_0$ hosts this happens with probability close to $(\gamma/\beta)^{I_0}$, which is only about 1 in 250 for $I_0 = 5$. Estimating such probabilities needs many runs, the subject of <Concept id="replicates" />.
+
+### A template for any model
+
+For more than two or three events, keep the model-specific parts in data: a function that returns the vector of propensities, and a table of state changes. The loop itself does not change:
+
+```cpp
+// Model-specific: a_j(x) for every event j, and the change ν_j of each event.
+std::vector<double> propensities(const std::vector<int>& x);
+const std::vector<std::vector<int>> change{{-1, +1, 0}, {0, -1, +1}};
+
+// The direct method from time t to endTime.
+while (true) {
+    const std::vector<double> a = propensities(x);
+    double a0 = 0.0;
+    for (const double aj : a) a0 += aj;
+    if (a0 <= 0.0) break;                          // absorbing state
+    std::exponential_distribution<double> waiting(a0);
+    const double tau = waiting(rng);
+    if (t + tau > endTime) break;                  // the next event is too late
+    t += tau;
+    std::discrete_distribution<std::size_t> which(a.begin(), a.end());
+    const std::size_t j = which(rng);
+    for (std::size_t k = 0; k < x.size(); ++k) x[k] += change[j][k];
+}
+```
+
+The site's own laboratory uses exactly this structure (`src/lib/simulations/gillespie.ts`). Both distributions are rebuilt for every event because the propensities change; for a handful of events that costs little. If you prefer a `switch` over the event index, as in `sir_gillespie.cpp`, give it a `default:` branch that throws `std::logic_error` (from `<stdexcept>`) once the model has more events than two: an index that no `case` handles is a programming error and should not pass silently.
+
+### Assumptions and costs
+
+- **Well mixed and memoryless.** Every individual of a type is equivalent, and the rates depend only on the current counts. As a consequence, durations such as the infectious period are exponentially distributed. Real infectious periods are usually less variable; adding stages ($I_1 \to I_2 \to R$) is a standard remedy.
+- **Run time grows with the number of events.** The expected number of events per unit time is $a_0$, which grows with population size. Millions of events are fast, but a population of $10^7$ simulated for years may not be. Approximate methods such as tau-leaping trade exactness for speed, and the next-reaction method of Gibson and Bruck is faster when there are many event types.
+
+## Common mistakes
+
+- **Using the mean as the parameter.** `std::exponential_distribution<double>(1.0 / a0)` draws waiting times with mean $a_0$, not $1/a_0$. Pass the rate, `a0`.
+- **Applying the event after the end time.** Check $t + \tau > T$ before changing the state.
+- **Drawing with a total propensity of zero.** Test $a_0 > 0$ first and treat $a_0 = 0$ as the absorbing state it is.
+- **Stale propensities.** Recompute every propensity after every event; a rate computed from an old state belongs to a different process.
+- **Integer arithmetic in a propensity.** With `int` counts, `beta * (S * I / N)` divides integers first and truncates, and for large populations `S * I` can overflow `int`, which is undefined behaviour. Write `beta * S * I / N`, which is evaluated left to right in `double` from the first multiplication.
+- **Plotting events as straight lines.** Between events the state is constant. Draw a path as steps, or record it on a time grid as `sir_gillespie.cpp` does.
+
+## Practice
+
+<Practice>
+
+1. **Gene expression.** mRNA molecules of one gene are transcribed at a constant rate $k$ (molecules per minute) and each molecule is degraded at rate $\delta$ per minute. Write the two events, their state changes and propensities, and simulate the number of molecules $m$ for 500 minutes with $k = 2$ and $\delta = 0.1$, starting from $m = 0$. At long times $m$ should follow a Poisson distribution with mean $k/\delta$. Check the mean and variance of $m$ over the last 300 minutes of the run (sample $m$ on a grid of 1-minute steps).
+2. **Waning immunity.** Extend `sir_gillespie.cpp` to an SIRS model in which recovered hosts lose immunity at rate $\omega$ per day. Write the new event in the table format of this lesson. What is the absorbing state now? Can an epidemic persist indefinitely, and what decides whether it does in a finite population?
+3. **Predict, then simulate.** Set $b = 0.8$ and $d = 1.0$ in `birth_death_gillespie.cpp`. Before running, predict the sign of $E[N(4)] - N_0$ and whether the fraction of extinct runs will be larger or smaller than with the default parameters. Then run the program and compare with the exact values it prints.
+4. **Repair the loop.** Rewrite the faulty loop in the second knowledge check so that it stops correctly at the end time and in the absorbing state.
+
+<details>
+<summary>Worked answer to exercise 1</summary>
+
+The events are transcription, $\varnothing \xrightarrow{k} M$ with change $m \to m + 1$ and propensity $k$, and degradation, $M \xrightarrow{\delta} \varnothing$ with change $m \to m - 1$ and propensity $\delta m$. Transcription has a constant propensity, so $a_0 = k + \delta m$ is never zero and there is no absorbing state. The core of the loop is
+
+```cpp
+const double transcription = k;
+const double degradation = delta * m;
+const double total = transcription + degradation;
+std::exponential_distribution<double> waiting(total);
+const double tau = waiting(rng);
+if (t + tau > saveTime) { t = saveTime; break; }
+t += tau;
+if (uniform(rng) * total < transcription) ++m;
+else --m;
+```
+
+inside a loop over save times as in `sir_gillespie.cpp`. The mean and the variance should both be close to $k/\delta = 20$ molecules. Samples one minute apart are correlated (a molecule lives for 10 minutes on average), so the estimates scatter more than 300 independent samples would.
+</details>
+
+<details>
+<summary>Hint for exercise 2</summary>
+
+Loss of immunity is $R \xrightarrow{\omega} S$ with change $(S, I, R) \to (S + 1, I, R - 1)$ and propensity $\omega R$. The state with $I = 0$ is still absorbing: recovered hosts can become susceptible again, but without an infectious host nobody can be infected. In a finite population the infection therefore dies out eventually with probability 1, but if the endemic equilibrium has many infectious hosts the expected time to extinction can be enormous.
+</details>
+
+<details>
+<summary>Answer to exercise 4</summary>
+
+```cpp
+while (true) {
+    const double total = (b + d) * N;
+    if (total <= 0.0) break;              // N = 0: extinct
+    std::exponential_distribution<double> waiting(total);
+    const double tau = waiting(rng);
+    if (t + tau > endTime) break;         // the next event is after the end
+    t += tau;
+    if (uniform(rng) * total < b * N) ++N;
+    else --N;
+}
+```
+</details>
+
+</Practice>

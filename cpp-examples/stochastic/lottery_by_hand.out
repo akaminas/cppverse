@@ -1,0 +1,12 @@
+female 0: weight 12, interval [0, 12)
+female 1: weight 30, interval [12, 42)
+female 2: weight 0, interval [42, 42)
+female 3: weight 8, interval [42, 50)
+female 4: weight 20, interval [50, 70)
+u = 0.1, target 7 -> female 0
+u = 0.3, target 21 -> female 1
+u = 0.55, target 38.5 -> female 1
+u = 0.6, target 42 -> female 3
+u = 0.65, target 45.5 -> female 3
+u = 0.8, target 56 -> female 4
+u = 0.999, target 69.93 -> female 4

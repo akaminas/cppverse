@@ -1,0 +1,230 @@
+---
+title: Replicates and variability
+summary: A stochastic model predicts a distribution of outcomes. Run replicates, summarise them with means, quantiles and probabilities, and quantify the error.
+level: intermediate
+module: 16
+manual: ["M16.3"]
+minutes: 45
+objectives:
+  - Explain why a single stochastic run is a sample of size one
+  - Summarise replicate runs with means, quantile bands and extinction probabilities
+  - Attach standard errors to replicate estimates and choose the number of replicates
+  - Compare replicate means with the deterministic model and explain when they differ
+  - Give every replicate its own reproducible seed
+standard: c++17
+lab: gillespie
+references:
+  - "Kendall DG (1948) On the generalized “birth-and-death” process. Annals of Mathematical Statistics 19: 1–15"
+  - "Kurtz TG (1970) Solutions of ordinary differential equations as limits of pure jump Markov processes. Journal of Applied Probability 7: 49–58"
+  - "Allen LJS (2010) An Introduction to Stochastic Processes with Applications to Biology, 2nd ed. CRC Press"
+---
+
+## What it is
+
+A deterministic model makes one prediction. A stochastic model makes a *distribution* of predictions: every run of a Gillespie simulation (<Concept id="gillespie" />) is one draw from it. A **replicate** is one run with its own random numbers, and a **replicate ensemble** is a set of such runs with identical parameters. Everything we want to know about the model, such as the expected population size, the spread of outcomes or the probability of extinction, is estimated from the ensemble.
+
+## Why it matters
+
+A single run is a sample of size one. It tells you that an outcome is *possible*, not how likely it is. Here are 40 runs of the same birth–death model, with $b = 1$ and $d = 0.8$ per individual per year and $N_0 = 5$ individuals:
+
+<Figure id="stochastic-replicates-members" />
+
+Any one of these paths, shown alone, would suggest a different conclusion: steady growth, a boom, or extinction within two years. None of them is "the" behaviour of the model. The behaviour is the whole cloud, and it has to be summarised with statistics that come with an honest measure of their uncertainty.
+
+## How it works in C++
+
+### A replicate loop
+
+A replicate experiment has three parts: run the model many times, record the same quantities at the same times in every run, and summarise across runs. Gillespie events happen at irregular times, so the runs are recorded on a common **time grid**, as in `sir_gillespie.cpp`. The program below does this for the birth–death process.
+
+<Example file="stochastic/birth_death_replicate_summary.cpp" mark="36,56-59,71-74" />
+
+`runReplicate` is the direct method with output on a grid: before each grid time it applies every event that happens before it and records $N$. The main loop runs the replicates and accumulates, for every grid time, the sum of $N$, the sum of $N^2$ and the number of extinct runs. Those three numbers are enough for the mean, the standard deviation and the extinction probability. Storing every path is not necessary unless you need quantiles, which require all values at a given time.
+
+### Seeds per replicate
+
+There are two sound ways to give replicates their random numbers.
+
+- **One engine for the whole experiment.** The canonical program `birth_death_gillespie.cpp` creates a single engine and runs all replicates from it in sequence. The experiment is reproducible as a whole, but replicate 731 can only be repeated by rerunning replicates 0 to 730 first, and any change that consumes one more random number in replicate 3 changes every later replicate.
+- **One seed per replicate.** The program above builds each replicate's engine from a `std::seed_seq` of the base seed and the replicate number. Replicate $r$ can be rerun on its own (`seed_seq{20261024, 731}`), changes to one replicate do not disturb the others, and the replicates can be run in parallel (<Concept id="parallel-replicates" />).
+
+The second scheme is preferable for real studies. Simply using the seeds `base + r` also gives different streams, but then the experiments with base seeds 100 and 101 share all but one of their replicates. Mixing the base seed and the replicate number through `std::seed_seq` avoids that. Recording seeds systematically is part of <Concept id="seed-management" />.
+
+### Means, quantiles and probabilities
+
+Let $N_r(t)$ be the population size of replicate $r = 1, \dots, n$ at time $t$. The common summaries are:
+
+$$
+\bar N(t) = \frac{1}{n} \sum_{r=1}^{n} N_r(t), \qquad
+s^2(t) = \frac{1}{n - 1} \sum_{r=1}^{n} \big(N_r(t) - \bar N(t)\big)^2, \qquad
+\hat p_0(t) = \frac{k(t)}{n},
+$$
+
+where $s(t)$ is the standard deviation across replicates (in individuals) and $k(t)$ the number of replicates with $N_r(t) = 0$, so that $\hat p_0(t)$ estimates the extinction probability by time $t$. **Quantiles** describe the spread: the 5 % and 95 % quantiles at time $t$ enclose the central 90 % of runs. They are read off the sorted values at each time.
+
+<Figure id="stochastic-replicates-bands" />
+
+The mean and the median tell different stories. The distribution of $N$ is skewed: many runs stay small or die out, a few grow large. The mean is pulled up by the large runs and lies well above the median, the size of a "typical" run. Report a band, not just a mean, whenever the spread matters, as it does for any question about risk.
+
+### Standard errors and how many replicates
+
+An estimate from $n$ replicates is itself random. Its **standard error** measures how much it would vary between repeated experiments of $n$ replicates:
+
+$$
+\operatorname{SE}(\bar N) = \frac{s}{\sqrt{n}}, \qquad
+\operatorname{SE}(\hat p_0) = \sqrt{\frac{\hat p_0 (1 - \hat p_0)}{n}} .
+$$
+
+The program prints both, as `se_mean` and `se_p`. Roughly 95 % of the time, an estimate lies within two standard errors of the true value. Both standard errors shrink like $1/\sqrt{n}$: **four times as many replicates halve the error**. That gives a direct way to choose $n$. To estimate an extinction probability near 0.15 with a standard error of 0.01, solve $\sqrt{0.15 \times 0.85 / n} = 0.01$, which gives $n \approx 1300$. More replicates beyond what the question needs cost time without changing the conclusion.
+
+Summaries such as these, and figures of them, are often easier to make in R or Python from the program's output (<Concept id="output-analysis" />, <Concept id="uncertainty" />).
+
+## Explore it
+
+The linear birth–death process is one of the few stochastic models with exact results, which makes it the ideal test of a simulator. Kendall (1948) showed that, for $b \ne d$,
+
+$$
+\mathbb{E}[N(t)] = N_0\, e^{(b - d)t}, \qquad
+p_0(t) = P\big(N(t) = 0\big) = \left[ \frac{d\,\big(e^{(b-d)t} - 1\big)}{b\, e^{(b-d)t} - d} \right]^{N_0},
+$$
+
+where $p_0(t)$ is the probability that the population is extinct by time $t$. As $t \to \infty$ with $b > d$, $p_0(t)$ approaches $(d/b)^{N_0}$: even a growing population of five has a probability $0.8^5 \approx 0.33$ of eventual extinction for these rates.
+
+<Figure id="stochastic-replicates-extinction" />
+
+The fraction of extinct replicates scatters around Kendall's curve by about the amount its standard error predicts, which is what a correct simulator should do. A deviation of many standard errors at some time would point to an error in the code.
+
+<Lab id="gillespie" />
+
+<Check
+  id="forty-runs"
+  kind="interpret"
+  question="In the figure of 40 runs, the mean of the replicates at t = 4 is 13.85 individuals, while the exact expectation is 11.13. The standard deviation of the 40 final sizes is 13.1. Does this show that the simulator is wrong?"
+  options={[
+    "Yes: a difference of 2.7 individuals is about 25 % of the expected value",
+    "No: with 40 replicates the standard error is about 13.1/√40 ≈ 2.1, so the difference is about 1.3 standard errors, well within sampling variation",
+    "No, because stochastic models are not expected to agree with exact results",
+    "It cannot be decided without running the deterministic model",
+  ]}
+  answer={1}
+  feedback={[
+    "The size of the difference must be judged against the uncertainty of the estimate, not against the expected value.",
+    "Differences of up to about two standard errors are expected by chance. With 2000 replicates (the band figure) the mean, 11.22, is much closer, as the 1/√n law predicts.",
+    "The replicate mean of a correct simulator converges to the exact mean. Agreement within sampling error is the test.",
+    "The exact expectation is already known here, and the comparison requires only the standard error.",
+  ]}
+/>
+
+<Check
+  id="how-many"
+  kind="predict"
+  question="With 500 replicates, an extinction probability is estimated with a standard error of 0.016. About how many replicates give a standard error of 0.008?"
+  options={["1000", "2000", "4000", "250 000"]}
+  answer={1}
+  feedback={[
+    "Doubling n reduces the standard error only by a factor √2 ≈ 1.41, to about 0.011.",
+    "The standard error is proportional to 1/√n. Halving it needs four times as many replicates: 4 × 500 = 2000.",
+    "Eight times as many replicates reduce the error by √8 ≈ 2.8, to about 0.006: more than needed.",
+    "That would apply if the standard error were proportional to 1/n². It is proportional to 1/√n.",
+  ]}
+/>
+
+<Check
+  id="identical-replicates"
+  kind="debug"
+  question="A replicate loop prints exactly the same final population size for all 1000 replicates. Which line is the likely culprit?"
+  code={`for (int r = 0; r < 1000; ++r) {
+    std::mt19937_64 rng(seed);
+    finalSize[r] = runReplicate(p, grid, rng).back();
+}`}
+  options={[
+    "`finalSize[r] = ...` should use push_back",
+    "`std::mt19937_64 rng(seed);` creates every replicate's engine from the same seed",
+    "`.back()` returns the first element instead of the last",
+    "The loop counter should be std::size_t",
+  ]}
+  answer={1}
+  feedback={[
+    "How the result is stored does not affect the random numbers.",
+    "Every replicate restarts the same sequence and repeats the same run. Use std::seed_seq seeds{baseSeed, r} (or one engine created before the loop).",
+    "back() returns the last element: the population size at the last grid time.",
+    "The type of the counter does not affect the random numbers.",
+  ]}
+/>
+
+## In biological modelling
+
+### The mean and the deterministic model
+
+For the linear birth–death process the replicate mean follows the deterministic solution $N_0 e^{(b - d)t}$ exactly, in expectation. That is a special property of **linear** propensities: taking expectations of the process gives $d\,\mathbb{E}[N]/dt = (b - d)\,\mathbb{E}[N]$, the same equation as the deterministic model.
+
+It is not true in general. In the SIR model the infection propensity $\beta S I / N$ contains a product, and the expectation of a product is not the product of expectations: $\mathbb{E}[SI] = \mathbb{E}[S]\,\mathbb{E}[I] + \operatorname{Cov}(S, I)$. So the mean of the stochastic model does not obey the ODE. In small populations two further effects add to this. Some epidemics fizzle out early, which pulls the mean down, and the large outbreaks peak at different times, which spreads the mean out.
+
+<Figure id="stochastic-replicates-sir-mean" />
+
+With 200 hosts and two initial cases, the replicate mean of $I/N$ peaks well below the ODE solution, and stays above half its peak for about 30 days instead of 26. About one run in nine never takes off, close to the branching-process value $(\gamma/\beta)^{I_0} = (1/3)^2 \approx 0.11$. The ODE is not wrong; it answers a different question. It describes the large-population limit, not the average of a small population.
+
+### System size and the deterministic limit
+
+How close the stochastic paths come to the ODE depends on the **system size**, here the number of hosts $N$. Kurtz (1970) proved that, for models whose propensities scale with $N$ in this way, the proportions $S/N$, $I/N$ and $R/N$ converge to the ODE solution as $N \to \infty$, with fluctuations of order $1/\sqrt{N}$.
+
+<Figure id="stochastic-replicates-sir-size" />
+
+With 20 000 hosts, twelve runs are almost indistinguishable from each other and from the ODE; with 200 hosts they differ visibly in timing and height, and one fails to take off. This gives a practical rule for choosing a model. When the counts that matter are large throughout, the ODE is a good and much cheaper description. When some count is small at a critical moment, such as a few infectious hosts at the start of an epidemic, a few individuals in a declining population, or a few copies of a gene product, the stochastic model is needed, and so are replicates.
+
+## Common mistakes
+
+- **Reporting a single run.** One path is an anecdote. Report summaries over replicates, with their standard errors, and show the spread.
+- **The same seed for every replicate.** Identical replicates are one run counted many times. Derive each replicate's seed from a base seed and the replicate number, and record both.
+- **Dropping extinct runs.** Excluding runs that went extinct conditions the results on survival and overestimates means. Keep them, as zeros.
+- **Comparing without standard errors.** Whether a replicate mean "agrees" with a prediction can only be judged against its standard error.
+- **Assuming the mean follows the ODE.** That holds for linear models such as the birth–death process, not for nonlinear ones such as the SIR model in small populations.
+- **Too few replicates for rare events.** With $n$ replicates and no extinctions, the extinction probability is not zero: an approximate 95 % upper bound is $3/n$ ("rule of three").
+
+## Practice
+
+<Practice>
+
+1. **The $1/\sqrt{n}$ law.** Run `birth_death_replicate_summary` with 400 and with 6400 replicates (second command-line argument) and compare the `se_mean` and `se_p` columns. By what factor do they shrink? Do the estimates stay within about two standard errors of the exact columns?
+2. **Quantiles at the end time.** Extend the program so that it also prints the 5 %, 50 % and 95 % quantiles of $N$ at $t = 4$. Store the final sizes in a `std::vector<int>`, sort them with `std::sort` (<Concept id="standard-algorithms" />), and take the value at position $\lfloor q (n - 1) \rfloor$ for quantile $q$.
+3. **Major and minor outbreaks.** Turn `sir_gillespie.cpp` into a replicate experiment of 1000 runs, each with its own seed, that counts how many epidemics infect fewer than 10 % of the hosts in total. Do this for $I_0 = 1, 2$ and $5$ initial cases, and compare the fractions with $(\gamma/\beta)^{I_0}$. Attach standard errors to your estimates.
+4. **Five runs, no extinctions.** A colleague ran a population viability model five times and reports that "the population never goes extinct". What can you actually say about the extinction probability, and how many replicates would make the claim "below 1 %" defensible?
+
+<details>
+<summary>Answer to exercise 1</summary>
+
+16 times as many replicates shrink every standard error by a factor $\sqrt{16} = 4$. With 6400 replicates the standard error of the extinction probability at $t = 4$ is about $\sqrt{0.154 \times 0.846 / 6400} \approx 0.0045$. Nearly all printed estimates should lie within two standard errors of the exact values; in a table of nine times, one deviation slightly beyond two standard errors would not be alarming, but several large ones would.
+</details>
+
+<details>
+<summary>Worked answer to exercise 2</summary>
+
+```cpp
+std::vector<int> finals;                 // before the replicate loop
+finals.reserve(static_cast<std::size_t>(replicates));
+// ... inside the loop, after runReplicate:
+finals.push_back(sizes.back());
+// ... after the loop:
+std::sort(finals.begin(), finals.end());  // needs <algorithm>
+for (const double q : {0.05, 0.50, 0.95}) {
+    const auto index = static_cast<std::size_t>(q * (finals.size() - 1));
+    std::cout << "quantile " << q << ": " << finals[index] << '\n';
+}
+```
+
+For these parameters the quantiles at $t = 4$ are close to 0, 8 and 34 individuals (compare the band figure). Taking the lower of the two neighbouring values is one of several common quantile conventions; with thousands of replicates the choice hardly matters.
+</details>
+
+<details>
+<summary>Hint for exercise 3</summary>
+
+Move the simulation into a function that takes the initial number of infectious hosts and an engine by reference and returns the final number of recovered hosts. With 1000 replicates the standard error of a fraction near 0.33 is about $\sqrt{0.33 \times 0.67 / 1000} \approx 0.015$. Expect values close to 0.33, 0.11 and 0.004. They will not match exactly, because $(\gamma/\beta)^{I_0}$ comes from an approximation that treats the susceptible population as unlimited.
+</details>
+
+<details>
+<summary>Answer to exercise 4</summary>
+
+Zero extinctions in five runs is compatible with extinction probabilities up to about $3/5 = 0.6$ (rule of three, approximate 95 % upper bound). To support "below 1 %", the upper bound $3/n$ must fall below 0.01, so at least 300 replicates without a single extinction are needed. If some extinctions occur, estimate $\hat p_0$ and its standard error instead.
+</details>
+
+</Practice>

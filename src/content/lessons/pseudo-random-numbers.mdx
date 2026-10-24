@@ -1,0 +1,236 @@
+---
+title: Chance in models and pseudo-random numbers
+summary: When a biological model needs chance, how a computer imitates chance with a deterministic generator, and why every result must carry its seed.
+level: beginner
+module: 16
+manual: ["M16.1"]
+minutes: 35
+objectives:
+  - Decide whether a biological question needs a stochastic model
+  - Explain why a pseudo-random generator produces a deterministic sequence
+  - Seed std::mt19937_64 with a fixed or a fresh seed and record the seed with the results
+  - Explain why rand() and rand() % n are unsuitable for scientific work
+standard: c++17
+references:
+  - "cppreference.com: Pseudo-random number generation (<random>)"
+  - "Matsumoto M, Nishimura T (1998) Mersenne Twister: a 623-dimensionally equidistributed uniform pseudo-random number generator. ACM Transactions on Modeling and Computer Simulation 8: 3–30"
+---
+
+## What it is
+
+A **deterministic** model gives the same result every time it is run with the same parameters and the same starting state. The exponential growth model
+
+$$
+\frac{dN}{dt} = (b - d)\,N, \qquad N(t) = N_0\, e^{(b-d)t}
+$$
+
+is an example. Here $N(t)$ is the number of individuals at time $t$ (in years), $N_0$ the number at the start, and $b$ and $d$ the birth and death rates per individual per year. Given $N_0$, $b$ and $d$, there is exactly one trajectory.
+
+A **stochastic** model contains chance. Each individual still gives birth at rate $b$ and dies at rate $d$, but *when* each birth and death happens is random. Two runs of a stochastic model with identical parameters give different trajectories, and the model's prediction is not one trajectory but a *distribution* of possible trajectories.
+
+To simulate chance, a program needs random numbers. Computers produce them with a **pseudo-random number generator**: an algorithm that computes a long sequence of numbers which pass stringent statistical tests for randomness, although every number follows from the previous ones by a fixed calculation. Where the sequence starts is set by a number called the **seed**.
+
+## Why it matters
+
+Chance is not a nuisance added to biology; in many systems it decides the outcome.
+
+- **Demographic stochasticity.** In a population of ten, whether three or five individuals die this year changes its future. In a population of ten thousand, individual fates average out.
+- **Genetic drift.** Which individuals happen to reproduce changes allele frequencies, fastest in small populations, even when no allele is favoured.
+- **Noisy gene expression.** A gene may be represented by a handful of mRNA molecules per cell. Molecules are made and degraded in random bursts, so genetically identical cells differ.
+- **The start of an epidemic.** A pathogen introduced by one or two infected hosts may die out by chance before it spreads, even when it could cause a large outbreak.
+
+The figure below shows the first point. It runs the stochastic version of the growth model above six times from 10 individuals and six times from 1000, and divides each population by its starting size so that the two can be compared on one scale.
+
+<Figure id="pseudo-random-numbers-small-large" />
+
+The large populations stay close to the deterministic curve; the small ones scatter from near extinction to several times the curve. A deterministic model describes what large populations do on average. It cannot answer the questions that matter most for small ones, such as "what is the probability that this reintroduced population is extinct within 20 years?" Questions like that need a stochastic model, run many times.
+
+## How it works in C++
+
+### A generator is a deterministic sequence
+
+The C++ standard library provides several generators, called *engines*, in the header `<random>`. This site uses one throughout: `std::mt19937_64`, the 64-bit Mersenne Twister. It is fast, its statistical quality is good enough for scientific simulation, and its sequence repeats only after $2^{19937} - 1$ numbers, far more than any simulation will use.
+
+Inside, the engine holds a *state* of 312 numbers. Each time you call it, it returns one 64-bit integer between 0 and $2^{64} - 1 = 18\,446\,744\,073\,709\,551\,615$ and updates its state. Nothing in this process is random: the same state always leads to the same next number. That is why the numbers are called *pseudo*-random.
+
+Raw 64-bit integers are rarely what a model needs. Turning them into survival events, clutch sizes or waiting times is the job of *distributions*, the subject of <Concept id="random-library" />. This lesson is about the engine and its seed.
+
+<Anchor id="seeds" />
+
+### Seeds select and reproduce a sequence
+
+A seed is the number that sets the engine's starting state. The same seed always gives the same sequence; a different seed gives a different, unrelated sequence.
+
+<Example file="stochastic/prng_same_seed.cpp" mark="14,17,23-25" />
+
+Step through the program to watch the engine's position advance with every call, and to see the second engine, created from the same seed, start again from the beginning.
+
+<Trace id="pseudo-random-numbers-same-seed" />
+
+Seeds 2718 and 2719 differ by one, but their sequences have nothing in common: the engine's set-up scrambles the seed thoroughly. You do not need "very different" seeds to obtain different sequences.
+
+<Callout kind="standard" title="Why this output can be checked exactly">
+The C++ standard specifies the Mersenne Twister algorithm completely, down to the last bit. It even states a test value: a default-constructed `std::mt19937_64` (whose seed is 5489) must return 9981545732273789042 on its 10 000th call. So raw engine output is identical with every compiler, which is why this program comes with its expected output. The *distributions* of the next lesson are not specified to the same degree, and their output differs between standard libraries.
+</Callout>
+
+### A fixed seed or a fresh seed
+
+You will use seeds in two ways.
+
+- **A fixed seed** makes a run repeatable. Use one while developing and debugging (a crash at event 40 000 happens again at event 40 000), when producing a published figure, and in tests.
+- **A fresh seed** gives a new, independent run each time. `std::random_device` asks the operating system for unpredictable bits, which makes a good seed.
+
+Whichever you choose, the rule is the same: **record the seed with every result**. A run whose seed is written next to its output can be repeated exactly, to inspect it more closely, to collect a quantity you forgot to save, or to check that a corrected program changes what it should. The program below accepts a seed on the command line and otherwise draws a fresh one; in both cases the seed is the first line of output.
+
+<Example file="stochastic/prng_fresh_seed.cpp" mark="14-19,22-23" />
+
+Run it twice without an argument: the seeds and numbers differ. Then copy one of the printed seeds and pass it back, for example `./prng_fresh_seed 2718`: you get that run again, number for number. Reading values from the command line is covered in <Concept id="command-line" />.
+
+`std::random_device` produces 32 random bits per call, so the function calls it twice and joins the two halves into one 64-bit seed with a shift (`<<`) and a bitwise or (`|`). On a few older platforms, notably some MinGW versions of GCC on Windows, `std::random_device` was not random at all and returned the same values in every run. Running the program twice shows at once whether yours is affected.
+
+<Callout kind="manual" title="Seeding from the clock">
+The course manual derives the seed from the system clock (`std::chrono::high_resolution_clock`), converts it to `unsigned` and writes it to `std::clog`. That works, and writing the seed to the standard error stream `std::clog` is a good way to keep it out of a data file that holds only numbers. Two weaknesses are worth knowing: runs started at the same moment, for example many jobs launched together on a computing cluster, can receive the same or very similar seeds, and converting the clock count to a 32-bit `unsigned` discards information. `std::random_device`, or a seed list managed by your experiment script, avoids both. Whatever the source, the seed must be recorded.
+</Callout>
+
+### Why not `rand()`
+
+Older C and C++ code uses the C library function `std::rand()` from `<cstdlib>`, seeded with `std::srand()`, and makes a die roll like this:
+
+```cpp
+int roll = 1 + std::rand() % 6;   // legacy C style: avoid in scientific code
+```
+
+Do not use it for modelling, for four reasons.
+
+1. **Unknown quality.** The standard does not say which algorithm `rand()` uses. Some implementations are poor, and the same seed gives different sequences on different platforms, so results are not portable.
+2. **A small range.** `rand()` returns an integer from 0 to `RAND_MAX` inclusive, and `RAND_MAX` may be as small as 32 767. On Windows it is exactly that: only 32 768 distinct values, too coarse for small probabilities such as a mutation rate of $10^{-5}$.
+3. **Modulo bias.** `rand() % n` maps the 32 768 raw values onto $n$ outcomes. Unless $n$ divides 32 768, some outcomes receive one raw value more than others. With $n = 6$ the bias is small: $32\,768 = 6 \times 5461 + 2$, so outcomes 0 and 1 occur with probability $5462/32\,768$ and the other four with $5461/32\,768$. With $n = 20\,000$ it is gross: each value from 0 to 12 767 can be produced by two raw values ($r$ and $r + 20\,000$), each value from 12 768 to 19 999 by only one, so the low values are **twice** as likely.
+4. **Hidden shared state.** There is one `rand()` sequence for the whole program. Any library function that calls `rand()` silently shifts your sequence, and the function is not safe to call from several threads at once.
+
+The `<random>` library has none of these problems.
+
+<Callout kind="manual" title="The range of rand()">
+The manual gives the range of `rand()` as $[0, \text{RAND\_MAX})$. The C standard defines it as 0 to `RAND_MAX` *inclusive*. The difference does not matter in practice, because `rand()` should not be used at all.
+</Callout>
+
+## Explore it
+
+<Check
+  id="identical-runs"
+  kind="debug"
+  question="A colleague's stochastic population model prints exactly the same extinction time every time it is run. What is the most likely cause?"
+  options={[
+    "The model is deterministic after all: extinction times do not depend on chance",
+    "The engine is constructed with a constant seed (or with no seed, which uses the default seed 5489), so every run uses the same sequence",
+    "std::mt19937_64 repeats its sequence after a few thousand numbers",
+    "The computer's clock has stopped",
+  ]}
+  answer={1}
+  feedback={[
+    "If births and deaths are drawn from random numbers, the extinction time depends on those numbers. Identical results point to identical random numbers, not to an absence of chance.",
+    "A pseudo-random generator is deterministic: same seed, same sequence, same extinction time. A fixed seed is useful for debugging, but replicate runs need different seeds, and every seed should be printed with the result.",
+    "Its period is 2^19937 − 1 numbers; no simulation comes anywhere near repeating it.",
+    "Even a clock-based seed changes between runs started at different moments, and nothing in this description suggests the clock is involved.",
+  ]}
+/>
+
+<Check
+  id="two-seeds"
+  kind="interpret"
+  question="With seed 1, a simulated population of 12 lynx is extinct after 14 years. With seed 2, the same model keeps the population alive for the full 50 years. What should you conclude?"
+  options={[
+    "There is a bug: the same model must give the same result",
+    "Seed 2 is the better seed and should be used for the report",
+    "Both runs are valid samples from the model; to estimate the probability of extinction you need many runs with different seeds",
+    "The model is unreliable and should be replaced by a deterministic one",
+  ]}
+  answer={2}
+  feedback={[
+    "A stochastic model is expected to give different trajectories for different random numbers. That is what it is for.",
+    "Choosing seeds by their outcome is cherry-picking. No seed is better than another; each is one draw from the same distribution.",
+    "One run is a sample of size one. The fraction of runs that go extinct estimates the extinction probability, and its precision improves with the number of runs (see the lesson on replicates).",
+    "A deterministic model of 12 individuals would hide exactly the variation you care about: whether a small population survives is a matter of chance.",
+  ]}
+/>
+
+<Check
+  id="modulo-bias"
+  kind="predict"
+  question="On a platform where RAND_MAX is 32 767, a program picks one of 20 000 grid cells with `std::rand() % 20000`. Which statement is true?"
+  options={[
+    "Every cell is chosen with probability 1/20 000",
+    "Cells 0 to 12 767 are chosen twice as often as cells 12 768 to 19 999",
+    "Cells 12 768 to 19 999 are never chosen",
+    "The program does not compile, because 20 000 is larger than RAND_MAX / 2",
+  ]}
+  answer={1}
+  feedback={[
+    "That would need 32 768 to be a multiple of 20 000. It is not, so the outcomes cannot all receive the same number of raw values.",
+    "Raw values 0–19 999 map to themselves and raw values 20 000–32 767 map to 0–12 767, so the low cells have two chances each and the high cells only one.",
+    "They are chosen, but only from one raw value each, so half as often as the low cells.",
+    "The expression compiles; the bias is a silent statistical error, which makes it more dangerous than a compiler error.",
+  ]}
+/>
+
+## In biological modelling
+
+Every stochastic simulation on this site follows the same pattern. The seed is a *parameter of the run*, set once at the start, printed with the other parameters, and used to create one engine. That engine then supplies every random number of the run.
+
+```cpp
+int main(int argc, char* argv[]) {
+    // 1. parameters, including the seed (from the command line or fresh)
+    // 2. create ONE engine from the seed and print the seed
+    // 3. run the model, drawing all random numbers from that engine
+    // 4. write the results next to the seed and the parameters
+    return 0;
+}
+```
+
+Three habits follow from this.
+
+- **Replicates need different seeds.** A study of extinction risk runs the model hundreds or thousands of times, each run with its own seed, and reports the distribution of outcomes (<Concept id="replicates" />). How to derive and store those seeds systematically is part of <Concept id="seed-management" />.
+- **Seeds are not tuning knobs.** Never try seeds until a figure looks the way you expected. Show all replicates, or a summary of all of them.
+- **Reproducible is not the same as portable.** A fixed seed reproduces a run exactly with the same program, compiler and standard library. With another standard library, raw engine output stays the same but distributions may turn it into different values. The statistics agree; the individual numbers need not.
+
+## Common mistakes
+
+- **Not recording the seed.** A surprising run cannot be repeated if its seed was not saved. Print it first, and store it with the data.
+- **Re-seeding inside a loop.** Creating or re-seeding the engine with the same value at every replicate or every time step restarts the sequence, so "independent" replicates are identical. Create the engine once per run.
+- **Seeding with the time in whole seconds.** `std::time(nullptr)` changes only once per second, so all runs started within the same second share a seed.
+- **Using `rand()`, and especially `rand() % n`.** Use `std::mt19937_64` and a distribution instead.
+- **Expecting identical numbers across compilers.** Only the raw engine sequence is specified exactly. Compare runs on different platforms through their statistics.
+
+## Practice
+
+<Practice>
+
+1. **Deterministic or stochastic?** For each question, decide whether a deterministic model is enough or a stochastic model is needed, and say why. (a) The density of a large bacterial culture in a chemostat after six hours. (b) The probability that a reintroduced population of 12 lynx persists for 20 years. (c) The concentration of an antibiotic in a patient's plasma after a dose. (d) The chance that a new beneficial mutation is lost in its first few generations.
+2. **Seeds and sequences.** Change `prng_same_seed.cpp` so that it prints the first five numbers for seeds 0, 1 and 2. Then add a call with a negative seed, `printFirstNumbers(-1, 5)`. Which seed does the program print, and why does the output still repeat exactly from run to run?
+3. **Modulo bias by hand.** With `RAND_MAX` equal to 32 767, which outcomes of `std::rand() % 3` are more likely than the others, and by how much? Compute the three probabilities.
+4. **Seed in a separate stream.** Change `prng_fresh_seed.cpp` so that it writes the seed to `std::clog` instead of `std::cout`, and run `./prng_fresh_seed > numbers.txt`. Where does the seed appear now? Name one advantage and one risk of this arrangement.
+
+<details>
+<summary>Answer to exercise 1</summary>
+
+(a) Deterministic: billions of cells average out demographic noise, and an ODE model of the culture is appropriate. (b) Stochastic: with 12 individuals, chance births and deaths can drive the population extinct even when its expected growth rate is positive, and the question asks for a probability. (c) Deterministic in most pharmacokinetic work: the number of drug molecules is astronomically large. Variation *between patients* is better modelled by varying parameters than by demographic noise. (d) Stochastic: a single mutant copy can be lost by chance before selection has any effect; this is the classical result that most new beneficial mutations are lost.
+</details>
+
+<details>
+<summary>Answer to exercise 2</summary>
+
+The three seeds give three different sequences. The parameter `seed` has the unsigned type `std::uint64_t`, so the `int` value `-1` is converted by wrapping around modulo $2^{64}$ and the program prints `seed 18446744073709551615`. The conversion is well defined, so the program is still deterministic and repeats exactly, but a seed that prints differently from the way it was typed invites mistakes in your records. Use non-negative seeds.
+</details>
+
+<details>
+<summary>Answer to exercise 3</summary>
+
+$32\,768 = 3 \times 10\,922 + 2$. The raw values 0 to 32 765 split evenly, 10 922 per outcome; the two left over, 32 766 and 32 767, give outcomes 0 and 1. So $P(0) = P(1) = 10\,923/32\,768 \approx 0.33334$ and $P(2) = 10\,922/32\,768 \approx 0.33331$. The bias is tiny here, but it grows as $n$ approaches `RAND_MAX`.
+</details>
+
+<details>
+<summary>Hint for exercise 4</summary>
+
+The redirection `>` captures only standard output, so the seed appears on the screen and `numbers.txt` holds only the data. That keeps the data file easy to read into R or Python. The risk is that the seed is not saved anywhere unless you also capture the error stream (`2> seed.txt`) or copy it by hand.
+</details>
+
+</Practice>

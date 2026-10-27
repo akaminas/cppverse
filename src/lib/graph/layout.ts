@@ -42,7 +42,8 @@ export const LAYOUT = {
   aspect: 1.6,
   terminalGap: 70,
   padX: 76,
-  padTop: 104,
+  /** Band above the first row of concepts that holds the domain title (see Atlas.tsx). */
+  padTop: 140,
   padBottom: 60,
   gapX: 210,
   gapY: 130,
@@ -109,11 +110,12 @@ export function computeLayout(g: Graph = getGraph()): AtlasLayout {
     let width = LAYOUT.padX * 2 + (cols - 1) * LAYOUT.colW;
 
     if (terminal.length) {
-      // Landmark centred, capstones distributed above and below it.
+      // Landmark centred, capstones distributed below and above it (below first, so a
+      // domain with a single capstone keeps its title band clear).
       terminal.sort((a, b) => (a.kind === 'landmark' ? -1 : 0) - (b.kind === 'landmark' ? -1 : 0) || g.order.get(a.id)! - g.order.get(b.id)!);
       const tx = width - LAYOUT.padX + LAYOUT.terminalGap + 40;
       const centre = LAYOUT.padTop + innerH / 2;
-      const slots = [0, -1, 1, -2, 2];
+      const slots = [0, 1, -1, 2, -2];
       terminal.forEach((n, i) => {
         const dy = slots[i] * (terminal[0].kind === 'landmark' && i > 0 ? LAYOUT.rowH * 1.1 : LAYOUT.rowH);
         local[n.id] = { x: tx, y: centre + dy };

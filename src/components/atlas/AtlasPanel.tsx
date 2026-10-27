@@ -22,22 +22,22 @@ interface Props {
   onBookmark: (id: string) => void;
   profileLevel: Level | null;
   search: (q: string) => AtlasNode[];
-  onZoom: (factor: number) => void;
-  onReset: () => void;
+  onCollapse: () => void;
   isNarrow: boolean;
 }
 
-function NodeList({ ids, byId, onSelect, empty }: { ids: string[]; byId: Map<string, AtlasNode>; onSelect: (id: string) => void; empty?: string }) {
+function NodeList({ ids, byId, data, onSelect, empty }: { ids: string[]; byId: Map<string, AtlasNode>; data: AtlasData; onSelect: (id: string) => void; empty?: string }) {
   if (!ids.length) return empty ? <p className="atlas-empty">{empty}</p> : null;
   return (
     <ul className="atlas-list">
       {ids.map((id) => {
         const n = byId.get(id);
         if (!n) return null;
+        const fam = data.domains.find((d) => d.id === n.domain)?.family;
         return (
           <li key={id}>
             <button type="button" onClick={() => onSelect(id)}>
-              <span className={`atlas-li-dot kind-${n.kind}`} aria-hidden="true" />
+              <span className={`atlas-li-dot kind-${n.kind}${n.optional ? ' is-optional' : ''}`} style={fam ? { ['--dot' as string]: `var(--v-${fam})` } : undefined} aria-hidden="true" />
               {n.title}
             </button>
           </li>
@@ -48,7 +48,7 @@ function NodeList({ ids, byId, onSelect, empty }: { ids: string[]; byId: Map<str
 }
 
 export default function AtlasPanel(props: Props) {
-  const { data, byId, selected, mode, setMode, onSelect, onClose, onBack, onDomain, goal, onGoal, route, completed, visited, bookmarks, onBookmark, search, onZoom, onReset, isNarrow } = props;
+  const { data, byId, selected, mode, setMode, onSelect, onClose, onBack, onDomain, goal, onGoal, route, completed, visited, bookmarks, onBookmark, search, onCollapse, isNarrow } = props;
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const [expanded, setExpanded] = useState(false);
@@ -99,7 +99,7 @@ export default function AtlasPanel(props: Props) {
   const href = selected ? nodeHref(selected, base) : null;
 
   return (
-    <aside className={`atlas-panel${selected ? ' is-detail' : ''}${expanded ? ' is-expanded' : ''}`} aria-label="Atlas controls and details">
+    <aside id="atlas-panel" className={`atlas-panel${selected ? ' is-detail' : ''}${expanded ? ' is-expanded' : ''}`} aria-label="Atlas controls and details">
       <div className="atlas-tools">
         <div className="atlas-search">
           <label htmlFor="atlas-search" className="sr-only">Search concepts</label>
@@ -141,17 +141,11 @@ export default function AtlasPanel(props: Props) {
           )}
           {query && results.length === 0 && <p className="atlas-empty" role="status">No concept matches “{query}”.</p>}
         </div>
-        <div className="atlas-zoom" role="group" aria-label="Zoom">
-          <button type="button" className="icon-btn" onClick={() => onZoom(1.5)} aria-label="Zoom in">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12" /></svg>
+        {!isNarrow && (
+          <button type="button" className="icon-btn atlas-collapse" onClick={onCollapse} aria-label="Hide the panel" title="Hide the panel">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
           </button>
-          <button type="button" className="icon-btn" onClick={() => onZoom(1 / 1.5)} aria-label="Zoom out">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
-          </button>
-          <button type="button" className="icon-btn" onClick={onReset} aria-label="Show the whole atlas">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
-          </button>
-        </div>
+        )}
       </div>
 
       <div className="atlas-panel-body">
@@ -175,7 +169,9 @@ export default function AtlasPanel(props: Props) {
               </button>
             </div>
             <p className="eyebrow">
-              <button type="button" className="atlas-crumb" onClick={() => onDomain(selected.domain)}>{domain?.title}</button>
+              <button type="button" className="atlas-crumb" style={domain?.family ? { ['--crumb-hue' as string]: `var(--v-${domain.family})` } : undefined} onClick={() => onDomain(selected.domain)}>
+                {domain?.title}
+              </button>
               {' · '}
               {KIND_LABEL[selected.kind]}
             </p>
@@ -216,7 +212,7 @@ export default function AtlasPanel(props: Props) {
 
             <section className="atlas-sec">
               <h3>Needs first</h3>
-              <NodeList ids={selected.deps} byId={byId} onSelect={onSelect} empty="Nothing: this is where the atlas begins." />
+              <NodeList ids={selected.deps} byId={byId} data={data} onSelect={onSelect} empty="Nothing: this is where the atlas begins." />
               {selected.deps.length > 0 && (
                 <p className="atlas-edge-key">
                   {[...new Set(selected.deps.map((d) => edgeTypeTo(d, selected.id)).filter(Boolean))]
@@ -227,18 +223,18 @@ export default function AtlasPanel(props: Props) {
             </section>
             <section className="atlas-sec">
               <h3>Leads to</h3>
-              <NodeList ids={selected.enables} byId={byId} onSelect={onSelect} empty="A destination: everything here leads to it." />
+              <NodeList ids={selected.enables} byId={byId} data={data} onSelect={onSelect} empty="A destination: everything here leads to it." />
             </section>
             {related.conceptual.length > 0 && (
               <section className="atlas-sec">
                 <h3>Related ideas</h3>
-                <NodeList ids={related.conceptual} byId={byId} onSelect={onSelect} />
+                <NodeList ids={related.conceptual} byId={byId} data={data} onSelect={onSelect} />
               </section>
             )}
             {related.validation.length > 0 && (
               <section className="atlas-sec">
                 <h3>Verification links</h3>
-                <NodeList ids={related.validation} byId={byId} onSelect={onSelect} />
+                <NodeList ids={related.validation} byId={byId} data={data} onSelect={onSelect} />
               </section>
             )}
             {selected.manual.length > 0 && (
@@ -297,12 +293,12 @@ export default function AtlasPanel(props: Props) {
             {bookmarks.size > 0 && (
               <section className="atlas-sec">
                 <h3>Bookmarks</h3>
-                <NodeList ids={[...bookmarks]} byId={byId} onSelect={onSelect} />
+                <NodeList ids={[...bookmarks]} byId={byId} data={data} onSelect={onSelect} />
               </section>
             )}
             <section className="atlas-sec">
               <h3>Destinations</h3>
-              <NodeList ids={data.nodes.filter((n) => n.kind === 'landmark').map((n) => n.id)} byId={byId} onSelect={onSelect} />
+              <NodeList ids={data.nodes.filter((n) => n.kind === 'landmark').map((n) => n.id)} byId={byId} data={data} onSelect={onSelect} />
             </section>
             <details className="atlas-legend">
               <summary>How to read the atlas</summary>
@@ -322,9 +318,13 @@ export default function AtlasPanel(props: Props) {
                 ))}
               </ul>
               <p>
-                Zoom with the wheel, pinch or the buttons; drag to pan. Arrow keys move between concepts. The layout is fixed and
-                deterministic: concepts never move. <a href={`${base.replace(/\/$/, '')}/curriculum/`}>A text outline</a> lists the same
-                structure.
+                Zoom with the wheel, pinch or the buttons; drag to pan. The scale control at the bottom left moves between the landscape,
+                one domain and every concept. The layout is fixed and deterministic: concepts never move.{' '}
+                <a href={`${base.replace(/\/$/, '')}/curriculum/`}>A text outline</a> lists the same structure.
+              </p>
+              <p className="atlas-keys">
+                <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>Enter</kbd> open · <kbd>Esc</kbd> clear · <kbd>+</kbd> <kbd>−</kbd> zoom ·{' '}
+                <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> scale · <kbd>0</kbd> fit · <kbd>/</kbd> search
               </p>
             </details>
           </div>

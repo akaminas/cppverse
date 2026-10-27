@@ -1,31 +1,39 @@
 // The nautilus: a small companion that drifts behind the page in muted
 // colours, mostly out of sight. It swims the way tracked fish do (and the
 // way a real nautilus jets): a burst, a long coast, a turn, another burst.
-// Now and then it comes forward to offer a tip, to congratulate the learner
-// on finishing a lesson, and, after an hour of reading, to suggest a break.
+// It comes forward to welcome the learner to a lesson (and, once, to the
+// site), to offer a tip every few minutes, to congratulate the learner on
+// finishing a lesson, and, after an hour of reading, to suggest a break.
 //
 // Everything is local: the timers live in localStorage, nothing is sent
 // anywhere. With reduced motion the nautilus does not swim; it fades in and
 // out in a corner.
 
 import { load, subscribe, type LearnerState } from '../../lib/persistence/store';
-import { tipsFor } from '../../data/tips';
+import { pickTip, VOICE_LABEL, type Tip } from '../../data/tips';
+import { LESSON_GUIDES } from '../../data/lesson-tips';
 
 const KEY = {
   muted: 'nautilus:muted-tips',
   lastTip: 'nautilus:last-tip',
+  seen: 'nautilus:seen-tips',
+  welcomed: 'nautilus:welcomed',
+  siteWelcome: 'nautilus:site-welcome',
   active: 'nautilus:active-ms',
   tick: 'nautilus:last-tick',
 } as const;
 
 const MIN = 60_000;
-const TIP_FIRST_AFTER = 45_000;
-const TIP_EVERY = 9 * MIN;
+const WELCOME_AFTER = 1_800;
+const WELCOME_AGAIN = 12 * 60 * MIN; // a lesson greets you again after half a day away
+const TIP_FIRST_AFTER = 35_000;
+const TIP_EVERY = 4 * MIN;
+const SEEN_MAX = 300;
 const BREAK_EVERY = 60 * MIN;
 const BREAK_GAP = 15 * MIN; // away this long counts as a break already taken
 const SHOW_FOR = 14_000;
 
-type Kind = 'tip' | 'cheer' | 'break';
+type Kind = 'welcome' | 'tip' | 'cheer' | 'break';
 
 const store = {
   get(k: string): string | null {
@@ -62,6 +70,7 @@ export function startNautilus(root: HTMLElement) {
   const slug = article?.dataset.slug ?? null;
   const checkCount = Number(article?.dataset.checks ?? 0);
   const lessonTitle = article?.dataset.title ?? document.title;
+  const minutes = Number(article?.dataset.minutes ?? 0);
 
   // ── Motion ────────────────────────────────────────────────────────────────
   const W = () => window.innerWidth;
@@ -204,7 +213,7 @@ export function startNautilus(root: HTMLElement) {
   }
 
   // ── Speech ────────────────────────────────────────────────────────────────
-  const KIND_LABEL: Record<Kind, string> = { tip: 'Tip from the nautilus', cheer: 'Well done', break: 'Time for a break' };
+  const KIND_LABEL: Record<Kind, string> = { welcome: 'Welcome', tip: 'Tip from the nautilus', cheer: 'Well done', break: 'Time for a break' };
 
   const hide = () => {
     window.clearTimeout(hideTimer);
@@ -214,15 +223,18 @@ export function startNautilus(root: HTMLElement) {
     if (still) draw();
   };
 
-  const say = (kind: Kind, message: string) => {
+  const say = (kind: Kind, message: string, tip?: Tip) => {
     window.clearTimeout(hideTimer);
-    label.textContent = KIND_LABEL[kind];
+    const heading = tip ? VOICE_LABEL[tip.voice] : KIND_LABEL[kind];
+    label.textContent = heading;
     text.textContent = message;
-    mute.hidden = kind !== 'tip';
-    ok.textContent = kind === 'break' ? 'I will rest my eyes' : 'Thanks';
+    mute.hidden = kind !== 'tip' && kind !== 'welcome';
+    ok.textContent = kind === 'break' ? 'I will rest my eyes' : kind === 'welcome' ? 'Let us begin' : 'Thanks';
     bubble.dataset.kind = kind;
+    if (tip) bubble.dataset.voice = tip.voice;
+    else delete bubble.dataset.voice;
     bubble.hidden = false;
-    live.textContent = `${KIND_LABEL[kind]}. ${message}`;
+    live.textContent = `${heading}. ${message}`;
     root.classList.add('is-present');
     mode = 'present';
     if (still) draw();
@@ -244,19 +256,62 @@ export function startNautilus(root: HTMLElement) {
     if (!bubble.hidden && bubble.dataset.kind !== 'break') hideTimer = window.setTimeout(hide, 6_000);
   });
 
-  // Tips: one at a time, never more often than every nine minutes across pages.
-  const tips = tipsFor(domain);
+  const readJson = <T,>(k: string, fallback: T): T => {
+    try {
+      return (JSON.parse(store.get(k) ?? '') as T) ?? fallback;
+    } catch {
+      return fallback;
+    }
+  };
+  const muted = () => store.get(KEY.muted) === '1';
+
+  // Welcome: entering a lesson, the nautilus says what it is about. A lesson
+  // greets you again only after half a day away. Elsewhere, the very first
+  // visit to the site gets a single welcome.
+  const guide = slug ? LESSON_GUIDES[slug] : undefined;
+  const welcome = (): string | null => {
+    if (slug && guide) {
+      const length = minutes ? `In about ${minutes} minutes you will learn` : 'You will learn';
+      return `Welcome to “${lessonTitle}”. ${length} ${guide.learn}.`;
+    }
+    return 'Welcome to C++ Atlas. Here you learn C++ by building biological models, from a first program to ODE solvers, stochastic and individual-based simulations. I will drop by with tips as you go.';
+  };
+  const tryWelcome = () => {
+    if (muted()) return;
+    const message = welcome();
+    if (!message) return;
+    if (slug) {
+      const seen = readJson<Record<string, number>>(KEY.welcomed, {});
+      if (Date.now() - (seen[slug] ?? 0) < WELCOME_AGAIN) return;
+      seen[slug] = Date.now();
+      store.set(KEY.welcomed, JSON.stringify(seen));
+    } else {
+      if (store.get(KEY.siteWelcome)) return;
+      store.set(KEY.siteWelcome, String(Date.now()));
+    }
+    say('welcome', message);
+  };
+  window.setTimeout(tryWelcome, WELCOME_AFTER);
+
+  // Tips: one at a time, at most every four minutes across pages, preferring
+  // the current lesson's own tips and never repeating one until its pool is used up.
+  const nextTip = () => {
+    const seen = readJson<string[]>(KEY.seen, []);
+    const tip = pickTip(slug, domain, new Set(seen));
+    const updated = [...seen.filter((t) => t !== tip.text), tip.text].slice(-SEEN_MAX);
+    store.set(KEY.seen, JSON.stringify(updated));
+    return tip;
+  };
   const tryTip = () => {
-    if (store.get(KEY.muted) === '1' || mode === 'present' || document.hidden) return;
+    if (muted() || mode === 'present' || document.hidden) return;
     const last = Number(store.get(KEY.lastTip) ?? 0);
     if (Date.now() - last < TIP_EVERY) return;
     store.set(KEY.lastTip, String(Date.now()));
-    // Topic tips first in a lesson; general ones elsewhere.
-    const pool = domain && Math.random() < 0.7 ? tips.slice(0, Math.max(1, tips.length - 8)) : tips;
-    say('tip', pool[Math.floor(Math.random() * pool.length)]);
+    const tip = nextTip();
+    say('tip', tip.text, tip);
   };
   window.setTimeout(tryTip, TIP_FIRST_AFTER);
-  window.setInterval(tryTip, 60_000);
+  window.setInterval(tryTip, 30_000);
 
   // Congratulations: a lesson marked as studied, or every check in it right.
   let prev: LearnerState = load();
@@ -297,9 +352,14 @@ export function startNautilus(root: HTMLElement) {
   tickBreak();
   window.setInterval(tickBreak, 30_000);
 
-  // Preview any message with ?nautilus=tip|cheer|break.
+  // Preview any message with ?nautilus=welcome|tip|cheer|break.
   const preview = new URLSearchParams(location.search).get('nautilus');
-  if (preview === 'tip') window.setTimeout(() => say('tip', tips[0]), 600);
+  if (preview === 'welcome') window.setTimeout(() => say('welcome', welcome()!), 600);
+  if (preview === 'tip')
+    window.setTimeout(() => {
+      const tip = nextTip();
+      say('tip', tip.text, tip);
+    }, 600);
   if (preview === 'cheer') window.setTimeout(() => say('cheer', `“${lessonTitle}” is studied. Nicely done.`), 600);
   if (preview === 'break') window.setTimeout(() => say('break', 'You have been reading for an hour. Look at something far away for twenty seconds, stretch, drink some water. The atlas will wait.'), 600);
   document.addEventListener('visibilitychange', tickBreak);

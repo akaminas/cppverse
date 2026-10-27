@@ -34,7 +34,7 @@ const stats = [
 const hue = ctx.domain.family ? `var(--v-${ctx.domain.family})` : 'var(--v-secondary)';
 ---
 <BaseLayout title={d.title} section="learn" description={d.summary} bodyClass="dex-page">
-  <article class="lesson" data-domain={ctx.domain.id} data-slug={slug} data-checks={checks} data-title={d.title}>
+  <article class="lesson" data-domain={ctx.domain.id} data-slug={slug} data-checks={checks} data-title={d.title} data-minutes={d.minutes}>
     <header class="lesson-head wrap">
       <div class="dex-shell">
         <div class="dex-bar">

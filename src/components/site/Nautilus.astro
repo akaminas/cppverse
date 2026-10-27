@@ -132,11 +132,19 @@ const tentacles = [
   .nb-kind { margin: 0 0 4px; font-family: var(--v-font-mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
   .nautilus-bubble[data-kind='cheer'] .nb-kind { color: var(--v-status-good); }
   .nautilus-bubble[data-kind='break'] .nb-kind { color: var(--v-status-warning); }
+  /* Tip voices: the heading takes the colour, the border follows faintly. */
+  .nautilus-bubble[data-voice='disaster'] { border-color: #5A3A2A; }
+  .nautilus-bubble[data-voice='disaster'] .nb-kind { color: var(--v-status-serious); }
+  .nautilus-bubble[data-voice='shortcut'] .nb-kind { color: var(--v-status-warning); }
+  .nautilus-bubble[data-voice='field'] .nb-kind { color: var(--v-moss); }
+  .nautilus-bubble[data-voice='style'] .nb-kind { color: var(--v-mauve); }
+  .nautilus-bubble[data-voice='deep'] .nb-kind { color: var(--v-indigo); }
   .nb-text { margin: 0 0 12px; font-size: 0.95rem; line-height: 1.5; }
   .nb-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .nb-actions .btn { font-size: 0.82rem; padding: 5px 12px; }
   .nb-actions [hidden] { display: none; }
-  @keyframes nb-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+  /* A slide without a fade: the text keeps full contrast from the first frame. */
+  @keyframes nb-in { from { transform: translateY(10px) scale(0.97); } }
   @media (max-width: 620px) {
     .nautilus-bubble { right: 16px; bottom: 236px; border-radius: 16px; }
   }

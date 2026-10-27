@@ -106,7 +106,7 @@ export default function AtlasPanel(props: Props) {
           <input
             id="atlas-search"
             type="search"
-            placeholder="Search concepts (press /)"
+            placeholder="Search concepts"
             value={query}
             autoComplete="off"
             role="combobox"
@@ -236,11 +236,6 @@ export default function AtlasPanel(props: Props) {
                 <h3>Verification links</h3>
                 <NodeList ids={related.validation} byId={byId} data={data} onSelect={onSelect} />
               </section>
-            )}
-            {selected.manual.length > 0 && (
-              <p className="atlas-source">
-                Groningen manual: {selected.manual.map((m) => m.replace(/^M/, '').replace('.adv', ' (advanced)').replace(/-.*$/, '')).join(', ')}
-              </p>
             )}
             {selected.manual.length === 0 && selected.kind !== 'capstone' && <p className="atlas-source">Original material of this site.</p>}
           </div>

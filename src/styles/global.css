@@ -69,6 +69,15 @@
   --t-small: 0.9rem;
   --t-tiny: 0.8rem;
 
+  /* Pastels: the tint steps of Vellum's light palette. On the dark page they
+     read as soft, low-contrast accents for the curriculum. */
+  --p-teal: #A5D5D7;
+  --p-terracotta: #E8C0B2;
+  --p-indigo: #BBCBEC;
+  --p-ochre: #DAC9A6;
+  --p-mauve: #E0BFD8;
+  --p-moss: #BAD3B4;
+
   --header-h: 64px;
   --shadow-float: 0 28px 56px -30px rgba(0, 0, 0, 0.9);
 }

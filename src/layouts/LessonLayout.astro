@@ -10,6 +10,7 @@ import { lessonContext } from '../lib/lesson-context';
 import { lessonCheckCounts } from '../lib/atlas-data';
 import { url } from '../lib/url';
 import { CITATION } from '../data/citation';
+import { domainPastel } from '../lib/pastel';
 
 interface Props {
   entry: CollectionEntry<'lessons'>;
@@ -31,48 +32,41 @@ const stats = [
   { label: 'Leads to', value: ctx.leads.length, max: 12 },
   { label: 'Checks', value: checks, max: 6 },
 ];
-const hue = ctx.domain.family ? `var(--v-${ctx.domain.family})` : 'var(--v-secondary)';
+const hue = domainPastel(ctx.domain.id);
 ---
-<BaseLayout title={d.title} section="learn" description={d.summary} bodyClass="dex-page">
-  <article class="lesson" data-domain={ctx.domain.id} data-slug={slug} data-checks={checks} data-title={d.title} data-minutes={d.minutes}>
+<BaseLayout title={d.title} section="learn" description={d.summary} bodyClass="lesson-page">
+  <article class="lesson" style={`--hue: ${hue}`} data-domain={ctx.domain.id} data-slug={slug} data-checks={checks} data-title={d.title} data-minutes={d.minutes}>
     <header class="lesson-head wrap">
-      <div class="dex-shell">
-        <div class="dex-bar">
-          <span class="dex-lens" aria-hidden="true"></span>
-          <span class="dex-leds" aria-hidden="true"><i></i><i></i><i></i></span>
-          <p class="eyebrow lesson-crumbs">
-            <a href={url(`/atlas/?domain=${ctx.domain.id}`)}>{ctx.domain.title}</a>
-            <span aria-hidden="true"> · </span>
-            {d.optional ? 'Optional branch' : 'Field-guide entry'}
-          </p>
-        </div>
-        <div class="dex-screen">
-          <div class="dex-main">
-            <p class="dex-id">
-              <span class="dex-no">No. {String(ctx.entryNo).padStart(3, '0')}</span>
-              <span class="dex-of">of {ctx.entryCount} field-guide entries</span>
-            </p>
+      <div class="entry">
+        <p class="eyebrow entry-crumbs">
+          <a href={url(`/atlas/?domain=${ctx.domain.id}`)}>{ctx.domain.title}</a>
+          <span aria-hidden="true"> · </span>
+          {d.optional ? 'Optional branch' : 'Field-guide entry'}
+          <span class="entry-no">No. {String(ctx.entryNo).padStart(3, '0')} of {ctx.entryCount}</span>
+        </p>
+        <div class="entry-body">
+          <div class="entry-main">
             <h1>{d.title}</h1>
-            <p class="lead dex-desc">{d.summary}</p>
-            <ul class="lesson-meta dex-types">
-              <li><span class="dex-type" style={`--hue: ${hue}`}>{ctx.domain.short}</span></li>
-              <li><span class="dex-type">{LEVEL[d.level]}</span></li>
-              <li><span class:list={['std-badge', { 'is-new': d.standard !== 'c++17' }]}>{d.standard.toUpperCase()}</span></li>
-              {d.optional && <li><span class="dex-type">Optional</span></li>}
-            </ul>
+            <p class="lead entry-desc">{d.summary}</p>
+            <p class="entry-facts">
+              <span>{LEVEL[d.level]}</span>
+              <span aria-hidden="true">·</span>
+              <span class:list={['std-badge', { 'is-new': d.standard !== 'c++17' }]}>{d.standard.toUpperCase()}</span>
+              {d.optional && (<><span aria-hidden="true">·</span><span>Optional</span></>)}
+            </p>
             {ctx.destinations.length > 0 && ctx.destinations.length < 5 && (
               <p class="lesson-dests">
                 Leads to {ctx.destinations.map((l, i) => (<>{i > 0 && ', '}<a href={l.href}>{l.title}</a></>))}
               </p>
             )}
           </div>
-          <dl class="dex-stats" aria-label="Entry data">
+          <dl class="entry-stats" aria-label="Entry data">
             {stats.map((s) => (
-              <div class="dex-stat">
+              <div class="entry-stat">
                 <dt>{s.label}</dt>
                 <dd>
-                  <span class="dex-num">{s.value}</span>
-                  <span class="dex-meter" aria-hidden="true"><span style={`--v: ${Math.min(1, s.value / s.max).toFixed(3)}`}></span></span>
+                  <span class="entry-meter" aria-hidden="true"><span style={`--v: ${Math.min(1, s.value / s.max).toFixed(3)}`}></span></span>
+                  <span class="entry-num">{s.value}</span>
                 </dd>
               </div>
             ))}
@@ -154,9 +148,8 @@ const hue = ctx.domain.family ? `var(--v-${ctx.domain.family})` : 'var(--v-secon
           {ctx.manual.length > 0 ? (
             <>
               <p>
-                <strong>Source.</strong> This lesson teaches material from the Groningen course manual:{' '}
-                {ctx.manual.map((m, i) => (<>{i > 0 && '; '}{m.module ? `§${m.section}` : m.section} {m.title}</>))}.
-                The text, examples and exercises here are written independently.
+                <strong>Source.</strong> This lesson teaches material from the Groningen course manual. The text, examples and
+                exercises here are written independently.
               </p>
               <p class="muted">{CITATION}.</p>
             </>

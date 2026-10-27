@@ -7,7 +7,7 @@
 .lab-grid { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 24px; align-items: start; }
 @media (max-width: 860px) { .lab-grid { grid-template-columns: minmax(0, 1fr); } }
 .lab-controls { background: var(--panel); border-radius: var(--radius); padding: 16px 16px 12px; display: grid; gap: 14px; font-size: 0.9rem; }
-.lab-output { min-width: 0; display: grid; gap: 8px; }
+.lab-output { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .lab-status { margin: 0 0 4px; font-size: 0.9rem; color: var(--v-secondary); min-height: 1.4em; }
 .lab-warning { color: var(--v-terracotta-deep); }
 .lab-warning::before { content: '⚠ '; }
@@ -50,7 +50,11 @@
 .ibm-inspect p { margin: 0; }
 .lab-honesty { font-size: 0.82rem; color: var(--v-secondary); margin: 10px 0 0; max-width: 80ch; }
 .lab-docs { margin-top: 16px; display: grid; gap: 8px; }
-.lab-docs details { background: var(--panel); border-radius: 10px; padding: 10px 16px; }
+.lab-docs details { background: var(--panel); border-radius: 10px; padding: 10px 16px; min-width: 0; }
+.lab-docs details > * { min-width: 0; max-width: 100%; }
+@media (max-width: 760px) {
+  .lab-docs table { display: block; overflow-x: auto; }
+}
 .lab-docs summary { font-weight: 700; font-size: 0.82rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-secondary); }
 .lab-docs details[open] summary { margin-bottom: 8px; }
 .lab-docs table { font-size: 0.86rem; background: var(--bg); }

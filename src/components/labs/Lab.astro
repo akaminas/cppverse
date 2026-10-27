@@ -50,7 +50,8 @@ const examples = doc.cpp.map((f) => getExample(f));
         <summary>The model</summary>
         <div class="lab-eqs">{doc.equations.map((e) => <div set:html={tex(e)} />)}</div>
         <p>{doc.modelNote}</p>
-        <div class="table-scroll">
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Model parameters">
+
           <table>
             <thead><tr><th scope="col">Symbol</th><th scope="col">Meaning</th><th scope="col">Unit</th><th scope="col">Default</th></tr></thead>
             <tbody>

@@ -173,7 +173,8 @@ export default function GillespieLab({ preset }: { preset?: string }) {
       )}
       <details className="lab-log" open>
         <summary>The algorithm, event by event (first run)</summary>
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0} role="region" aria-label="Event log of the first run">
+
           <table>
             <thead>
               <tr>

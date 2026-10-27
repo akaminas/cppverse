@@ -311,7 +311,8 @@ export default function Chart({
       {tableSeries.length > 0 && tableX.length > 0 && (
         <details className="vfig-data">
           <summary>Show the data as a table</summary>
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0} role="region" aria-label="Data of the figure">
+
             <table>
               <thead>
                 <tr>

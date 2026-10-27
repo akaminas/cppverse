@@ -3,8 +3,11 @@ import { expect, test, type Locator } from '@playwright/test';
 
 /** Scroll an island into view and wait until Astro has hydrated it. */
 async function hydrated(target: Locator) {
-  await target.scrollIntoViewIfNeeded();
-  await expect(target.locator('xpath=ancestor-or-self::astro-island[1] | .//astro-island').first()).not.toHaveAttribute('ssr', '');
+  // Scroll the island's own content into view (client:visible), not the
+  // section around it: on a phone that section can be taller than the screen.
+  const island = target.locator('xpath=ancestor-or-self::astro-island[1] | .//astro-island').first();
+  await island.locator('xpath=./*[1]').scrollIntoViewIfNeeded();
+  await expect(island).not.toHaveAttribute('ssr', '');
 }
 
 const CITATION = 'C++ for biologists course material, University of Groningen, Faculty of Science and Engineering, Nijenborgh 7, 9747 AG Groningen';

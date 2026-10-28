@@ -48,7 +48,6 @@ body.is-deep::before {
 @media (max-width: 620px) { .deep-checks div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
 
 .deep-inspiration { border-left: 2px solid var(--p-ochre); padding-left: 16px; color: var(--v-secondary); }
-.deep-foot { font-size: var(--t-small); }
 
 /* ── The checker ─────────────────────────────────────────────────────── */
 .lt { display: grid; gap: 28px; }

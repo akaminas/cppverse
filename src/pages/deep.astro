@@ -5,7 +5,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Example from '../components/lessons/Example.astro';
 import LakeTrial from '../components/quest/LakeTrial';
 import { tex } from '../lib/tex';
-import { lessonUrl, url } from '../lib/url';
+import { lessonUrl } from '../lib/url';
 import { MAX_STEP, MIN_YEARS } from '../lib/quest/checks';
 import { getCollection } from 'astro:content';
 
@@ -71,10 +71,6 @@ const checked = [
     <header class="page-head">
       <p class="eyebrow">The deep · the final trial</p>
       <h1>The cichlid lake</h1>
-      <p class="lead">
-        Build a tropical rift lake in C++: its water, its chemistry, its seasons and the cichlids that share it. Run it for years, and show that it
-        behaves like a lake.
-      </p>
     </header>
 
     <section class="deep-section">
@@ -89,7 +85,6 @@ const checked = [
         animal, and every bacterium decomposing the dead, does the reverse. Warm water holds less oxygen. From May to September the south-east trade winds
         stir the surface layer deeper, bringing nutrient-rich, oxygen-poor water up from below and setting off a plankton bloom that the grazers follow.
       </p>
-      <p>Your lake need not be Lake Malawi, but it must be a lake. Its fish must live off its plankton, and its plankton off its chemistry.</p>
     </section>
 
     <section class="deep-section" id="sec-contain">
@@ -191,8 +186,7 @@ const checked = [
         </li>
       </ul>
       <p>
-        A skeleton to start from follows. It is not a solution, only scaffolding: named pools, processes as callables checked by a concept, fluxes
-        summed into derivatives, RK4, CSV on standard output.
+        A skeleton to start from follows.
       </p>
       <Example file="quest/lake_skeleton.cpp" editable={false} />
       <p class="deep-inspiration">
@@ -216,11 +210,6 @@ const checked = [
       <h2 id="deep-trial-title">Submit your lake</h2>
       <LakeTrial client:load />
     </section>
-
-    <p class="muted deep-foot">
-      The trial is original to C++ Atlas and optional. Passing it crowns the nautilus in this browser and in any progress file you export from
-      <a href={url('/progress/')}>Progress</a>.
-    </p>
   </article>
   <script is:inline type="application/json" id="deep-pointers" set:html={JSON.stringify(pointers)} />
 </BaseLayout>

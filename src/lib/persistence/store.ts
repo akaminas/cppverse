@@ -20,7 +20,25 @@ export interface LearnerState {
   /** Most recent atlas nodes, newest first. */
   recent: string[];
   pathway: string | null;
+  /** The final quest the nautilus offers once every lesson is finished. */
+  quest: QuestState;
 }
+
+/** The deep trial: a cichlid lake. A union so later trials can join it. */
+export type QuestTrial = 'lake';
+
+export interface QuestState {
+  /** ISO date the quest was first offered. */
+  offered: string | null;
+  /** ISO date the learner declined; the nautilus then stops offering it. */
+  declined: string | null;
+  /** ISO date the learner accepted and dived. */
+  accepted: string | null;
+  /** Set when a trial passed every required check: the nautilus wears a crown. */
+  crowned: { trial: QuestTrial; date: string } | null;
+}
+
+export const emptyQuest = (): QuestState => ({ offered: null, declined: null, accepted: null, crowned: null });
 
 export const emptyState = (): LearnerState => ({
   version: 1,
@@ -32,6 +50,7 @@ export const emptyState = (): LearnerState => ({
   bookmarks: [],
   recent: [],
   pathway: null,
+  quest: emptyQuest(),
 });
 
 type Listener = (state: LearnerState) => void;
@@ -58,6 +77,24 @@ function sanitize(raw: unknown): LearnerState {
     bookmarks: arr(r.bookmarks),
     recent: arr(r.recent).slice(0, 12),
     pathway: typeof r.pathway === 'string' ? r.pathway : null,
+    quest: sanitizeQuest(r.quest),
+  };
+}
+
+function sanitizeQuest(raw: unknown): QuestState {
+  const q = emptyQuest();
+  if (!raw || typeof raw !== 'object') return q;
+  const r = raw as Partial<QuestState>;
+  const date = (v: unknown) => (typeof v === 'string' && v.length <= 32 ? v : null);
+  const c = r.crowned;
+  return {
+    offered: date(r.offered),
+    declined: date(r.declined),
+    accepted: date(r.accepted),
+    crowned:
+      c && typeof c === 'object' && c.trial === 'lake' && date(c.date)
+        ? { trial: c.trial, date: c.date }
+        : null,
   };
 }
 
@@ -144,6 +181,27 @@ export const actions = {
     update((s) => {
       s.pathway = goal;
       if (goal && !s.goals.includes(goal)) s.goals = [...s.goals, goal];
+    });
+  },
+  offerQuest() {
+    update((s) => {
+      s.quest.offered ??= today();
+    });
+  },
+  declineQuest() {
+    update((s) => {
+      s.quest.declined = today();
+    });
+  },
+  acceptQuest() {
+    update((s) => {
+      s.quest.accepted = today();
+      s.quest.declined = null;
+    });
+  },
+  crown(trial: QuestTrial) {
+    update((s) => {
+      s.quest.crowned ??= { trial, date: today() };
     });
   },
   importState(text: string): boolean {

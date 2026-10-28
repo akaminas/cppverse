@@ -1,0 +1,237 @@
+---
+import 'katex/dist/katex.min.css';
+import '../styles/deep.css';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Example from '../components/lessons/Example.astro';
+import LakeTrial from '../components/quest/LakeTrial';
+import { tex } from '../lib/tex';
+import { lessonUrl, url } from '../lib/url';
+import { MAX_STEP, MIN_YEARS } from '../lib/quest/checks';
+import { getCollection } from 'astro:content';
+
+// Where the nautilus points when the trial calls for something from the courses:
+// by the part of the brief on screen (section), or by a check that fails (check).
+const titles = Object.fromEntries((await getCollection('lessons')).map((e) => [e.id, e.data.title]));
+const pointer = (id: string, lesson: string, text: string, when: { section?: string; check?: string }) => ({ id, ...when, href: lessonUrl(lesson), title: titles[lesson], text });
+const pointers = [
+  pointer('contain-rk4', 'runge-kutta', 'Time to use what you learned about integrators. One state vector, every process adding to its derivative, and a fourth-order step. Keep the right-hand side apart from the stepper.', { section: 'sec-contain' }),
+  pointer('contain-odes', 'odes', 'A lake is a system of coupled ODEs. Write each pool as a rate of change and check the units of every term before you add the next.', { section: 'sec-contain' }),
+  pointer('handin-csv', 'simulation-output', 'Your program has to write its results where a reader can use them. Remember how to write a tidy table: a header, one row per day, and a fixed number of digits.', { section: 'sec-handin' }),
+  pointer('handin-files', 'file-io', 'Three files come out of one program. Streams and file handling from the input and output course will carry you here.', { section: 'sec-handin' }),
+  pointer('judged-vv', 'verification-and-validation', 'The checks lean on conservation and sanity, the same ideas as verification and validation. Test every process on its own before you trust the whole lake.', { section: 'sec-judged' }),
+  pointer('ways-ibm', 'individual-based-models', 'Fish as individuals? You have been here before. Cohorts, energy budgets and update order all come back in a hybrid design.', { section: 'sec-ways' }),
+  pointer('ways-templates', 'templates', 'The skeleton checks processes with a concept. Templates and constraints from the generic programming course let you add a process without touching the integrator.', { section: 'sec-ways' }),
+  pointer('trial-testing', 'testing-and-reproducibility', 'Before you submit: fix your random seed if you use one, and rerun to be sure the same lake comes out twice.', { section: 'deep-trial-title' }),
+  pointer('fail-budget', 'verification-and-validation', 'A budget that does not close is a bug in the fluxes, not in the integrator. Write every transfer as a pair: out of one pool, into another.', { check: 'budget' }),
+  pointer('fail-values', 'numerical-error', 'Negative or non-finite values usually mean the step is too large for the fastest process. Revisit numerical error, then shrink the step or adapt it.', { check: 'values' }),
+  pointer('fail-bounded', 'adaptive-step-size', 'A lake that blows up or dies out slowly may be stiff or badly scaled. Step size control is the tool for that.', { check: 'bounded' }),
+  pointer('fail-timeline', 'simulation-output', 'The run is too short or too coarse. Decide the output interval separately from the integration step.', { check: 'timeline' }),
+  pointer('fail-coexist', 'sensitivity-analysis', 'Coexistence depends on a few parameters. A sweep over them, as in the sensitivity analysis course, shows where each guild survives.', { check: 'coexistence' }),
+  pointer('fail-cascade', 'simulation-experiments', 'An experiment changes one thing and compares with a control. Same lake, same start, same length, only the harvest differs.', { check: 'cascade-top' }),
+  pointer('fail-alternation', 'interpreting-results', 'A cascade alternates down the chain. If yours does not, compare final-year means of the two runs and read what they say before you adjust anything.', { check: 'cascade-alternation' }),
+  pointer('fail-forcing', 'math-functions', 'Seasons are periodic. The cos and sin of the math library, with the day of the year as the argument, are all you need.', { check: 'forcing' }),
+  pointer('fail-web', 'more-containers', 'Keep the food web as data, a map from consumer to its prey and weights, and generate the file from it, so the web and the model cannot disagree.', { check: 'web-match' }),
+  pointer('fail-notes', 'analysing-output', 'The notes ask questions about your own time series. Find the extremes in the output file itself, not by eye on a plot.', { check: 'note-oxygen' }),
+];
+
+const contract = [
+  { col: 'day', unit: 'days', need: 'required', note: 'Strictly increasing; output every ≤ ' + MAX_STEP + ' days, for at least ' + MIN_YEARS + ' years. Also read: time, t.' },
+  { col: 'temperature', unit: '°C', need: 'required', note: 'Surface water. Also read: temp.' },
+  { col: 'oxygen', unit: 'mg/L', need: 'required', note: 'Dissolved O₂ in the surface layer. Also read: o2, do.' },
+  { col: 'ph', unit: '', need: 'required', note: 'From the carbonate system, not a forcing.' },
+  { col: 'co2 or dic', unit: 'µmol/L', need: 'required', note: 'Dissolved CO₂, or dissolved inorganic carbon.' },
+  { col: 'phytoplankton', unit: 'your choice', need: 'required', note: 'Also read: phyto, algae, chl.' },
+  { col: 'zooplankton', unit: 'your choice', need: 'required', note: 'Also read: zoo, copepods.' },
+  { col: 'fish_<guild>', unit: 'your choice', need: '≥ 4', note: 'One column per cichlid guild, e.g. fish_mbuna, fish_utaka.' },
+  { col: 'total_p', unit: 'your choice', need: 'required', note: 'Lake-wide total of the limiting nutrient (or total_n).' },
+  { col: 'cum_p_in, cum_p_out', unit: 'as total_p', need: 'if open', note: 'Cumulative inputs and losses (inflow, harvest, burial).' },
+  { col: 'every other pool', unit: 'your choice', need: 'if in the web', note: 'Each compartment of your food web needs a column, named as in the web.' },
+  { col: 'deep_oxygen', unit: 'mg/L', need: 'bonus', note: 'A second, deeper layer.' },
+  { col: 'total_c, cum_c_in, cum_c_out', unit: 'your choice', need: 'bonus', note: 'A closed carbon budget, air–water exchange included.' },
+];
+
+const checked = [
+  ['A long enough, fine enough run', `at least ${MIN_YEARS} years, output every ${MAX_STEP} days or less`],
+  ['Finite, non-negative state', 'no NaN, no infinity, no negative concentration or biomass'],
+  ['A lake that could exist', 'temperature 5–40 °C, oxygen at most 25 mg/L, pH 4–12'],
+  ['A seasonal climate', 'an annual temperature cycle of at least 0.3 °C'],
+  ['Seasonal plankton', 'an annual cycle explains at least 15% of phytoplankton or oxygen'],
+  ['Coupled chemistry', 'pH falls as CO₂ rises (r < −0.5); oxygen and CO₂ move in opposite directions (r < −0.2)'],
+  ['Nutrient mass balance', 'the total drifts from its budget by at most 1%'],
+  ['Grazers follow the bloom', 'the annual zooplankton cycle trails phytoplankton by 3–150 days'],
+  ['Coexistence', 'four or more fish guilds persist through the final year'],
+  ['Bounded dynamics', 'plankton and fish within a factor of three, year on year, at the end'],
+  ['The food web', 'eight or more compartments, all simulated; a top trophic level of 3.5 or more; at least one omnivore; competing guilds whose diets still differ'],
+  ['The cascade', 'a four-level chain from the web; the top falls by 10% or more; each level below moves the opposite way by 1% or more'],
+  ['The notes', 'your answers must agree with your own files'],
+];
+---
+<BaseLayout title="The deep" description="The final trial of C++ Atlas: build a living cichlid lake in C++." bodyClass="is-deep">
+  <article class="wrap-narrow deep" data-deep-page>
+    <header class="page-head">
+      <p class="eyebrow">The deep · the final trial</p>
+      <h1>The cichlid lake</h1>
+      <p class="lead">
+        Build a tropical rift lake in C++: its water, its chemistry, its seasons and the cichlids that share it. Run it for years, and show that it
+        behaves like a lake.
+      </p>
+    </header>
+
+    <section class="deep-section">
+      <h2>The lake</h2>
+      <p>
+        The great lakes of the African rift hold hundreds of cichlid species, most of them found nowhere else, and they share the lake by dividing
+        its food. Mbuna scrape the film of algae, the aufwuchs, from the rocks. Utaka hover in open water for zooplankton. Sand-dwellers sift the bottom
+        for insect larvae and detritus, and piscivores hunt all of them.
+      </p>
+      <p>
+        Underneath the food web runs the chemistry. Phytoplankton take up phosphate and carbon dioxide and release oxygen, which raises the pH. Every
+        animal, and every bacterium decomposing the dead, does the reverse. Warm water holds less oxygen. From May to September the south-east trade winds
+        stir the surface layer deeper, bringing nutrient-rich, oxygen-poor water up from below and setting off a plankton bloom that the grazers follow.
+      </p>
+      <p>Your lake need not be Lake Malawi, but it must be a lake. Its fish must live off its plankton, and its plankton off its chemistry.</p>
+    </section>
+
+    <section class="deep-section" id="sec-contain">
+      <h2>What your lake must contain</h2>
+      <ol class="deep-list">
+        <li><strong>A climate.</strong> Seasonal temperature, and, if you like, seasonal light and wind-driven mixing between a surface and a deep layer.</li>
+        <li>
+          <strong>A limiting nutrient.</strong> Phosphorus (or nitrogen) cycling between dissolved, living and dead pools. The lake-wide total is
+          conserved, or changes only through fluxes you count.
+        </li>
+        <li>
+          <strong>Oxygen and carbon.</strong> Photosynthesis and respiration coupled by stoichiometry; exchange with the air; oxygen saturation that
+          falls with temperature; pH computed from the carbonate system.
+        </li>
+        <li><strong>Plankton.</strong> Phytoplankton limited by nutrient, light and temperature; zooplankton grazing with a saturating functional response.</li>
+        <li>
+          <strong>A food web.</strong> At least eight compartments, with four or more cichlid guilds of distinct niches. Include a piscivore and at least
+          one omnivore, and have two or more guilds compete for a shared resource. Detritus and zoobenthos make it work far better.
+        </li>
+        <li><strong>Years of dynamics.</strong> At least {MIN_YEARS} years, without collapse or explosion, with every guild still present at the end.</li>
+      </ol>
+      <p>A few relations you will need, in one form or another:</p>
+      <div class="deep-eqs">
+        <figure>
+          <div set:html={tex(String.raw`I_{ij} = \frac{c_j\, w_{ij} X_i}{h_j + \sum_k w_{kj} X_k}\, X_j`)} />
+          <figcaption>Consumer <i>j</i> eating prey <i>i</i>: a multi-prey type II functional response with preferences <i>w</i>.</figcaption>
+        </figure>
+        <figure>
+          <div set:html={tex(String.raw`A_T = C_T\,\frac{K_1[\mathrm{H^+}] + 2K_1K_2}{[\mathrm{H^+}]^2 + K_1[\mathrm{H^+}] + K_1K_2} + \frac{K_w}{[\mathrm{H^+}]} - [\mathrm{H^+}]`)} />
+          <figcaption>Alkalinity from dissolved inorganic carbon: solve for [H⁺] at every step, and pH = −log₁₀[H⁺].</figcaption>
+        </figure>
+        <figure>
+          <div set:html={tex(String.raw`\mathrm{TL}_j = 1 + \sum_i d_{ij}\,\mathrm{TL}_i`)} />
+          <figcaption>Trophic level from diet fractions <i>d</i>, with producers and detritus at level 1.</figcaption>
+        </figure>
+        <figure>
+          <div set:html={tex(String.raw`O_{jk} = \frac{\sum_i d_{ij} d_{ik}}{\sqrt{\sum_i d_{ij}^2 \,\sum_i d_{ik}^2}}`)} />
+          <figcaption>Pianka's overlap between the diets of guilds <i>j</i> and <i>k</i>: 0 apart, 1 identical.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="deep-section" id="sec-handin">
+      <h2>What you hand in</h2>
+      <p>Three files, written by your program. Column names are read in any case, with or without units in brackets, separated by commas, semicolons or tabs.</p>
+      <h3><code>lake_run.csv</code>: the baseline run</h3>
+      <div class="deep-table" tabindex="0" role="region" aria-label="Columns of the baseline run">
+        <table>
+          <thead><tr><th scope="col">Column</th><th scope="col">Unit</th><th scope="col">Needed</th><th scope="col">Notes</th></tr></thead>
+          <tbody>
+            {contract.map((r) => <tr><td><code>{r.col}</code></td><td>{r.unit}</td><td>{r.need}</td><td>{r.note}</td></tr>)}
+          </tbody>
+        </table>
+      </div>
+      <h3><code>food_web.csv</code>: who eats whom</h3>
+      <p>
+        One row per feeding link: <code>consumer,resource,fraction</code>, the fraction of the consumer's diet. Fractions that do not sum to one are
+        rescaled. Give the realised diets of your run (consumption summed over time), or the diets your model is built on. Either way the trophic levels
+        and overlaps are computed from them.
+      </p>
+      <h3><code>lake_cascade.csv</code>: the experiment</h3>
+      <p>
+        The same lake, from the same start and for as long, with its top predator harvested or removed. A cascade travels down the food chain.
+        Fewer piscivores mean more zooplanktivores, fewer zooplankton and more phytoplankton. Name the chain you followed, and the checker reads
+        its final year in both runs.
+      </p>
+    </section>
+
+    <section class="deep-section" id="sec-judged">
+      <h2>How the trial is judged</h2>
+      <p>
+        The checks test the behaviour of your lake, not the shape of your code. An ODE box model, an individual-based model of the fish over ODE
+        plankton, or a size-structured model can all pass. So can any units, parameters or integration method, as long as the dynamics are
+        those of a lake.
+      </p>
+      <dl class="deep-checks">
+        {checked.map(([k, v]) => (<div><dt>{k}</dt><dd>{v}</dd></div>))}
+      </dl>
+      <p class="muted">
+        Not checked: your parameter values, your choice of units for biomass, how many layers you use, which integrator, your code style. A trial
+        cannot see whether the model is right for the right reasons. You can, so read your own output.
+      </p>
+    </section>
+
+    <section class="deep-section" id="sec-ways">
+      <h2>Ways in</h2>
+      <ul class="deep-list">
+        <li>
+          <strong>A box model of ODEs.</strong> One state vector, every process a function of it, RK4 or an adaptive step. Write each process as a
+          flux from one pool to another and conservation holds by construction.
+        </li>
+        <li>
+          <strong>A hybrid.</strong> Plankton and chemistry as ODEs, fish as individuals or cohorts with energy budgets, coupled once per day. Write
+          the summed biomass of each guild.
+        </li>
+        <li>
+          <strong>Grow it.</strong> Start with temperature and one nutrient–phytoplankton pair, and check the budget. Add oxygen, then carbon and
+          pH, then grazers, then one fish, then the rest. Test each step against what it should do before adding the next.
+        </li>
+      </ul>
+      <p>
+        A skeleton to start from follows. It is not a solution, only scaffolding: named pools, processes as callables checked by a concept, fluxes
+        summed into derivatives, RK4, CSV on standard output.
+      </p>
+      <Example file="quest/lake_skeleton.cpp" editable={false} />
+      <p class="deep-inspiration">
+        For the spirit of it, watch <a href="https://www.youtube.com/watch?v=_YbGWoUaZg0" rel="noopener">Simulating Gravity in C++</a>. A complex
+        system grows from a few rules, one feature at a time, and each step is checked against what physics says it must do. Grow your lake the
+        same way.
+      </p>
+    </section>
+
+    <section id="sec-worked" class="deep-section" hidden>
+      <h2>A worked solution</h2>
+      <p>
+        One complete lake that passes every check, in C++. Read it the way you would read a colleague's code: find the pools, the fluxes and the
+        integrator, and see how the budget closes. Compile it with <code>clang++ -std=c++20 -O2</code>; run it with no argument for
+        the baseline, with <code>web</code> for the food web and with <code>cascade</code> for the harvested lake.
+      </p>
+      <Example file="quest/lake_solution.cpp" editable={false} />
+    </section>
+
+    <section class="deep-section deep-trial" aria-labelledby="deep-trial-title">
+      <h2 id="deep-trial-title">Submit your lake</h2>
+      <LakeTrial client:load />
+    </section>
+
+    <p class="muted deep-foot">
+      The trial is original to C++ Atlas and optional. Passing it crowns the nautilus in this browser and in any progress file you export from
+      <a href={url('/progress/')}>Progress</a>.
+    </p>
+  </article>
+  <script is:inline type="application/json" id="deep-pointers" set:html={JSON.stringify(pointers)} />
+</BaseLayout>
+
+<script>
+  // The passphrase from the atlas search opens the worked solution.
+  if (new URLSearchParams(location.search).get('solution') === '1') {
+    const worked = document.getElementById('sec-worked');
+    if (worked) {
+      worked.hidden = false;
+      window.setTimeout(() => worked.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }), 2200);
+    }
+  }
+</script>

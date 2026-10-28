@@ -4,12 +4,15 @@
 // It comes forward to welcome the learner to a lesson (and, once, to the
 // site), to offer a tip every few minutes, to congratulate the learner on
 // finishing a lesson, and, after an hour of reading, to suggest a break.
+// Once every course is finished it offers a last, optional quest and, if
+// the learner accepts, dives with them into the deep; a learner who passes
+// the trial there crowns it for good.
 //
 // Everything is local: the timers live in localStorage, nothing is sent
 // anywhere. With reduced motion the nautilus does not swim; it fades in and
 // out in a corner.
 
-import { load, subscribe, type LearnerState } from '../../lib/persistence/store';
+import { actions, load, subscribe, type LearnerState } from '../../lib/persistence/store';
 import { pickTip, VOICE_LABEL, type Tip } from '../../data/tips';
 import { LESSON_GUIDES } from '../../data/lesson-tips';
 
@@ -21,6 +24,9 @@ const KEY = {
   siteWelcome: 'nautilus:site-welcome',
   active: 'nautilus:active-ms',
   tick: 'nautilus:last-tick',
+  dive: 'nautilus:dive',
+  spur: 'nautilus:last-spur',
+  pointers: 'nautilus:pointers',
 } as const;
 
 const MIN = 60_000;
@@ -32,8 +38,12 @@ const SEEN_MAX = 300;
 const BREAK_EVERY = 60 * MIN;
 const BREAK_GAP = 15 * MIN; // away this long counts as a break already taken
 const SHOW_FOR = 14_000;
+const DIVE_FOR = 2_600;
+const SPUR_EVERY = 8.5 * MIN; // while a quest is under way, a word of encouragement every 8½ minutes
+const POINTER_GAP = 75_000; // pointers to earlier courses are spaced out
+const POINTER_AGAIN = 30 * MIN;
 
-type Kind = 'welcome' | 'tip' | 'cheer' | 'break';
+type Kind = 'welcome' | 'tip' | 'cheer' | 'break' | 'quest' | 'note' | 'spur' | 'pointer';
 
 const store = {
   get(k: string): string | null {
@@ -63,6 +73,7 @@ export function startNautilus(root: HTMLElement) {
   const ok = bubble.querySelector<HTMLButtonElement>('.nb-ok')!;
   const mute = bubble.querySelector<HTMLButtonElement>('.nb-mute')!;
   const live = root.querySelector<HTMLElement>('.nb-live')!;
+  const link = bubble.querySelector<HTMLAnchorElement>('.nb-link')!;
 
   const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const article = document.querySelector<HTMLElement>('article[data-slug]');
@@ -71,6 +82,14 @@ export function startNautilus(root: HTMLElement) {
   const checkCount = Number(article?.dataset.checks ?? 0);
   const lessonTitle = article?.dataset.title ?? document.title;
   const minutes = Number(article?.dataset.minutes ?? 0);
+  const deepPage = document.querySelector('[data-deep-page]') !== null;
+  const required = (() => {
+    try {
+      return JSON.parse(root.dataset.lessons ?? '[]') as [string, number][];
+    } catch {
+      return [];
+    }
+  })();
 
   // ── Motion ────────────────────────────────────────────────────────────────
   const W = () => window.innerWidth;
@@ -87,9 +106,10 @@ export function startNautilus(root: HTMLElement) {
     restUntil: 0,
     squash: 0,
     t: 0,
+    dive: 0,
   };
   const history: [number, number][] = [];
-  let mode: 'ambient' | 'present' = 'ambient';
+  let mode: 'ambient' | 'present' | 'dive' = 'ambient';
   let hideTimer = 0;
 
   const pickTarget = () => {
@@ -114,7 +134,7 @@ export function startNautilus(root: HTMLElement) {
     const speed = Math.hypot(s.vx, s.vy);
     const a = s.heading;
     const facingLeft = Math.cos(a) < 0;
-    const scale = mode === 'present' ? 2.1 : 1;
+    const scale = mode === 'ambient' ? 1 : 2.1;
     const sq = 1 - 0.08 * s.squash;
     body.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) rotate(${a.toFixed(3)}rad) scale(${(scale * sq).toFixed(3)}, ${(scale * (2 - sq)).toFixed(3)})`;
     flip.style.transform = facingLeft ? 'scaleY(-1)' : '';
@@ -144,7 +164,17 @@ export function startNautilus(root: HTMLElement) {
   const step = (now: number) => {
     s.t += 1;
     s.squash *= 0.9;
-    if (mode === 'present') {
+    if (mode === 'dive') {
+      // Down into the deep: first to the middle of the screen, then a long sink that gathers speed.
+      s.dive += 1;
+      if (s.dive < 55) {
+        s.vx = s.vx * 0.86 + (W() / 2 - s.x) * 0.012;
+        s.vy = s.vy * 0.86 + (H() * 0.3 - s.y) * 0.012;
+      } else {
+        s.vx *= 0.9;
+        s.vy = s.vy * 0.96 + 0.2;
+      }
+    } else if (mode === 'present') {
       // Swim to the perch beside the speech bubble and hover there.
       const p = perch();
       const dx = p.x - s.x;
@@ -213,7 +243,17 @@ export function startNautilus(root: HTMLElement) {
   }
 
   // ── Speech ────────────────────────────────────────────────────────────────
-  const KIND_LABEL: Record<Kind, string> = { welcome: 'Welcome', tip: 'Tip from the nautilus', cheer: 'Well done', break: 'Time for a break' };
+  const KIND_LABEL: Record<Kind, string> = {
+    welcome: 'Welcome',
+    tip: 'Tip from the nautilus',
+    cheer: 'Well done',
+    break: 'Time for a break',
+    quest: 'A quest from the nautilus',
+    note: 'The nautilus',
+    spur: 'Keep going',
+    pointer: 'A pointer from the nautilus',
+  };
+  const OK_LABEL: Partial<Record<Kind, string>> = { break: 'I will rest my eyes', welcome: 'Let us begin', quest: 'Yes, take me to the deep' };
 
   const hide = () => {
     window.clearTimeout(hideTimer);
@@ -223,13 +263,19 @@ export function startNautilus(root: HTMLElement) {
     if (still) draw();
   };
 
-  const say = (kind: Kind, message: string, tip?: Tip) => {
+  const say = (kind: Kind, message: string, tip?: Tip, to?: { href: string; label: string }) => {
     window.clearTimeout(hideTimer);
     const heading = tip ? VOICE_LABEL[tip.voice] : KIND_LABEL[kind];
     label.textContent = heading;
     text.textContent = message;
-    mute.hidden = kind !== 'tip' && kind !== 'welcome';
-    ok.textContent = kind === 'break' ? 'I will rest my eyes' : kind === 'welcome' ? 'Let us begin' : 'Thanks';
+    mute.hidden = kind !== 'tip' && kind !== 'welcome' && kind !== 'quest';
+    mute.textContent = kind === 'quest' ? 'No, thank you' : 'Mute tips';
+    ok.textContent = OK_LABEL[kind] ?? 'Thanks';
+    link.hidden = !to;
+    if (to) {
+      link.href = to.href;
+      link.textContent = to.label;
+    }
     bubble.dataset.kind = kind;
     if (tip) bubble.dataset.voice = tip.voice;
     else delete bubble.dataset.voice;
@@ -238,12 +284,31 @@ export function startNautilus(root: HTMLElement) {
     root.classList.add('is-present');
     mode = 'present';
     if (still) draw();
-    // Break reminders stay until acknowledged; the rest drift away.
-    if (kind !== 'break') hideTimer = window.setTimeout(hide, SHOW_FOR);
+    // Break reminders and the quest stay until answered; the rest drift away.
+    if (kind !== 'break' && kind !== 'quest') hideTimer = window.setTimeout(hide, SHOW_FOR);
   };
 
-  ok.addEventListener('click', hide);
+  const dive = () => {
+    hide();
+    store.set(KEY.dive, String(Date.now()));
+    root.classList.add('is-present', 'is-diving');
+    mode = 'dive';
+    live.textContent = 'Diving into the deep.';
+    window.setTimeout(() => location.assign(root.dataset.deep ?? '/'), still ? 700 : DIVE_FOR);
+  };
+
+  ok.addEventListener('click', () => {
+    if (bubble.dataset.kind !== 'quest') return hide();
+    actions.acceptQuest();
+    dive();
+  });
   mute.addEventListener('click', () => {
+    if (bubble.dataset.kind === 'quest') {
+      actions.declineQuest();
+      hide();
+      window.setTimeout(() => say('note', 'As you wish. The deep will keep. If you change your mind, it waits on your progress page.'), 500);
+      return;
+    }
     store.set(KEY.muted, '1');
     hide();
   });
@@ -276,7 +341,45 @@ export function startNautilus(root: HTMLElement) {
     }
     return 'Welcome to C++ Atlas. Here you learn C++ by building biological models, from a first program to ODE solvers, stochastic and individual-based simulations. I will drop by with tips as you go.';
   };
+
+  // The quest: offered once every required lesson is studied or demonstrated,
+  // until the learner answers. Declining is respected; the progress page keeps the way open.
+  const passed = (st: LearnerState, lesson: string) => Object.keys(st.checks).filter((k) => k.startsWith(`${lesson}/`)).length;
+  const finished = (st: LearnerState) => required.length > 0 && required.every(([l, c]) => st.studied[l] || (c > 0 && passed(st, l) >= c));
+  const shouldOffer = (st: LearnerState) => !deepPage && finished(st) && !st.quest.crowned && !st.quest.declined && !st.quest.accepted;
+  const offer = () => {
+    actions.offerQuest();
+    say(
+      'quest',
+      `You have finished every course: ${required.length} lessons, from a first program to stochastic and individual-based models. I know a place in the deep where a last trial waits. Build a living cichlid lake in C++, its chemistry, its seasons and its food web, and prove you are truly a C++ pro. It is optional. Will you come?`,
+    );
+  };
+  const crownState = (st: LearnerState) => root.classList.toggle('is-crowned', st.quest.crowned !== null);
+  crownState(load());
+
+  // Arriving in the deep after a dive: the water clears around the page.
+  const arrived = Date.now() - Number(store.get(KEY.dive) ?? 0) < 20_000;
+  if (arrived) {
+    store.set(KEY.dive, '0');
+    root.classList.add('is-arriving');
+    window.setTimeout(() => root.classList.remove('is-arriving'), 1_900);
+  }
+
   const tryWelcome = () => {
+    if (shouldOffer(load())) return offer();
+    if (deepPage) {
+      const st = load();
+      const seen = readJson<Record<string, number>>(KEY.welcomed, {});
+      if (!arrived && Date.now() - (seen['/deep/'] ?? 0) < WELCOME_AGAIN) return;
+      seen['/deep/'] = Date.now();
+      store.set(KEY.welcomed, JSON.stringify(seen));
+      return say(
+        'welcome',
+        st.quest.crowned
+          ? 'Back in the deep, crowned. The lake is yours; run it again whenever you like.'
+          : 'Here we are, in the deep. Below is the lake you will build. Take your time: run it, look at it, write down what you see. Every check says what it measured.',
+      );
+    }
     if (muted()) return;
     const message = welcome();
     if (!message) return;
@@ -303,7 +406,7 @@ export function startNautilus(root: HTMLElement) {
     return tip;
   };
   const tryTip = () => {
-    if (muted() || mode === 'present' || document.hidden) return;
+    if (muted() || deepPage || mode !== 'ambient' || document.hidden) return;
     const last = Number(store.get(KEY.lastTip) ?? 0);
     if (Date.now() - last < TIP_EVERY) return;
     store.set(KEY.lastTip, String(Date.now()));
@@ -318,6 +421,13 @@ export function startNautilus(root: HTMLElement) {
   subscribe((next) => {
     const before = prev;
     prev = next;
+    crownState(next);
+    if (!before.quest.crowned && next.quest.crowned) {
+      say('cheer', 'Your lake lives: its chemistry, its seasons, its food web and its cascade. You are truly a C++ pro. The crown is yours, and I will wear it on every page from now on.');
+      return;
+    }
+    // The last lesson finished: congratulate first, then make the offer.
+    if (!finished(before) && shouldOffer(next)) window.setTimeout(() => shouldOffer(load()) && offer(), 5_000);
     const newlyStudied = Object.keys(next.studied).filter((k) => !before.studied[k]);
     if (newlyStudied.length) {
       const here = slug && newlyStudied.includes(slug);
@@ -332,6 +442,90 @@ export function startNautilus(root: HTMLElement) {
       }
     }
   });
+
+  // Pointers: in the deep, the nautilus says when the trial calls for
+  // something from an earlier course and links to the lesson. They follow what
+  // is on screen (a section of the brief) and what the checker has found wrong.
+  interface Pointer {
+    id: string;
+    section?: string;
+    check?: string;
+    href: string;
+    title: string;
+    text: string;
+  }
+  const pointers: Pointer[] = (() => {
+    if (!deepPage) return [];
+    try {
+      return JSON.parse(document.getElementById('deep-pointers')?.textContent ?? '[]') as Pointer[];
+    } catch {
+      return [];
+    }
+  })();
+  let lastPointer = Date.now() - POINTER_GAP + 25_000;
+  const onScreen = new Set<string>();
+  let failing: string[] = [];
+  const showPointer = (p: Pointer): boolean => {
+    const now = Date.now();
+    if (mode !== 'ambient' || document.hidden || now - lastPointer < POINTER_GAP) return false;
+    const seen = readJson<Record<string, number>>(KEY.pointers, {});
+    if (now - (seen[p.id] ?? 0) < POINTER_AGAIN) return false;
+    seen[p.id] = now;
+    store.set(KEY.pointers, JSON.stringify(seen));
+    lastPointer = now;
+    say('pointer', p.text, undefined, { href: p.href, label: `Revisit: ${p.title}` });
+    return true;
+  };
+  if (pointers.length) {
+    window.addEventListener('deep:failing', (e) => {
+      failing = (e as CustomEvent<string[]>).detail ?? [];
+    });
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const en of entries) {
+          if (en.isIntersecting) onScreen.add(en.target.id);
+          else onScreen.delete(en.target.id);
+        }
+      },
+      { threshold: 0.2 },
+    );
+    for (const p of pointers) {
+      const el = p.section ? document.getElementById(p.section) : null;
+      if (el) io.observe(el);
+    }
+    window.setInterval(() => {
+      const byCheck = pointers.find((p) => p.check && failing.includes(p.check));
+      if (byCheck && showPointer(byCheck)) return;
+      for (const p of pointers) if (p.section && onScreen.has(p.section) && showPointer(p)) return;
+    }, 8_000);
+  }
+
+  // Encouragement: while a quest is under way, a word every 8½ minutes of
+  // reading time, wherever the learner is.
+  const SPURS = [
+    'Still swimming? Good. Every lake begins as one pool and one flux. Get the phosphorus to balance first.',
+    'Plankton before fish, fish before the piscivore. After each layer you add, run six years before adding the next.',
+    'If a number looks wrong, print it. Look at one day, one pool, one flux.',
+    'A model that crashes is giving you information. Which pool went negative first?',
+    'Seasons are the test of a lake. Plot temperature, oxygen and plankton against the day of the year.',
+    'Coexistence is hard-won. Two guilds with the same niche cannot both stay: give each its own food.',
+    'The deep takes time. Rest your eyes, then come back to the simplest check that still fails.',
+    'The checker tells you what it measured, never what to change. That part is the science.',
+    'Every good model was wrong at first. Keep going; the lake is closer than it looks.',
+  ];
+  const trySpur = () => {
+    const st = load();
+    if (!st.quest.accepted || st.quest.crowned || document.hidden || mode !== 'ambient') return;
+    const last = Number(store.get(KEY.spur) ?? 0);
+    // The clock starts at the first look, and again after a long absence.
+    if (!last || Date.now() - last > 4 * SPUR_EVERY) return store.set(KEY.spur, String(Date.now()));
+    if (Date.now() - last < SPUR_EVERY) return;
+    store.set(KEY.spur, String(Date.now()));
+    const n = Number(store.get(`${KEY.spur}-n`) ?? 0);
+    store.set(`${KEY.spur}-n`, String(n + 1));
+    say('spur', SPURS[n % SPURS.length]);
+  };
+  window.setInterval(trySpur, 20_000);
 
   // Breaks: an hour of reading time (only while a page is visible), counted
   // across pages. Being away for a quarter of an hour resets the clock.
@@ -352,7 +546,9 @@ export function startNautilus(root: HTMLElement) {
   tickBreak();
   window.setInterval(tickBreak, 30_000);
 
-  // Preview any message with ?nautilus=welcome|tip|cheer|break.
+  // Preview any message with ?nautilus=welcome|tip|cheer|break|quest|crown.
+  if (new URLSearchParams(location.search).get('nautilus') === 'quest') window.setTimeout(offer, 600);
+  if (new URLSearchParams(location.search).get('nautilus') === 'crown') root.classList.add('is-crowned');
   const preview = new URLSearchParams(location.search).get('nautilus');
   if (preview === 'welcome') window.setTimeout(() => say('welcome', welcome()!), 600);
   if (preview === 'tip')

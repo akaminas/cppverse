@@ -11,7 +11,7 @@ const checks = lessonCheckCounts();
 const lessonDomain = (slug: string) => concepts.find((c) => c.lesson === slug && !c.anchor)?.domain ?? concepts.find((c) => c.lesson === slug)!.domain;
 const order = (d: string) => domains.findIndex((x) => x.id === d);
 const lessons = entries
-  .map((e) => ({ slug: e.id, title: e.data.title, domain: lessonDomain(e.id), domainTitle: domainById[lessonDomain(e.id)].title, checks: checks[e.id] ?? 0 }))
+  .map((e) => ({ slug: e.id, title: e.data.title, domain: lessonDomain(e.id), domainTitle: domainById[lessonDomain(e.id)].title, checks: checks[e.id] ?? 0, optional: e.data.optional }))
   .sort((a, b) => order(a.domain) - order(b.domain) || a.title.localeCompare(b.title));
 ---
 <BaseLayout title="Progress" section="progress" description="Your locally stored progress, bookmarks and settings.">

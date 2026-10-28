@@ -2,6 +2,27 @@
 // The nautilus companion (see nautilus.ts). The shell is a true logarithmic
 // spiral, r = a·e^(bθ), computed here at build time; its last whorl is the
 // outline, ending in the aperture where the hood and tentacles emerge.
+import { getCollection } from 'astro:content';
+import { lessonCheckCounts } from '../../lib/atlas-data';
+import { url } from '../../lib/url';
+
+// Every required lesson and its number of checks: the nautilus offers the
+// deep trial once each is studied or demonstrated.
+const checkCounts = lessonCheckCounts();
+const required = (await getCollection('lessons')).filter((e) => !e.data.optional).map((e) => [e.id, checkCounts[e.id] ?? 0]);
+
+// The dive: bubbles rising and ripples spreading, placed by a fixed
+// pseudo-random sequence so every page renders the same markup.
+let seed = 7;
+const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+const bubbles = Array.from({ length: 30 }, () => ({
+  x: (4 + 92 * rand()).toFixed(1),
+  s: (5 + 22 * rand() ** 2).toFixed(1),
+  t: (1.5 + 1.3 * rand()).toFixed(2),
+  d: (0.9 * rand()).toFixed(2),
+  w: ((rand() - 0.5) * 60).toFixed(0),
+}));
+const ripples = Array.from({ length: 6 }, (_, i) => ({ x: (12 + 76 * rand()).toFixed(1), y: (14 + 50 * rand()).toFixed(1), d: (i * 0.22).toFixed(2) }));
 const a = 1.55;
 const b = 0.205;
 const cx = 10;
@@ -39,7 +60,7 @@ const tentacles = [
   { y: 8.5, len: 27 },
 ];
 ---
-<div class="nautilus-root" data-nautilus>
+<div class="nautilus-root" data-nautilus data-lessons={JSON.stringify(required)} data-deep={url('/deep/')}>
   <div class="nautilus-layer" aria-hidden="true">
     <svg class="nautilus-trail"><polyline points="" /></svg>
     <div class="nautilus">
@@ -68,6 +89,13 @@ const tentacles = [
           <circle class="nt-spot" cx="-2.6" cy="3.6" r="0.6" />
           <circle class="nt-eye" cx="-6.4" cy="3.1" r="2" />
           <circle class="nt-glint" cx="-7" cy="2.5" r="0.6" />
+          <g class="nt-crown" transform="rotate(-14 -9 -2)">
+            <path class="nt-crown-band" d="M-13.4,-1.6 L-14.2,-7.4 L-11.4,-4.6 L-9.1,-9.2 L-6.8,-4.6 L-4,-7.4 L-4.8,-1.6 Z" />
+            <path class="nt-crown-rim" d="M-13.3,-2.6 L-4.9,-2.6" />
+            <circle class="nt-crown-gem" cx="-14.2" cy="-7.6" r="0.75" />
+            <circle class="nt-crown-gem is-centre" cx="-9.1" cy="-9.5" r="0.95" />
+            <circle class="nt-crown-gem" cx="-4" cy="-7.6" r="0.75" />
+          </g>
         </svg>
       </div>
     </div>
@@ -76,11 +104,16 @@ const tentacles = [
     <p class="nb-kind"></p>
     <p class="nb-text"></p>
     <div class="nb-actions">
+      <a class="btn nb-link" href="#" hidden></a>
       <button type="button" class="btn nb-ok">Thanks</button>
       <button type="button" class="btn btn-ghost nb-mute">Mute tips</button>
     </div>
   </div>
   <p class="sr-only nb-live" aria-live="polite"></p>
+  <div class="nautilus-dive" aria-hidden="true">
+    {ripples.map((r) => <span class="nd-ripple" style={`--x:${r.x}%;--y:${r.y}%;--d:${r.d}s`} />)}
+    {bubbles.map((b) => <span class="nd-bubble" style={`--x:${b.x}%;--s:${b.s}px;--t:${b.t}s;--d:${b.d}s;--w:${b.w}px`} />)}
+  </div>
 </div>
 
 <script>
@@ -98,6 +131,7 @@ const tentacles = [
     /* Muted greys while it drifts behind the page; true colours when it comes forward. */
     --nt-shell-a: #9A9EA5; --nt-shell-b: #6E737B; --nt-line: #50555D; --nt-stripe: #5D6168;
     --nt-hood: #3E4248; --nt-spot: #8C9097; --nt-arm: #7E838B;
+    --nt-crown: #A29D8F; --nt-crown-line: #5E5A52; --nt-gem: #7E838B;
     position: absolute; left: 0; top: 0; width: 64px; height: 42px; margin: -21px 0 0 -36.8px;
     transform-origin: 36.8px 21px; will-change: transform;
     opacity: 0.22; transition: opacity 0.8s ease;
@@ -107,6 +141,7 @@ const tentacles = [
   .nautilus-root.is-present .nautilus {
     --nt-shell-a: #FFF8EC; --nt-shell-b: #C9B49A; --nt-line: #8C6B4E; --nt-stripe: #B5602F;
     --nt-hood: #6A5249; --nt-spot: #EFE3D3; --nt-arm: #D9B9A2;
+    --nt-crown: #EBC867; --nt-crown-line: #8A6420; --nt-gem: #E8C0B2;
     opacity: 1; filter: drop-shadow(0 0 10px rgba(111, 227, 238, 0.35));
   }
   .nt-shell { stroke: var(--nt-line); stroke-width: 0.6; }
@@ -118,6 +153,52 @@ const tentacles = [
   .nt-eye { fill: #121212; stroke: #2A211D; stroke-width: 0.4; }
   .nt-glint { fill: #fff; }
   .nt-tentacle { fill: none; stroke: var(--nt-arm); stroke-width: 1.3; stroke-linecap: round; }
+  /* The crown of the deep trial: worn for good once the lake passes every check. */
+  .nt-crown { display: none; }
+  .nautilus-root.is-crowned .nt-crown { display: inline; }
+  .nt-crown-band { fill: var(--nt-crown); stroke: var(--nt-crown-line); stroke-width: 0.45; stroke-linejoin: round; }
+  .nt-crown-rim { fill: none; stroke: var(--nt-crown-line); stroke-width: 0.4; opacity: 0.8; }
+  .nt-crown-gem { fill: var(--nt-gem); stroke: var(--nt-crown-line); stroke-width: 0.3; }
+  .nautilus-root.is-present .nt-crown-gem.is-centre { fill: #A5D5D7; }
+
+  /* The dive: the page sinks into dark water as bubbles rise past and the
+     surface rings out. Arriving in the deep, the water clears again. */
+  .nautilus-dive {
+    position: fixed; inset: 0; z-index: 69; pointer-events: none; overflow: hidden; display: none;
+    background: linear-gradient(180deg, rgba(6, 30, 36, 0) 0%, rgba(5, 26, 32, 0.55) 30%, rgba(3, 15, 19, 0.94) 62%, #01080b 100%);
+    background-size: 100% 320%;
+  }
+  .nautilus-root.is-diving .nautilus-dive { display: block; animation: nd-sink 2.6s cubic-bezier(0.5, 0, 0.75, 0.6) forwards; }
+  .nautilus-root.is-arriving .nautilus-dive { display: block; background: #01080b; animation: nd-clear 1.8s ease-out forwards; }
+  @keyframes nd-sink { from { background-position: 0 0; } to { background-position: 0 100%; } }
+  @keyframes nd-clear { from { opacity: 1; } to { opacity: 0; } }
+  .nd-bubble {
+    position: absolute; left: var(--x); bottom: -40px; width: var(--s); height: var(--s); border-radius: 50%;
+    border: 1px solid rgba(165, 213, 215, 0.5);
+    background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.55), rgba(165, 213, 215, 0.1) 45%, transparent 72%);
+    animation: nd-rise var(--t) cubic-bezier(0.3, 0.1, 0.6, 1) var(--d) both;
+  }
+  .nautilus-root.is-arriving .nd-bubble { animation-delay: calc(var(--d) * 0.4); }
+  @keyframes nd-rise {
+    0% { transform: translate(0, 0); }
+    50% { transform: translate(var(--w), -55vh); }
+    100% { transform: translate(0, -118vh); }
+  }
+  .nd-ripple {
+    position: absolute; left: var(--x); top: var(--y); width: 24px; height: 24px; margin: -12px; border-radius: 50%;
+    border: 1px solid rgba(165, 213, 215, 0.6); opacity: 0;
+    animation: nd-ripple 1.9s ease-out var(--d) both;
+  }
+  .nautilus-root.is-arriving .nd-ripple { display: none; }
+  @keyframes nd-ripple {
+    0% { transform: scale(0.2, 0.07); opacity: 0.9; }
+    100% { transform: scale(16, 5); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nd-bubble, .nd-ripple { display: none; }
+    .nautilus-root.is-diving .nautilus-dive { background: #01080b; animation: nd-darken 0.6s ease forwards; }
+    @keyframes nd-darken { from { opacity: 0; } to { opacity: 1; } }
+  }
 
   .nautilus-bubble {
     position: fixed; z-index: 71; right: 220px; bottom: 96px; width: min(340px, calc(100vw - 32px));
@@ -129,9 +210,15 @@ const tentacles = [
   .nautilus-bubble[hidden] { display: none; }
   .nautilus-bubble[data-kind='cheer'] { border-color: #2E5A3A; }
   .nautilus-bubble[data-kind='break'] { border-color: #5A4A24; }
+  .nautilus-bubble[data-kind='spur'] { border-color: #2E5A3A; }
+  .nautilus-bubble[data-kind='spur'] .nb-kind { color: var(--v-status-good); }
+  .nautilus-bubble[data-kind='pointer'] { border-color: #2F4A66; }
+  .nautilus-bubble[data-kind='pointer'] .nb-kind { color: var(--p-indigo); }
   .nb-kind { margin: 0 0 4px; font-family: var(--v-font-mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
   .nautilus-bubble[data-kind='cheer'] .nb-kind { color: var(--v-status-good); }
   .nautilus-bubble[data-kind='break'] .nb-kind { color: var(--v-status-warning); }
+  .nautilus-bubble[data-kind='quest'] { border-color: #5C5236; box-shadow: 0 24px 48px -20px rgba(0, 0, 0, 0.9), 0 0 32px rgba(218, 201, 166, 0.16); }
+  .nautilus-bubble[data-kind='quest'] .nb-kind { color: var(--p-ochre); }
   /* Tip voices: the heading takes the colour, the border follows faintly. */
   .nautilus-bubble[data-voice='disaster'] { border-color: #5A3A2A; }
   .nautilus-bubble[data-voice='disaster'] .nb-kind { color: var(--v-status-serious); }
@@ -143,6 +230,7 @@ const tentacles = [
   .nb-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .nb-actions .btn { font-size: 0.82rem; padding: 5px 12px; }
   .nb-actions [hidden] { display: none; }
+  .nb-link { text-decoration: none; }
   /* A slide without a fade: the text keeps full contrast from the first frame. */
   @keyframes nb-in { from { transform: translateY(10px) scale(0.97); } }
   @media (max-width: 620px) {

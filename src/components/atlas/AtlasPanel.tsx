@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useEffect, useId, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import type { DomainId, Level } from '../../data/types';
 import type { RouteStep } from '../../lib/graph/routes';
 import { EDGE_STYLE, KIND_LABEL, LEVEL_LABEL, nodeHref, type AtlasData, type AtlasNode } from './atlasData';
@@ -55,6 +55,17 @@ export default function AtlasPanel(props: Props) {
   const listId = useId();
   const results = useMemo(() => search(query), [query, search]);
   const base = data.base;
+
+  // A passphrase some learners are told about: it opens the deep with a worked solution.
+  useEffect(() => {
+    if (query.trim() !== '03101999') return;
+    try {
+      localStorage.setItem('nautilus:dive', String(Date.now()));
+    } catch {
+      /* storage unavailable: the water just will not clear */
+    }
+    window.location.assign(`${base.replace(/\/$/, '')}/deep/?solution=1`);
+  }, [query, base]);
 
   const pick = (id: string) => {
     onSelect(id);

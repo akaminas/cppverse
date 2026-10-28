@@ -13,6 +13,7 @@ interface LessonInfo {
   domain: string;
   domainTitle: string;
   checks: number;
+  optional: boolean;
 }
 
 const STATUS_LABEL: Record<LessonStatus, string> = {
@@ -32,6 +33,9 @@ export default function ProgressDashboard({ lessons, base }: { lessons: LessonIn
   const statuses = lessons.map((l) => ({ ...l, status: lessonStatus(state, l.slug, l.checks) }));
   const count = (s: LessonStatus) => statuses.filter((x) => x.status === s).length;
   const domainsList = [...new Set(lessons.map((l) => l.domainTitle))];
+  const required = statuses.filter((l) => !l.optional);
+  const requiredDone = required.filter((l) => l.status === 'studied' || l.status === 'demonstrated').length;
+  const { crowned, declined } = state.quest;
 
   const download = () => {
     const blob = new Blob([actions.exportState()], { type: 'application/json' });
@@ -102,6 +106,28 @@ export default function ProgressDashboard({ lessons, base }: { lessons: LessonIn
             </ul>
           </details>
         ))}
+      </section>
+
+      <section className="pg-block">
+        <h2>The deep</h2>
+        {crowned ? (
+          <p>
+            Crowned on {crowned.date}: your cichlid lake passed every check of the final trial, and the nautilus wears the crown.{' '}
+            <a href={`${b}/deep/`}>Return to the deep</a>.
+          </p>
+        ) : requiredDone >= required.length ? (
+          <>
+            <p>{declined ? 'You declined the quest; the way stays open.' : 'Every course is finished. A last, optional trial waits in the deep.'}</p>
+            <a className="btn" href={`${b}/deep/`} onClick={() => actions.acceptQuest()}>
+              Take me to the deep
+            </a>
+          </>
+        ) : (
+          <p className="muted">
+            Finish every course ({requiredDone} of {required.length} so far) and the nautilus will offer you a last, optional trial.{' '}
+            <a href={`${b}/deep/`}>Look ahead</a>.
+          </p>
+        )}
       </section>
 
       <section className="pg-block grid grid-2">

@@ -79,7 +79,7 @@ test.describe('the deep page', () => {
 });
 
 test.describe('the way to the deep', () => {
-  test('the passphrase in the atlas search opens the deep with a worked solution, which does not crown', async ({ page }) => {
+  test('the passphrase in the atlas search opens the deep with a worked solution, which crowns', async ({ page }) => {
     test.setTimeout(90_000);
     await page.goto('atlas/');
     await page.locator('.atlas-search input, #atlas-search').first().fill('03101999');
@@ -88,8 +88,9 @@ test.describe('the way to the deep', () => {
     await expect(page.locator('#sec-worked')).toContainText('lake_solution');
     await page.getByRole('button', { name: 'Run the worked solution' }).click();
     await expect(page.locator('.lt-summary')).toContainText('The lake lives', { timeout: 40_000 });
-    const quest = await page.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? '{"quest":{}}').quest, KEY);
-    expect(quest.crowned ?? null).toBeNull();
+    await expect(page.locator('.lt-crowned')).toBeVisible();
+    const quest = await page.evaluate((k) => JSON.parse(localStorage.getItem(k)!).quest, KEY);
+    expect(quest.crowned.trial).toBe('lake');
   });
 
   test('finishing every course makes the nautilus offer the quest; accepting dives to the deep', async ({ page }) => {

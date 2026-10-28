@@ -49,10 +49,9 @@ export default function LakeTrial() {
   }, [sub]);
 
   const crowned = state.quest.crowned;
-  // The crown is for a lake the learner built: the worked solution never earns it.
   useEffect(() => {
-    if (ready && report.passed && !crowned && !provided) actions.crown('lake');
-  }, [ready, report.passed, crowned, provided]);
+    if (ready && report.passed && !crowned) actions.crown('lake');
+  }, [ready, report.passed, crowned]);
 
   // Tell the nautilus what is failing, so that it can point to the right lesson.
   const failing = report.checks.filter((c) => c.status === 'fail').map((c) => c.id).join(',');
@@ -129,8 +128,8 @@ export default function LakeTrial() {
         <section className="lt-step lt-provided" aria-labelledby="lt-provided">
           <h3 id="lt-provided">A worked solution is provided</h3>
           <p className="lt-quiet">
-            Its C++ is shown above. Run its model here to see every check pass: it is the same model, in TypeScript, running in your browser. Loading it
-            does not earn the crown. That is for a lake you built.
+            Its C++ is shown above. Run its model here to see every check pass: it is the same model, in TypeScript, running in your browser. Passing
+            earns the crown, just as your own lake would.
           </p>
           <button type="button" className="btn" onClick={loadSolution} disabled={loading}>
             {loading ? 'Running the lake…' : provided ? 'Run it again' : 'Run the worked solution'}

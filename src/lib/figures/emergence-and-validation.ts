@@ -59,7 +59,7 @@ export const figures: Record<string, () => FigureSpec> = {
       })),
       references: [{ axis: 'y', value: 1, label: 'Spatial randomness' }],
       y: { includeZero: true },
-      footer: `Mean clustering index over years 50–150 and three seeds: ${late.toFixed(2)}. Computed with PlantPopulation (src/lib/simulations/ibm.ts).`,
+      footer: `Mean clustering index over years 50 to 150 and three seeds: ${late.toFixed(2)}. Computed with PlantPopulation (src/lib/simulations/ibm.ts).`,
     };
   }),
 
@@ -92,7 +92,7 @@ export const figures: Record<string, () => FigureSpec> = {
         { id: 'recursion', label: `Mean field, N* ≈ ${Nstar.toFixed(0)}`, family: 'ochre' as const, dashed: true, points: recursion },
       ],
       y: { includeZero: true },
-      footer: `Dashed: the deterministic mean-field recursion; its fixed point is N* + 1 because a plant does not crowd itself. Mean N over years 40–150: ${means.map((m) => m.toFixed(0)).join(', ')} (seeds 1–3); pooled ${overall.toFixed(0)}, ${Math.abs((100 * (overall - Nstar)) / Nstar).toFixed(1)} % ${overall < Nstar ? 'below' : 'above'} N*. Computed with PlantPopulation and meanFieldEquilibrium (src/lib/simulations/ibm.ts).`,
+      footer: `Dashed: the deterministic mean-field recursion; its fixed point is N* + 1 because a plant does not crowd itself. Mean N over years 40 to 150: ${means.map((m) => m.toFixed(0)).join(', ')} (seeds 1 to 3); pooled ${overall.toFixed(0)}, ${Math.abs((100 * (overall - Nstar)) / Nstar).toFixed(1)} % ${overall < Nstar ? 'below' : 'above'} N*. Computed with PlantPopulation and meanFieldEquilibrium (src/lib/simulations/ibm.ts).`,
     };
   }),
 
@@ -110,7 +110,7 @@ export const figures: Record<string, () => FigureSpec> = {
     );
     return {
       title: 'Short dispersal holds abundance far below the mean-field value; wide dispersal lifts it above',
-      subtitle: 'Long-run abundance (mean of years 40–120) against dispersal distance σ; dots: three seeds per σ, line: their mean; local interaction, synchronous',
+      subtitle: 'Long-run abundance (mean of years 40 to 120) against dispersal distance σ; dots: three seeds per σ, line: their mean; local interaction, synchronous',
       xLabel: 'Dispersal distance σ (plot widths, log scale)',
       yUnit: 'Long-run abundance N (individuals per plot)',
       series: [
@@ -150,7 +150,7 @@ export const figures: Record<string, () => FigureSpec> = {
       ],
       references: [{ axis: 'y', value: replacement, label: 'Replacement 1/(1 + f)' }],
       y: { includeZero: true, domain: [0, 1] },
-      footer: `Replacement is reached at a mean crowding of ${mf.toFixed(2)} when everyone has the mean and ${lo.toFixed(2)} with Poisson crowding. Closed-form expectations, no simulation.`,
+      footer: `Replacement is reached at a mean crowding of ${mf.toFixed(2)} when everyone has the mean and ${lo.toFixed(2)} with Poisson crowding. Closed-form expectations; nothing is simulated.`,
     };
   }),
 };

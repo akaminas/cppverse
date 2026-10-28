@@ -123,7 +123,7 @@ For nonlinear models the same reasoning applies near an equilibrium. Close to $N
 
 ### Stiffness and implicit methods
 
-The step-size limit is set by the *fastest* process in the model, even when that process has long since finished. Suppose a drug given by mouth enters the blood within minutes ($k_a = 50$ per hour) but is eliminated over days ($k_e = 0.1$ per hour). After the first hour, absorption is over and the concentration changes slowly; accuracy alone would allow steps of several hours. Stability does not: forward Euler needs $h < 2/k_a = 0.04$ hours for the whole run. Models that combine very fast and very slow processes are called **stiff**. They are common in biology: fast binding and slow synthesis in gene regulation, rapid enzyme–substrate equilibration, fast and slow ion channels in neurons, fast and slow trophic levels in food webs.
+The step-size limit is set by the *fastest* process in the model, even when that process has long since finished. Suppose a drug given by mouth enters the blood within minutes ($k_a = 50$ per hour) but is eliminated over days ($k_e = 0.1$ per hour). After the first hour, absorption is over and the concentration changes slowly; accuracy alone would allow steps of several hours. Stability does not: forward Euler needs $h < 2/k_a = 0.04$ hours for the whole run. Models that combine very fast and very slow processes are called **stiff**. They are common in biology: fast binding and slow synthesis in gene regulation, rapid enzyme-substrate equilibration, fast and slow ion channels in neurons, fast and slow trophic levels in food webs.
 
 Stiff problems call for **implicit methods**, which evaluate the slope at the *end* of the step. Backward (implicit) Euler is
 
@@ -154,7 +154,7 @@ where $R_0$ is the basic reproduction number (dimensionless) and $S_\infty$ the 
 
 <Example file="ode/sir_rk4.cpp" mark="64-73" />
 
-With $h = 0.05$ days, the final proportion susceptible, about 0.107209, agrees with the final-size relation in every printed digit (the two differ by about $10^{-12}$), and $S + I + R$ never departs from 1 by more than about $5 \times 10^{-15}$. The two checks test different things. Every Runge–Kutta method conserves $S + I + R$ exactly apart from rounding, at *any* step size, so the conservation check tests the implementation (a sequential-update bug or a typing error in one rate breaks it) but says nothing about accuracy. The final-size check tests accuracy: a coarse step gives the wrong $S_\infty$ even though the sum is conserved perfectly.
+With $h = 0.05$ days, the final proportion susceptible, about 0.107209, agrees with the final-size relation in every printed digit (the two differ by about $10^{-12}$), and $S + I + R$ never departs from 1 by more than about $5 \times 10^{-15}$. The two checks test different things. Every Runge-Kutta method conserves $S + I + R$ exactly apart from rounding, at *any* step size, so the conservation check tests the implementation (a sequential-update bug or a typing error in one rate breaks it) but says nothing about accuracy. The final-size check tests accuracy: a coarse step gives the wrong $S_\infty$ even though the sum is conserved perfectly.
 
 ## Explore it
 
@@ -242,7 +242,7 @@ With $h = 0.05$ days, the final proportion susceptible, about 0.107209, agrees w
 
 - **Judging accuracy from one run.** A smooth, plausible trajectory may still be far from converged. Only a comparison across step sizes measures the error.
 - **Testing only on autonomous or linear problems.** Some bugs, such as wrong time offsets in the stages of RK4, are invisible on the logistic equation. Include a non-autonomous test.
-- **Expecting conservation to prove accuracy.** Runge–Kutta methods conserve linear invariants at any step size. A conserved total shows the code is consistent, not that $h$ is small enough.
+- **Expecting conservation to prove accuracy.** Runge-Kutta methods conserve linear invariants at any step size. A conserved total shows the code is consistent, not that $h$ is small enough.
 - **Shrinking h without limit.** Below the round-off floor, smaller steps make results worse and runs slower. A higher-order method is the better route to high accuracy.
 - **Reading negative concentrations or populations as biology.** In a model that cannot produce them, they are almost always a step that is too large.
 

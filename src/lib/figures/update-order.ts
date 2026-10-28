@@ -14,7 +14,7 @@ export const figures: Record<string, () => FigureSpec> = {
     if (!eq) throw new Error('update-order-parasitoids: no interior fixed point');
     return {
       title: 'The buggy update settles on the fixed point that the true model keeps circling',
-      subtitle: 'Parasitoid density in the host–parasitoid model with r = 1.2, K = 80, a = 0.06, c = 0.8, started from H = 20, P = 2',
+      subtitle: 'Parasitoid density in the host-parasitoid model with r = 1.2, K = 80, a = 0.06, c = 0.8, started from H = 20, P = 2',
       xLabel: 'Generation t',
       yUnit: 'Parasitoids P (per unit area)',
       series: [

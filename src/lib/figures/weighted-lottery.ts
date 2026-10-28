@@ -37,7 +37,7 @@ export const figures: Record<string, () => FigureSpec> = {
     const maxSe = Math.max(...se);
     return {
       title: 'Without selection, drift erodes allelic diversity by a factor 1 − 1/N each generation',
-      subtitle: `Neutral Wright–Fisher population of N = ${N} haploid individuals, ${alleles} alleles starting at equal counts; mean of ${replicates} replicate populations`,
+      subtitle: `Neutral Wright-Fisher population of N = ${N} haploid individuals, ${alleles} alleles starting at equal counts; mean of ${replicates} replicate populations`,
       xLabel: 'Generation t',
       yUnit: 'Heterozygosity H = 1 − Σ pᵢ²',
       series: [

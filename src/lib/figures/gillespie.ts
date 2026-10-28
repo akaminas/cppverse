@@ -25,7 +25,7 @@ export const figures: Record<string, () => FigureSpec> = {
       .map((p, i) => `seed ${seeds[i]}: ${p.t.length - 1} events, ${p.stop === 'absorbed' ? `extinct at t = ${p.t[p.t.length - 1].toFixed(2)}` : `N(${T}) = ${p.x[p.x.length - 1][0]}`}`)
       .join('; ');
     return {
-      title: 'Each run of the same birth–death model takes its own path, changing by one individual at irregular times',
+      title: 'Each run of the same birth-death model takes its own path, changing by one individual at irregular times',
       subtitle: `Gillespie direct method, b = ${b} and d = ${d} per individual per year, N₀ = ${N0}, three seeds`,
       xLabel: 'Time t (years)',
       yUnit: 'Population size N (individuals)',

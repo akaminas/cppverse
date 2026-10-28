@@ -30,7 +30,7 @@ export const figures: Record<string, () => FigureSpec> = {
     );
     return {
       title: 'How much a larger start lowers extinction risk depends on the death rate: the two factors interact',
-      subtitle: `Probability of extinction by year ${T} in the linear birth–death process, b = ${b} per year. Lines: exact; dots: ${reps} Gillespie replicates per design point`,
+      subtitle: `Probability of extinction by year ${T} in the linear birth-death process, b = ${b} per year. Lines: exact; dots: ${reps} Gillespie replicates per design point`,
       xLabel: 'Initial population size N₀ (individuals)',
       yUnit: `Probability of extinction by year ${T}`,
       series: [
@@ -43,7 +43,7 @@ export const figures: Record<string, () => FigureSpec> = {
         ...deathRates.map((d, i) => ({ id: `sim${i}`, label: `Simulated, d = ${d.toFixed(1)}`, family: families[i], kind: 'points' as const, points: estimates[i] })),
       ],
       y: { domain: [0, 1] },
-      footer: 'Computed with gillespie and birthDeathExtinction (src/lib/simulations/gillespie.ts). Design point k (1–9) uses seeds 100000k + r for replicates r = 0–399.',
+      footer: 'Computed with gillespie and birthDeathExtinction (src/lib/simulations/gillespie.ts). Design point k (1 to 9) uses seeds 100000k + r for replicates r = 0 to 399.',
     };
   },
 };

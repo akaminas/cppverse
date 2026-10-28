@@ -171,7 +171,7 @@ default:
 
 ## In biological modelling
 
-- **Event dispatch.** In a stochastic birth–death–immigration model the simulation repeatedly draws which event happens next and when (the <Concept id="gillespie" /> algorithm), then applies its state change. The `switch` over an `enum class Event` above is exactly that second half, with a fixed sequence standing in for the random draws.
+- **Event dispatch.** In a stochastic birth-death-immigration model the simulation repeatedly draws which event happens next and when (the <Concept id="gillespie" /> algorithm), then applies its state change. The `switch` over an `enum class Event` above is exactly that second half, with a fixed sequence standing in for the random draws.
 - **Stage-specific rules.** Once an individual's stage is stored as an enumeration, a `switch` selects its survival probability, its diet or the output label.
 - **Reading coded data.** Field sheets and data files use letters or numbers for categories. A `switch` with stacked upper- and lower-case labels and a counting `default` turns them into model categories and catches unreadable codes rather than ignoring them.
 - **Conditional parameters.** `const double r = is_wet_year ? r_wet : r_dry;` keeps a year-dependent parameter `const`.

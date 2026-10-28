@@ -1,12 +1,12 @@
 ---
-title: Runge–Kutta methods
+title: Runge-Kutta methods
 summary: Sample the slope several times within each step. Heun's method and classical RK4, what each step costs, and why the extra work pays for itself.
 level: intermediate
 module: 15
 manual: ["M15.3"]
 minutes: 40
 objectives:
-  - State Heun's method and the classical fourth-order Runge–Kutta method and say where each slope is evaluated
+  - State Heun's method and the classical fourth-order Runge-Kutta method and say where each slope is evaluated
   - Compare methods by the number of right-hand-side evaluations rather than the number of steps
   - Implement RK4 as a drop-in replacement for an Euler stepper
   - Explain why a higher-order method can need less total work for the same accuracy
@@ -18,7 +18,7 @@ references:
 
 ## What it is
 
-Euler's method uses one slope per step, the one at the start, and pretends it holds for the whole step (see <Concept id="euler" />). Its error comes from the slope changing within the step. Runge–Kutta methods address exactly that: they evaluate the slope at several trial points inside the step and move along a weighted average of those slopes.
+Euler's method uses one slope per step, the one at the start, and pretends it holds for the whole step (see <Concept id="euler" />). Its error comes from the slope changing within the step. Runge-Kutta methods address exactly that: they evaluate the slope at several trial points inside the step and move along a weighted average of those slopes.
 
 ### Heun's method
 
@@ -32,21 +32,21 @@ $$
 
 Here $\mathbf{x}$ is the state at time $t$, $h$ is the step and $\mathbf{a}$ and $\mathbf{b}$ are vectors of rates (state units per unit time). The trial state $\mathbf{x} + h\mathbf{a}$ is only used to find $\mathbf{b}$; it is never kept. Heun's method needs two evaluations of the right-hand side per step and is *second order*: halving $h$ divides its error by about four instead of two. (Order is defined precisely in <Concept id="numerical-error" />.) When $\mathbf{f}$ depends on $t$ alone, Heun's method reduces to the trapezoidal rule for integrals, which is why it is also called the explicit trapezoidal method.
 
-### Classical fourth-order Runge–Kutta
+### Classical fourth-order Runge-Kutta
 
-The method usually meant by "Runge–Kutta" or "RK4" takes four slopes per step: one at the start ($\mathbf{k}_1$), two at the midpoint ($\mathbf{k}_2$ and $\mathbf{k}_3$, each found by a half step along the previous slope), and one at the end ($\mathbf{k}_4$, found by a full step along $\mathbf{k}_3$). It then averages them with weights 1, 2, 2 and 1:
+The method usually meant by "Runge-Kutta" or "RK4" takes four slopes per step: one at the start ($\mathbf{k}_1$), two at the midpoint ($\mathbf{k}_2$ and $\mathbf{k}_3$, each found by a half step along the previous slope), and one at the end ($\mathbf{k}_4$, found by a full step along $\mathbf{k}_3$). It then averages them with weights 1, 2, 2 and 1:
 
 $$
 \mathbf{x}(t + h) \approx \mathbf{x} + \frac{h}{6}\bigl(\mathbf{k}_1 + 2\mathbf{k}_2 + 2\mathbf{k}_3 + \mathbf{k}_4\bigr).
 $$
 
-Each new slope is computed from a trial state built with the previous one, so the method refines its estimate of the average slope over the step in stages. When $\mathbf{f}$ depends on $t$ alone the two midpoint slopes coincide and RK4 reduces to Simpson's rule, $\tfrac{h}{6}\bigl(f(t) + 4f(t + h/2) + f(t + h)\bigr)$. The full formulas are in the maths–code view below. RK4 is fourth order: halving $h$ divides its error by about sixteen.
+Each new slope is computed from a trial state built with the previous one, so the method refines its estimate of the average slope over the step in stages. When $\mathbf{f}$ depends on $t$ alone the two midpoint slopes coincide and RK4 reduces to Simpson's rule, $\tfrac{h}{6}\bigl(f(t) + 4f(t + h/2) + f(t + h)\bigr)$. The full formulas are in the maths-code view below. RK4 is fourth order: halving $h$ divides its error by about sixteen.
 
 ## Why it matters
 
 Every integrator faces the same trade-off between speed and accuracy. Smaller steps give smaller errors, but the number of steps, and so the run time, grows like $1/h$. For Euler's method the error is proportional to $h$, so each extra decimal digit of accuracy costs ten times more work. That quickly becomes prohibitive: an answer accurate to six digits might need millions of steps.
 
-The right measure of cost is not the number of steps but the number of times the model's right-hand side is evaluated, because in any realistic model that is where the time goes. Per step:
+The right measure of cost is the number of times the model's right-hand side is evaluated, rather than the number of steps, because in any realistic model that is where the time goes. Per step:
 
 | Method | Evaluations per step | Order | Error after halving $h$ |
 |---|---|---|---|
@@ -58,7 +58,7 @@ RK4 spends four times as much on each step as Euler. But because its error falls
 
 ## How it works in C++
 
-Because Euler's method was written as a stepper with the signature `State(const RightHandSide&, double, const State&, double)`, a Runge–Kutta method is simply another function with the same signature. Heun's method:
+Because Euler's method was written as a stepper with the signature `State(const RightHandSide&, double, const State&, double)`, a Runge-Kutta method is simply another function with the same signature. Heun's method:
 
 ```cpp
 State heun(const RightHandSide& f, double t, const State& x, double h) {
@@ -88,11 +88,11 @@ The program below gives each method the same *budget* of right-hand-side evaluat
 
 <Example file="ode/rk_equal_cost.cpp" mark="29-45,50-53,62-65" />
 
-Two things stand out. First, RK4 wins at every budget, and its lead widens rapidly: going from 40 to 640 evaluations (16 times the work) reduces Euler's error about 23-fold but RK4's about 80,000-fold. Second, Heun is *worse* than Euler at small budgets and only overtakes it at 320 evaluations. A higher order describes how the error behaves *as $h$ becomes small*; with large steps the error is not yet in that regime, and the leading-order prediction can be badly wrong. Order is a promise about small steps, not a ranking at every step size.
+RK4 wins at every budget, and its lead widens rapidly: going from 40 to 640 evaluations (16 times the work) reduces Euler's error about 23-fold but RK4's about 80,000-fold. Heun is *worse* than Euler at small budgets and only overtakes it at 320 evaluations. A higher order describes how the error behaves *as $h$ becomes small*; with large steps the error is not yet in that regime, and the leading-order prediction can be badly wrong. Order is a promise about small steps, not a ranking at every step size.
 
 ## Explore it
 
-The trajectories tell a slightly different story from the end-point errors in the table, and both are worth seeing.
+The trajectories tell a slightly different story from the end-point errors in the table.
 
 <Figure id="runge-kutta-equal-cost" />
 
@@ -177,7 +177,7 @@ const State b = f(t + h, axpy(x, h, a));`}
 
 <Practice>
 
-1. The *midpoint method* is another second-order Runge–Kutta method: $\mathbf{x}(t + h) \approx \mathbf{x} + h\,\mathbf{f}\bigl(t + \tfrac{h}{2},\ \mathbf{x} + \tfrac{h}{2}\mathbf{f}(t, \mathbf{x})\bigr)$. Add it to the equal-cost program. How many evaluations does it use per step, and how do you expect its errors to compare with Heun's?
+1. The *midpoint method* is another second-order Runge-Kutta method: $\mathbf{x}(t + h) \approx \mathbf{x} + h\,\mathbf{f}\bigl(t + \tfrac{h}{2},\ \mathbf{x} + \tfrac{h}{2}\mathbf{f}(t, \mathbf{x})\bigr)$. Add it to the equal-cost program. How many evaluations does it use per step, and how do you expect its errors to compare with Heun's?
 2. Write a test problem whose exact solution you know and whose right-hand side depends on time: $dx/dt = \cos t$, $x(0) = 0$, so that $x(t) = \sin t$. Integrate to $t = 10$ with RK4 for $h = 0.1$ and $0.05$ and check that the error falls about 16-fold. Then introduce the bug of evaluating all four stages at time `t` and repeat. What order do you observe now?
 3. Simulate the falling seed of the lesson on ODEs with RK4: $dz/dt = v$, $dv/dt = -g - c\,v|v|$, with $g = 9.81\ \mathrm{m\,s^{-2}}$, $c = 9.81$ per metre (a terminal speed of 1 m s⁻¹), $z(0) = 10$ m and $v(0) = 0$. Compare $v(t)$ with the exact $v(t) = -v_T\tanh(g t / v_T)$, where $v_T = \sqrt{g/c}$, and estimate when the seed reaches the ground.
 4. Using the output of the equal-cost program, estimate how many evaluations Euler would need to match the accuracy RK4 achieves with 640.

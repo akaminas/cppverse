@@ -32,7 +32,7 @@ Every computational experiment has the same parts as a field or bench experiment
 | Control or baseline | Unfenced plots | A reference parameter set, or a model variant without the mechanism |
 | Replicates | Plots per treatment | Independent runs with different random seeds |
 
-The model used throughout this lesson is the linear birth–death process of <Concept id="gillespie" />: each of $N$ individuals gives birth at rate $b$ and dies at rate $d$ (both per individual per year), simulated exactly event by event.
+The model used throughout this lesson is the linear birth-death process of <Concept id="gillespie" />: each of $N$ individuals gives birth at rate $b$ and dies at rate $d$ (both per individual per year), simulated exactly event by event.
 
 ## Why it matters
 
@@ -52,7 +52,7 @@ Start from the biological question and ask what number would answer it. "Is the 
 
 A *factor* is an input you vary deliberately: a parameter, an initial condition, or a structural choice such as the update order or the dispersal rule. Its *levels* are the values you use. Everything else is held at a stated *baseline*.
 
-Choose levels that span the biologically plausible range, which usually comes from the literature or from data, and include values on both sides of any threshold the theory predicts. For the birth–death process the threshold is $d = b$: below it the expected population grows, above it it declines. Levels of 0.6, 0.8 and 1.0 with $b = 1$ place two levels below and one at the threshold.
+Choose levels that span the biologically plausible range, which usually comes from the literature or from data, and include values on both sides of any threshold the theory predicts. For the birth-death process the threshold is $d = b$: below it the expected population grows, above it it declines. Levels of 0.6, 0.8 and 1.0 with $b = 1$ place two levels below and one at the threshold.
 
 ### Controls
 
@@ -61,7 +61,7 @@ A control answers "compared with what?". In simulation there are two kinds:
 - a **baseline run** at reference parameters, against which changes are measured;
 - a **mechanism control**: the same model with the mechanism of interest switched off (no density dependence, no dispersal, a deterministic version). If the pattern survives without the mechanism, the mechanism is not what produces it.
 
-A third, often forgotten, is the **known answer**: a parameter set for which an exact result exists. The birth–death process has Kendall's formula for the extinction probability, so one design point can double as a check that the code is correct (<Concept id="verification" />).
+A third, often forgotten, is the **known answer**: a parameter set for which an exact result exists. The birth-death process has Kendall's formula for the extinction probability, so one design point can double as a check that the code is correct (<Concept id="verification" />).
 
 ### Replicates
 
@@ -150,10 +150,10 @@ A *driver* loops over the whole design and writes everything to one file. This o
 
 Reading it from the top:
 
-- Lines 17–19 let the build insert the code version: `g++ -DMODEL_VERSION="\"$(git describe --always)\"" …`. Without it the output says `unversioned`, which is at least honest.
-- `replicateSeed` (lines 22–27) derives a 64-bit seed from the base seed, the design point and the replicate number.
-- Lines 63–71 write the metadata as lines beginning with `#`, which R's `readr::read_csv(comment = "#")` and Python's `pandas.read_csv(comment="#")` skip, followed by the column header.
-- Each replicate (lines 76–80) creates its own engine from its own seed and writes one row: the two factors, the replicate number, the seed, and the two responses.
+- Lines 17 to 19 let the build insert the code version: `g++ -DMODEL_VERSION="\"$(git describe --always)\"" …`. Without it the output says `unversioned`, which is at least honest.
+- `replicateSeed` (lines 22 to 27) derives a 64-bit seed from the base seed, the design point and the replicate number.
+- Lines 63 to 71 write the metadata as lines beginning with `#`, which R's `readr::read_csv(comment = "#")` and Python's `pandas.read_csv(comment="#")` skip, followed by the column header.
+- Each replicate (lines 76 to 80) creates its own engine from its own seed and writes one row: the two factors, the replicate number, the seed, and the two responses.
 
 Run it as `bd_factorial_design 2024 1000 > results/2026-10-24_factorial/results.csv`. The output is 9000 rows plus the header, and every row can be regenerated from its seed. No expected output is shown here, because the draws from `<random>` distributions depend on the standard library.
 
@@ -235,7 +235,7 @@ Read along a line and the effect of initial size is plain: starting with 10 indi
   ]}
 />
 
-To see replicate variation for yourself before designing an experiment, run a few replicates of the birth–death model in the laboratory and change the seed:
+To see replicate variation for yourself before designing an experiment, run a few replicates of the birth-death model in the laboratory and change the seed:
 
 <Lab id="gillespie" />
 

@@ -26,7 +26,7 @@ export const goals: Goal[] = [
   {
     id: 'ode-solvers',
     title: 'Understand numerical ODE solvers',
-    summary: 'Euler and Runge–Kutta methods, their errors and their limits.',
+    summary: 'Euler and Runge-Kutta methods, their errors and their limits.',
     targets: ['runge-kutta', 'numerical-error', 'numerical-stability'],
   },
   {

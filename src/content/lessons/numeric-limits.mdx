@@ -63,7 +63,7 @@ The manual describes signed overflow as dependent on compiler and machine. In st
 
 ### Floating-point precision
 
-A `double` is stored in the IEEE 754 binary64 format: a sign, an exponent and a 53-bit *significand*. That gives about 15–16 significant decimal digits and a range from about 2.2 × 10⁻³⁰⁸ to 1.8 × 10³⁰⁸. A `float` has a 24-bit significand: about 7 digits, and a range up to about 3.4 × 10³⁸. The gap between 1 and the next representable number is `std::numeric_limits<double>::epsilon()`, about 2.2 × 10⁻¹⁶ (about 1.2 × 10⁻⁷ for `float`). The gap between neighbouring values grows with their size: around 10⁶ it is about 10⁻¹⁰ for a `double`, and around 2 × 10⁷ it is 2 for a `float`.
+A `double` is stored in the IEEE 754 binary64 format: a sign, an exponent and a 53-bit *significand*. That gives about 15 to 16 significant decimal digits and a range from about 2.2 × 10⁻³⁰⁸ to 1.8 × 10³⁰⁸. A `float` has a 24-bit significand: about 7 digits, and a range up to about 3.4 × 10³⁸. The gap between 1 and the next representable number is `std::numeric_limits<double>::epsilon()`, about 2.2 × 10⁻¹⁶ (about 1.2 × 10⁻⁷ for `float`). The gap between neighbouring values grows with their size: around 10⁶ it is about 10⁻¹⁰ for a `double`, and around 2 × 10⁷ it is 2 for a `float`.
 
 Three consequences follow, each shown by this program:
 

@@ -35,7 +35,7 @@ This lesson works through three examples from this site with these questions, an
 
 ## Why it matters
 
-A model is a precise statement of assumptions, and its output follows from them. That is its strength: if the assumptions are clear, so is what the result means. It is also a trap. A model can only produce what its structure allows, so a result can look like a discovery about nature when it is really a consequence of a choice made while writing the model.
+A model is a precise statement of assumptions, and its output follows from them. That is its strength: if the assumptions are clear, so is what the result means. It is also a weakness. A model can only produce what its structure allows, so a result can look like a discovery about nature when it is really a consequence of a choice made while writing the model.
 
 The difference between a useful conclusion and a misleading one is often a single clause: "*in this model*", "*for these parameter values*", "*in the absence of environmental variation*". Learning to write those clauses, and to know when each one is needed, is what this lesson is about.
 
@@ -43,7 +43,7 @@ The difference between a useful conclusion and a misleading one is often a singl
 
 Interpretation starts with measuring. Looking at a curve and saying "it levels off quickly" is a start, but "quickly" is not a number. Whenever a conclusion depends on a property of the output, make the program compute it.
 
-The Beverton–Holt model describes a population with one census per generation:
+The Beverton-Holt model describes a population with one census per generation:
 
 $$
 N_{t+1} = \frac{R_0\,N_t}{1 + N_t / M},
@@ -61,7 +61,7 @@ The ratio column settles at 0.4545, which is $1/R_0$ for $R_0 = 2.2$. Near the e
 
 ### Example 1: a population that settles
 
-The figure shows the Beverton–Holt model for three values of $R_0$, with $M = 40$ and a starting population of $N_0 = 5$.
+The figure shows the Beverton-Holt model for three values of $R_0$, with $M = 40$ and a starting population of $N_0 = 5$.
 
 <Figure id="bh-trajectories" />
 
@@ -75,16 +75,16 @@ Work through the questions.
 <Figure id="bh-verification" />
 
 5. **Variability.** The model is deterministic: the same parameters always give the same trajectory, so there is nothing to replicate.
-6. **Claim.** *In the Beverton–Holt model, a population with $R_0 \gt 1$ approaches the equilibrium $(R_0 - 1)M$ smoothly and without overshoot, closing a fixed fraction, $1 - 1/R_0$, of the remaining gap each generation once it is near $K$; with $R_0 \lt 1$ it declines to extinction.*
+6. **Claim.** *In the Beverton-Holt model, a population with $R_0 \gt 1$ approaches the equilibrium $(R_0 - 1)M$ smoothly and without overshoot, closing a fixed fraction, $1 - 1/R_0$, of the remaining gap each generation once it is near $K$; with $R_0 \lt 1$ it declines to extinction.*
 7. **Not inferred.** That real populations are stable, or that they never cycle. This model *cannot* produce oscillations, so their absence here is an assumption, not a finding. Nor does the model say anything about which species have which $R_0$; that needs data.
 
 <Check
   id="bh-claim"
   kind="interpret"
-  question="Which conclusion does the Beverton–Holt figure support?"
+  question="Which conclusion does the Beverton-Holt figure support?"
   options={[
     "Populations of this species are regulated at 80 individuals",
-    "In the Beverton–Holt model with R₀ = 3 and M = 40, the population approaches 80 without overshooting",
+    "In the Beverton-Holt model with R₀ = 3 and M = 40, the population approaches 80 without overshooting",
     "Density dependence prevents populations from oscillating",
     "A population with R₀ = 0.8 is doomed to extinction",
   ]}
@@ -117,18 +117,18 @@ You can explore the parameter dependence yourself in the discrete-time laborator
 
 ### Example 2: a result produced by the code
 
-The host–parasitoid model of <Concept id="update-order" /> tracks hosts $H$ and the parasitoids $P$ that lay eggs in them, one generation at a time. Both equations are meant to use the numbers of the *current* generation. The figure shows two runs with identical equations and parameters, differing only in whether the program updates both species at once, or updates the hosts first and then uses the *new* host numbers for the parasitoids.
+The host-parasitoid model of <Concept id="update-order" /> tracks hosts $H$ and the parasitoids $P$ that lay eggs in them, one generation at a time. Both equations are meant to use the numbers of the *current* generation. The figure shows two runs with identical equations and parameters, differing only in whether the program updates both species at once, or updates the hosts first and then uses the *new* host numbers for the parasitoids.
 
 <Figure id="update-order" />
 
 The first run cycles persistently; the second settles to a steady state. If you had only the second run, question 1 would give a confident answer, "host and parasitoid coexist at a stable equilibrium", and it would be wrong about the model you intended. The equilibrium comes from question 4: an implementation choice that is not part of the model.
 
-The lesson is general. Before interpreting a pattern, ask whether something other than the biology could produce it: the update order, a time step that is too large (<Concept id="numerical-error" />), a bug, or a starting condition that has not yet worn off. A result that changes when an implementation detail changes is a result about the code.
+In general, before interpreting a pattern, ask whether something other than the biology could produce it: the update order, a time step that is too large (<Concept id="numerical-error" />), a bug, or a starting condition that has not yet worn off. A result that changes when an implementation detail changes is a result about the code.
 
 <Check
   id="artefact"
   kind="interpret"
-  question="A colleague’s host–parasitoid simulation settles to a stable equilibrium, and they want to conclude that parasitoids stabilise the host population. What should they do first?"
+  question="A colleague’s host-parasitoid simulation settles to a stable equilibrium, and they want to conclude that parasitoids stabilise the host population. What should they do first?"
   options={[
     "Run the simulation for longer, to be sure the equilibrium persists",
     "Check that the code updates hosts and parasitoids from the same generation, and test the code against known results",
@@ -146,7 +146,7 @@ The lesson is general. Before interpreting a pattern, ask whether something othe
 
 ### Example 3: a population that may vanish
 
-The third example is stochastic. In the linear birth–death process (<Concept id="stochasticity" />), each individual gives birth at rate $b = 1$ and dies at rate $d = 0.8$ per year, and births and deaths happen at random moments. Each run with a different random seed is a *replicate*: one possible history of the same population.
+The third example is stochastic. In the linear birth-death process (<Concept id="stochasticity" />), each individual gives birth at rate $b = 1$ and dies at rate $d = 0.8$ per year, and births and deaths happen at random moments. Each run with a different random seed is a *replicate*: one possible history of the same population.
 
 <Figure id="interpreting-results-replicates" />
 
@@ -155,7 +155,7 @@ The third example is stochastic. In the linear birth–death process (<Concept i
 3. **Parameters.** Because $b \gt d$ the expected size grows; with $b \lt d$ it would decline. Extinction risk falls steeply as the starting population increases.
 4. **Approximation.** Gillespie's method (<Concept id="gillespie" />) simulates this process exactly,
  and the extinction fraction has been checked against an exact formula (<Concept id="verification" />).
-5. **Variability.** This is the heart of the result. Five of these forty replicates went extinct by year 4. With forty replicates that fraction, 0.125, is itself uncertain: a rough 95 % range is 0.02 to 0.23 (<Concept id="uncertainty" />). For this model the exact probability is known, 0.154.
+5. **Variability.** Five of these forty replicates went extinct by year 4. With forty replicates that fraction, 0.125, is itself uncertain: a rough 95 % range is 0.02 to 0.23 (<Concept id="uncertainty" />). For this model the exact probability is known, 0.154.
 6. **Claim.** *Under demographic stochasticity alone, a population of five with these birth and death rates has about a 15 % chance of dying out within four years, even though its expected size more than doubles.*
 7. **Not inferred.** The real extinction risk of any species, which also depends on environmental variation, density dependence and catastrophes, all absent here. Nor does the growing mean mean that a *typical* population grows steadily: the average hides the populations that vanished.
 
@@ -196,8 +196,8 @@ Use this list every time you interpret a simulation, whether your own or one in 
 
 | Badly qualified | Well qualified |
 |---|---|
-| Density dependence stabilises populations. | In the Beverton–Holt model, compensatory density dependence leads to a stable equilibrium for every $R_0 \gt 1$; models with stronger crowding effects can oscillate. |
-| Hosts and parasitoids coexist stably. | With simultaneous updating, the host–parasitoid model with these parameters shows persistent cycles; an equilibrium appeared only with an incorrect sequential update. |
+| Density dependence stabilises populations. | In the Beverton-Holt model, compensatory density dependence leads to a stable equilibrium for every $R_0 \gt 1$; models with stronger crowding effects can oscillate. |
+| Hosts and parasitoids coexist stably. | With simultaneous updating, the host-parasitoid model with these parameters shows persistent cycles; an equilibrium appeared only with an incorrect sequential update. |
 | Small populations have a 12.5 % extinction risk. | Under demographic stochasticity alone, with $b = 1$ and $d = 0.8$ per year, 5 of 40 simulated populations of five died out within four years (exact probability 0.154). |
 | Our model shows that the species is safe. | The model, with parameters from one site and no environmental variation, predicts growth; the prediction has not been tested against independent data. |
 
@@ -206,7 +206,7 @@ The well-qualified versions are longer, but every extra clause carries informati
 ## Common mistakes
 
 <Callout kind="pitfall" title="Discovering an assumption">
-If a model cannot produce a pattern, finding that pattern absent is not a result. A Beverton–Holt population never oscillates; a model without immigration never shows rescue effects; a deterministic model never shows extinction by chance. Before reporting "X does not happen", ask whether X *could* have happened in the model.
+If a model cannot produce a pattern, finding that pattern absent is not a result. A Beverton-Holt population never oscillates; a model without immigration never shows rescue effects; a deterministic model never shows extinction by chance. Before reporting "X does not happen", ask whether X *could* have happened in the model.
 </Callout>
 
 - **Reporting one run of a stochastic model.** A single replicate is an anecdote. Report summaries over many replicates and show their spread.
@@ -228,12 +228,12 @@ If a model cannot produce a pattern, finding that pattern absent is not a result
 <details>
 <summary>Hint for exercise 1</summary>
 Near the equilibrium the ratio approaches $1/R_0$: 0.8333 for $R_0 = 1.2$ and 0.2 for $R_0 = 5$. With $R_0 = 5$ the ratio reaches 0.2000 within ten generations: the population closes 80 % of the gap each generation. With $R_0 = 1.2$ it is still 0.84 after twelve generations, so extend the loop to see it settle; the gap shrinks by only about a sixth each generation, and the population takes dozens of generations to approach $K$.
- A qualified sentence starts "In the Beverton–Holt model, near equilibrium, …".
+ A qualified sentence starts "In the Beverton-Holt model, near equilibrium, …".
 </details>
 
 <details>
 <summary>Worked answer for exercise 2</summary>
-(a) "In the deterministic Beverton–Holt model with $R_0 \gt 1$, the population approaches the equilibrium $(R_0 - 1)M$ from any positive starting size." (b) "In the birth–death model with $b \gt d$ the expected size grows, but a substantial fraction of small populations still go extinct by chance; the extinction risk must be reported separately from the mean." (c) "In our model, as implemented with simultaneous updating, parasitoids [describe the pattern] for the parameter values tested; whether they regulate real host populations requires comparison with field data."
+(a) "In the deterministic Beverton-Holt model with $R_0 \gt 1$, the population approaches the equilibrium $(R_0 - 1)M$ from any positive starting size." (b) "In the birth-death model with $b \gt d$ the expected size grows, but a substantial fraction of small populations still go extinct by chance; the extinction risk must be reported separately from the mean." (c) "In our model, as implemented with simultaneous updating, parasitoids [describe the pattern] for the parameter values tested; whether they regulate real host populations requires comparison with field data."
 </details>
 
 <details>

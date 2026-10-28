@@ -15,7 +15,7 @@ export const traces: Record<string, Trace> = {
       { line: 32, note: 'A second double.', vars: { mass: '26', p: '→ mass', alias: '≡ mass', other: '7' } },
       { line: 33, note: 'Assigning a new address re-points p; mass is untouched. A reference cannot do this: assigning to alias would assign to mass.', vars: { mass: '26', p: '→ other', alias: '≡ mass', other: '7' } },
       { line: 34, note: '*p now reads other.', vars: { mass: '26', p: '→ other', alias: '≡ mass', other: '7' }, out: '*p is now 7, mass is still 26\n' },
-      { line: 36, note: 'std::make_unique creates a Habitat on the heap and returns a std::unique_ptr that owns it. No new, no delete.', vars: { mass: '26', p: '→ other', other: '7', habitat: '→ Habitat{40, 300}' } },
+      { line: 36, note: 'std::make_unique creates a Habitat on the heap and returns a std::unique_ptr that owns it, so the code needs neither new nor delete.', vars: { mass: '26', p: '→ other', other: '7', habitat: '→ Habitat{40, 300}' } },
       { line: 37, note: 'habitat.get() gives density a plain, non-owning pointer. density may read the Habitat but is not responsible for deleting it.', vars: { habitat: '→ Habitat{40, 300}' }, out: 'density: 3 per ha\n' },
       { line: 38, note: 'Passing nullptr says that there is no habitat; density checks for that before it dereferences.', vars: { habitat: '→ Habitat{40, 300}' }, out: 'density with no habitat: 0\n' },
       { line: 40, note: 'A unique_ptr cannot be copied, only moved. std::move hands ownership to owner and leaves habitat empty. There is still exactly one owner.', vars: { habitat: 'nullptr', owner: '→ Habitat{40, 300}' } },

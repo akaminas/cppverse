@@ -19,7 +19,7 @@ export const anatomies: Record<string, Anatomy> = {
         label: 'double',
         role: 'Type',
         explain:
-          'A double-precision floating-point number: about 15–16 significant decimal digits, with a range far beyond any biological quantity. The default choice for masses, lengths, rates, probabilities and concentrations.',
+          'A double-precision floating-point number: about 15 to 16 significant decimal digits, with a range far beyond any biological quantity. The default choice for masses, lengths, rates, probabilities and concentrations.',
       },
       'type-int': {
         label: 'int',

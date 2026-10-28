@@ -37,7 +37,7 @@ export const anatomies: Record<string, Anatomy> = {
         label: '[site, count]',
         role: 'Structured binding (C++17)',
         explain:
-          'Unpacks each element, a key–value pair, into two names: site for the key (first) and count for the value (second). With const auto& both refer to the members inside the map without copying them.',
+          'Unpacks each element, a key-value pair, into two names: site for the key (first) and count for the value (second). With const auto& both refer to the members inside the map without copying them.',
       },
       colon: {
         label: ':',

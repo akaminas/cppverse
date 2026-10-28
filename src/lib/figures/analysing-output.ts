@@ -43,12 +43,12 @@ export const figures: Record<string, () => FigureSpec> = {
     const memberIds = [0, 1, 2];
     return {
       title: `The mean grows smoothly, but by year 4 the middle 90 % of replicates spans ${last[0]} to ${Math.round(last[4])} individuals`,
-      subtitle: `Linear birth–death process, b = ${b}, d = ${d} per individual per year, N₀ = ${N0}; 200 replicates. Bands: 5–95 % and 25–75 % of replicates`,
+      subtitle: `Linear birth-death process, b = ${b}, d = ${d} per individual per year, N₀ = ${N0}; 200 replicates. Bands: 5 to 95 % and 25 to 75 % of replicates`,
       xLabel: 'Time (years)',
       yUnit: 'Population size N (individuals)',
       bands: [
-        { id: 'q90', label: '5–95 % of replicates', family: 'teal', points: times.map((t, i) => [t, s.quantiles[i][0], s.quantiles[i][4]] as [number, number, number]) },
-        { id: 'q50', label: '25–75 % of replicates', family: 'teal', points: times.map((t, i) => [t, s.quantiles[i][1], s.quantiles[i][3]] as [number, number, number]) },
+        { id: 'q90', label: '5-95 % of replicates', family: 'teal', points: times.map((t, i) => [t, s.quantiles[i][0], s.quantiles[i][4]] as [number, number, number]) },
+        { id: 'q50', label: '25-75 % of replicates', family: 'teal', points: times.map((t, i) => [t, s.quantiles[i][1], s.quantiles[i][3]] as [number, number, number]) },
       ],
       series: [
         ...memberIds.map((k) => ({
@@ -63,7 +63,7 @@ export const figures: Record<string, () => FigureSpec> = {
         { id: 'mean', label: 'Mean of replicates', family: 'teal', points: times.map((t, i) => [t, s.mean[i]] as [number, number]) },
       ],
       y: { includeZero: true },
-      footer: 'Computed at build time with gillespie and summarise (src/lib/simulations/gillespie.ts), seeds 1–200. Grey steps: three individual replicates; dashed: exact mean N₀ exp((b − d) t).',
+      footer: 'Computed at build time with gillespie and summarise (src/lib/simulations/gillespie.ts), seeds 1 to 200. Grey steps: three individual replicates; dashed: exact mean N₀ exp((b − d) t).',
     };
   },
 
@@ -73,7 +73,7 @@ export const figures: Record<string, () => FigureSpec> = {
     const sigma = Math.sqrt(exactVariance(T));
     return {
       title: 'More replicates shrink the standard error of the mean, not the spread among populations',
-      subtitle: `Population size at year ${T} in the first n of 4000 birth–death replicates (b = ${b}, d = ${d}, N₀ = ${N0}); both axes logarithmic`,
+      subtitle: `Population size at year ${T} in the first n of 4000 birth-death replicates (b = ${b}, d = ${d}, N₀ = ${N0}); both axes logarithmic`,
       xLabel: 'Number of replicates n',
       yUnit: 'Individuals',
       series: [
@@ -83,7 +83,7 @@ export const figures: Record<string, () => FigureSpec> = {
       ],
       x: { type: 'log', domain: [10, 4000], ticks: [10, 100, 1000, 4000] },
       y: { type: 'log' },
-      footer: `Computed with gillespie (src/lib/simulations/gillespie.ts), seeds 5001–9000. Exact standard deviation σ = ${sigma.toFixed(2)} individuals from the exact variance of the linear birth–death process.`,
+      footer: `Computed with gillespie (src/lib/simulations/gillespie.ts), seeds 5001 to 9000. Exact standard deviation σ = ${sigma.toFixed(2)} individuals from the exact variance of the linear birth-death process.`,
     };
   },
 
@@ -106,7 +106,7 @@ export const figures: Record<string, () => FigureSpec> = {
       references: [{ axis: 'y', value: p0, label: `Kendall: ${p0.toFixed(3)}` }],
       x: { type: 'log', domain: [50, 4000], ticks: [50, 100, 500, 1000, 4000] },
       y: { domain: [0, 0.4] },
-      footer: `Computed with gillespie and birthDeathExtinction (src/lib/simulations/gillespie.ts), seeds 5001–9000. With all 4000 replicates the estimate is ${est[est.length - 1].toFixed(3)} ± ${half[half.length - 1].toFixed(3)}.`,
+      footer: `Computed with gillespie and birthDeathExtinction (src/lib/simulations/gillespie.ts), seeds 5001 to 9000. With all 4000 replicates the estimate is ${est[est.length - 1].toFixed(3)} ± ${half[half.length - 1].toFixed(3)}.`,
     };
   },
 };

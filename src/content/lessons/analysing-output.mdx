@@ -40,7 +40,7 @@ The C++ side has one job: write output that the analysis can use without reshapi
 
 <Example file="inference/bd_trajectories_long.cpp" mark="39-49" />
 
-The program runs the linear birth–death process of <Concept id="gillespie" /> exactly, event by event, but *records* the state only on a regular grid of times (lines 41–49). The grid is a recording schedule, not a time step: between grid points the simulation still jumps from event to event. Recording on a common grid is what makes replicates comparable, because every replicate then has a value at $t = 0, 0.1, \dots, 4$.
+The program runs the linear birth-death process of <Concept id="gillespie" /> exactly, event by event, but *records* the state only on a regular grid of times (lines 41 to 49). The grid is a recording schedule, not a time step: between grid points the simulation still jumps from event to event. Recording on a common grid is what makes replicates comparable, because every replicate then has a value at $t = 0, 0.1, \dots, 4$.
 
 The output starts like this (the numbers depend on your standard library):
 
@@ -205,12 +205,12 @@ Monte Carlo error is the *only* uncertainty that more replicates remove. Uncerta
   options={[
     "11.1 ± 0.17 individuals",
     "11.1 ± 10.8 individuals, with the note that the distribution is skewed and includes zeros",
-    "Quantiles, for example the median and the 5–95 % range, together with the fraction of populations extinct",
+    "Quantiles, for example the median and the 5 to 95 % range, together with the fraction of populations extinct",
     "Nothing until more replicates have reduced the standard error further",
   ]}
   answer={2}
   feedback={[
-    "The standard error says how well the simulation has pinned down the mean, not how large a particular population will be. Reported this way, the answer looks a hundred times more certain than it is.",
+    "The standard error says how well the simulation has pinned down the mean, not how large a particular population will be. Reported this way, the answer looks about sixty times more certain than it is.",
     "Better: the standard deviation does describe the spread among populations. But mean ± SD suggests a symmetric range that includes negative sizes; quantiles describe a skewed count more faithfully.",
     "Correct. The manager is asking about one population, so the spread among replicates is the answer. Quantiles describe a skewed, zero-bounded distribution honestly, and the extinction fraction is the most decision-relevant number of all.",
     "The standard error is already small. More replicates would sharpen the estimate of the mean but would not change the spread among populations, which is what the manager needs.",

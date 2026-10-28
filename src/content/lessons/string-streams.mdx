@@ -94,7 +94,7 @@ Q3,Ranunculus acris,4
 
 <Example file="io/csv_quadrat_parse.cpp" mark="21-29,32-37" />
 
-Points to notice:
+In this program:
 
 - `splitFields` creates a new `std::istringstream` for every line. Fields such as `Plantago lanceolata` keep their space, because `std::getline` stops only at the delimiter.
 - The count is converted with `std::stoi`, which throws `std::invalid_argument` when the text does not start with a number at all. Its second argument receives the number of characters it used; comparing that with the length of the field rejects text such as `12b`, which `std::stoi` alone would quietly read as 12.
@@ -165,7 +165,7 @@ name << "plot" << std::setw(3) << std::setfill('0') << 7
 - **Expecting an empty last field.** As the second check shows, a trailing delimiter does not produce an empty field.
 - **Mixing `>>` and `std::getline`** on the same stream without discarding the rest of the line.
 - **Trusting `std::stoi` and `std::stod` on their own.** They stop at the first character that does not fit and return what they have read; use the position argument to check that the whole field was used.
-- **Using `std::to_string` for doubles in names.** Six decimals, always.
+- **Using `std::to_string` for doubles in names.** A double always gets six decimals.
 - **Unsafe characters in file names.** Spaces, colons and slashes cause trouble on some systems; stick to letters, digits, `-`, `_` and `.`.
 
 ## Practice

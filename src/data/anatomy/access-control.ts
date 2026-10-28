@@ -54,7 +54,7 @@ export const anatomies: Record<string, Anatomy> = {
         label: 'void recruit(int n);',
         role: 'Non-const member function',
         explain:
-          'A function that changes the state. Because it is the only way in, it is the one place that must keep the state valid, for example by refusing to exceed kMaxWorkers. That is the real value of encapsulation; a plain setter that accepts anything adds little.',
+          'A function that changes the state. Because it is the only way in, it is the one place that must keep the state valid, for example by refusing to exceed kMaxWorkers. That is the main value of encapsulation; a plain setter that accepts anything adds little.',
       },
       friend: {
         label: 'friend',

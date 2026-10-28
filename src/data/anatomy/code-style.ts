@@ -40,7 +40,7 @@ export const anatomies: Record<string, Anatomy> = {
       continuation: {
         label: 'Aligned continuation',
         role: 'Line break',
-        explain: 'A long parameter list is broken after a comma, and the continuation is aligned with the first parameter so that the list reads as one unit. Keep lines short enough to read without scrolling (80–100 characters).',
+        explain: 'A long parameter list is broken after a comma, and the continuation is aligned with the first parameter so that the list reads as one unit. Keep lines short enough to read without scrolling (80 to 100 characters).',
       },
       brace: {
         label: '{ }',

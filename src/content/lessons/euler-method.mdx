@@ -50,11 +50,11 @@ $$
 N_1 = 2 + 1 \times 1.568 = 3.568.
 $$
 
-The exact solution at $t = 1$ is $N(1) \approx 4.345$. Euler's estimate is too low because the true slope increases during the day as the population grows, while Euler keeps using the slope from the start of the day. That is the whole story of the method in miniature: its error comes from the slope changing within a step, and it shrinks as the step shrinks.
+The exact solution at $t = 1$ is $N(1) \approx 4.345$. Euler's estimate is too low because the true slope increases during the day as the population grows, while Euler keeps using the slope from the start of the day. That is the method in miniature: its error comes from the slope changing within a step, and it shrinks as the step shrinks.
 
 ## Why it matters
 
-Euler's method is rarely the best choice for serious work, but it is the template for every method that follows. The structure you build here, a model function, a stepper and a driver that advances time and writes output, stays the same when you replace the stepper by a Runge–Kutta method or an adaptive one. It is also the easiest method to reason about, so it is where the main pitfalls of numerical integration are easiest to see: lagging behind the true solution, the cost of small steps, and instability when steps are too large (see <Concept id="numerical-stability" />).
+Euler's method is rarely the best choice for serious work, but it is the template for every method that follows. The structure you build here, a model function, a stepper and a driver that advances time and writes output, stays the same when you replace the stepper by a Runge-Kutta method or an adaptive one. It is also the easiest method to reason about, so it is where the main pitfalls of numerical integration are easiest to see: lagging behind the true solution, the cost of small steps, and instability when steps are too large (see <Concept id="numerical-stability" />).
 
 The update $x_{n+1} = x_n + h f(t_n, x_n)$ also looks exactly like a discrete-time model (see <Concept id="time-stepping" />). That resemblance is a warning as much as a convenience. A discrete-time model *is* the biology: its time step is a generation or a breeding season. In Euler's method the step is an artefact of the approximation, and nothing in the results should depend on it once it is small enough.
 
@@ -228,7 +228,7 @@ Yes, slightly (in the fourth significant digit of $S$). With daily output, the d
 <details>
 <summary>Answer to exercise 3</summary>
 
-With the correct simultaneous update, $S + I + R$ stays at 1 to within rounding (about $10^{-15}$), because the three rates sum to zero and Euler's method adds them with the same $h$. With the sequential update the sum drifts to about 0.980 for $h = 0.3$ and 0.998 for $h = 0.03$: the drift shrinks in proportion to $h$, but it is billions of times larger than rounding error. Conservation laws are cheap and powerful checks. Every Runge–Kutta method, Euler's included, preserves linear conservation laws such as this one exactly apart from rounding, at any step size, so a drift points to a bug rather than to a coarse step.
+With the correct simultaneous update, $S + I + R$ stays at 1 to within rounding (about $10^{-15}$), because the three rates sum to zero and Euler's method adds them with the same $h$. With the sequential update the sum drifts to about 0.980 for $h = 0.3$ and 0.998 for $h = 0.03$: the drift shrinks in proportion to $h$, but it is billions of times larger than rounding error. Conservation laws are cheap and effective checks. Every Runge-Kutta method, Euler's included, preserves linear conservation laws such as this one exactly apart from rounding, at any step size, so a drift points to a bug rather than to a coarse step.
 </details>
 
 <details>

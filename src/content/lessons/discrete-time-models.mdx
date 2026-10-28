@@ -1,6 +1,6 @@
 ---
 title: Discrete-time population models
-summary: From a hypothesis about crowding to the Beverton–Holt equation, its update rule, a simulation loop and a trajectory you can verify.
+summary: From a hypothesis about crowding to the Beverton-Holt equation, its update rule, a simulation loop and a trajectory you can verify.
 level: beginner
 module: 14
 manual: ["M14.3", "M5.1"]
@@ -27,7 +27,7 @@ $$
 
 where $N_t$ is the population size at the census of generation $t$ ($t = 0, 1, 2, \dots$, a whole number) and $f$ summarises everything that happens between two censuses: reproduction, mortality, competition. An equation that gives the next value from the current one is called a *recurrence* or *difference equation*.
 
-The recurrence **is** the model. It is not an approximation of a continuous-time model with a step size of one generation, and there is nothing to make more accurate by taking smaller steps: the model only claims to describe the population at the census. This is different from numerical integration of a differential equation (see <Concept id="odes" />), where a step size is a property of the approximation and not of the biology.
+The recurrence is the model. It is not an approximation of a continuous-time model with a step size of one generation, and there is nothing to make more accurate by taking smaller steps: the model only claims to describe the population at the census. This is different from numerical integration of a differential equation (see <Concept id="odes" />), where a step size is a property of the approximation and not of the biology.
 
 ## Why it matters
 
@@ -89,7 +89,7 @@ The line `N = R0 * N / (1.0 + N / M);` is the model. In a program that will grow
 
 <Example file="algorithms/beverton_holt.cpp" mark="14-24" />
 
-Lines 14–19 gather the parameters in a <Concept id="structs">struct</Concept> with default values, so that they travel together and the function signature stays short. Lines 21–24 are the update rule. It is a direct transcription of the equation, it changes nothing outside itself, and it returns the new state. That has practical consequences:
+Lines 14 to 19 gather the parameters in a <Concept id="structs">struct</Concept> with default values, so that they travel together and the function signature stays short. Lines 21 to 24 are the update rule. It is a direct transcription of the equation, it changes nothing outside itself, and it returns the new state. That has practical consequences:
 
 - **You can test it alone.** With $N = M$ the growth factor must be $R_0/2$, so `nextGeneration(40.0, p)` must return $2.2 \times 40 / 2 = 44$.
 - **You can check it against the paper.** The equation lives in exactly one place.
@@ -101,7 +101,7 @@ The state is passed by value (a `double` is cheap to copy) and the parameters by
 
 ### The simulation loop
 
-The rule is applied repeatedly in `simulate` (lines 26–37). In pseudocode:
+The rule is applied repeatedly in `simulate` (lines 26 to 37). In pseudocode:
 
 ```text
 N ← N0
@@ -113,7 +113,7 @@ for t ← 0 to T − 1 do
 
 Each pass of the `for` loop is one generation (see <Concept id="for-loop" />). The trajectory is kept in a `std::vector<double>` (see <Concept id="std-vector" />): `push_back` appends one state per generation, so after $T$ generations the vector holds the $T + 1$ states $N_0, N_1, \dots, N_T$. `reserve` (line 29) only tells the vector how much room to set aside; it does not change its contents.
 
-Storing the whole trajectory, rather than printing as you go, separates *running* the model from *analysing* it. The finished trajectory can be scanned for its peak, compared with a closed form, or written to a file (see <Concept id="trajectory-output" />). `main` does exactly that: it reads optional parameters from the command line (lines 41–44, see <Concept id="command-line" />), refuses impossible values (lines 46–49), runs the simulation and prints a CSV table. With the default parameters the output begins
+Storing the whole trajectory, rather than printing as you go, separates *running* the model from *analysing* it. The finished trajectory can be scanned for its peak, compared with a closed form, or written to a file (see <Concept id="trajectory-output" />). `main` does exactly that: it reads optional parameters from the command line (lines 41 to 44, see <Concept id="command-line" />), refuses impossible values (lines 46 to 49), runs the simulation and prints a CSV table. With the default parameters the output begins
 
 ```text
 generation,N
@@ -133,7 +133,7 @@ Select a term of the equation to see the code that implements it, or a line of c
 
 ### Verification against the exact solution
 
-Before trusting a simulation, compare it with something known independently. For the Beverton–Holt model, the substitution $x_t = 1/N_t$ turns the recurrence into a linear one, $x_{t+1} = x_t / R_0 + 1/(R_0 M)$, which can be solved by hand. For $R_0 \ne 1$ the result is
+Before trusting a simulation, compare it with something known independently. For the Beverton-Holt model, the substitution $x_t = 1/N_t$ turns the recurrence into a linear one, $x_{t+1} = x_t / R_0 + 1/(R_0 M)$, which can be solved by hand. For $R_0 \ne 1$ the result is
 
 $$
 N_t = \frac{K\,N_0}{N_0 + (K - N_0)\,R_0^{-t}}, \qquad K = (R_0 - 1)\,M.
@@ -147,7 +147,7 @@ Agreement here does not prove the program correct for every model you will write
 
 ### Qualitative behaviour
 
-Whatever the starting size, a Beverton–Holt population approaches its equilibrium smoothly, without overshooting, or declines to zero if $R_0 < 1$:
+Whatever the starting size, a Beverton-Holt population approaches its equilibrium smoothly, without overshooting, or declines to zero if $R_0 < 1$:
 
 <Figure id="bh-trajectories" />
 
@@ -180,7 +180,7 @@ Change $R_0$, $M$ and $N_0$ and watch the trajectory respond. Predict the equili
 <Check
   id="equilibrium"
   kind="predict"
-  question="With R0 = 3 and M = 20, at what size does a Beverton–Holt population with N0 = 1 eventually settle?"
+  question="With R0 = 3 and M = 20, at what size does a Beverton-Holt population with N0 = 1 eventually settle?"
   options={["20", "40", "60", "It grows without bound, because R0 > 1"]}
   answer={1}
   feedback={[
@@ -214,7 +214,7 @@ for (int t = 0; t <= T; ++t) {
 <Check
   id="not-ode"
   kind="interpret"
-  question="A colleague suggests running the Beverton–Holt program with 'half-generation steps' to make it more accurate. What is the best reply?"
+  question="A colleague suggests running the Beverton-Holt program with 'half-generation steps' to make it more accurate. What is the best reply?"
   options={[
     "Agreed: like Euler's method, the error shrinks with the step size",
     "The recurrence is the model of a population censused once per generation, so a half-generation step has no meaning in it",

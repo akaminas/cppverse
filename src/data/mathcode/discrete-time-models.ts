@@ -5,7 +5,7 @@ import type { MathCode } from './types';
 // header comment).
 export const mathcode: Record<string, MathCode> = {
   'discrete-time-models-bh': {
-    title: 'The Beverton–Holt model, term by term',
+    title: 'The Beverton-Holt model, term by term',
     tex: String.raw`\htmlClass{mc-next}{N_{t+1}} = \frac{\htmlClass{mc-R0}{R_0}\,\htmlClass{mc-Nt}{N_t}}{\htmlClass{mc-denom}{1 + N_t/\htmlClass{mc-M}{M}}}, \qquad \htmlClass{mc-start}{N_0 = 5}, \qquad \htmlClass{mc-steps}{t = 0, 1, \dots, T - 1}`,
     file: 'algorithms/beverton_holt.cpp',
     show: [14, 37],

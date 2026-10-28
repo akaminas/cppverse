@@ -142,7 +142,7 @@ std::cout << r.plot << ' ' << r.adults << '\\n';`}
 
 ## In biological modelling
 
-Composite types are the backbone of larger models:
+Composite types appear throughout larger models:
 
 - **Populations of individuals.** `class Population { public: struct Individual { double mass; int age; }; … private: std::vector<Individual> members_; };` with member functions `reproduce`, `applyMortality` and `meanMass`. The vector stays private, so no other code can, for example, remove individuals without updating summary statistics.
 - **Metapopulations.** A `Landscape` class owning a vector of `Patch` objects and a distance matrix, with a member function for dispersal that guarantees individuals are neither created nor lost on the way.

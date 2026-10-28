@@ -2,7 +2,7 @@ import type { MathCode } from './types';
 
 export const mathcode: Record<string, MathCode> = {
   'runge-kutta-rk4': {
-    title: 'The classical fourth-order Runge–Kutta step',
+    title: 'The classical fourth-order Runge-Kutta step',
     tex: String.raw`\begin{aligned}
 \htmlClass{mc-k1}{\mathbf{k}_1} &= \mathbf{f}(t,\ \mathbf{x}) \
 \htmlClass{mc-k2}{\mathbf{k}_2} &= \mathbf{f}\bigl(t + \tfrac{h}{2},\ \mathbf{x} + \tfrac{h}{2}\mathbf{k}_1\bigr) \

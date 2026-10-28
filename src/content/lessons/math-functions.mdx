@@ -26,7 +26,7 @@ const double growthFactor = std::exp(0.25);         // e^0.25
 const double doublingTime = std::log(2.0) / 0.25;   // ln 2 / r
 ```
 
-All of them live in the namespace `std`, take `double` arguments and return a `double`.
+They all live in the namespace `std` and, unless the table says otherwise, take `double` arguments and return a `double`.
 
 ## Why it matters
 
@@ -54,7 +54,7 @@ Biological models are full of these functions. Exponential growth and decay, sur
 
 <Example file="foundations/cmath_tour.cpp" mark="18-19" />
 
-A few points from that output deserve attention.
+Four points to take from that output:
 
 - **Angles are in radians.** `std::sin(30.0)` is the sine of 30 radians, −0.988. For 30 degrees, convert first: multiply by π / 180.
 - **`std::log` is the natural logarithm.** Many papers write "log" for ln; others mean log₁₀. Decide which the author means before translating.
@@ -89,7 +89,7 @@ Translating an equation is a small procedure, and it is worth following every ti
 4. **Use floating-point literals**, `10.0` rather than `10`, so that no division is accidentally an integer division.
 5. **Check the result** at special values where the answer is known, and against one value worked out by hand or with a calculator.
 
-Three equations used throughout biology, transcribed this way:
+Three equations common in biology, transcribed this way:
 
 <Example file="foundations/math_growth_equations.cpp" mark="18,26,33-34" />
 
@@ -108,7 +108,7 @@ Select a term in the equation, or a line of code, to see how they correspond:
 | $e^{-k(t - t_0)}$ | `std::exp(-k * t - t0)` | $e^{-kt - t_0}$ | `std::exp(-k * (t - t0))` |
 | $\dfrac{S^n}{K^n + S^n}$ | `sn / kn + sn` | $\frac{S^n}{K^n} + S^n$ | `sn / (kn + sn)` |
 | $Q_{10}^{(T - T_\text{ref})/10}$, with `int` temperatures | `std::pow(q10, (T - Tref) / 10)` | $Q_{10}^0 = 1$ for any warming below 10 °C | `std::pow(q10, (T - Tref) / 10.0)` |
-| $x^2$ | `x ^ 2` | bitwise exclusive or (and no compile for `double`) | `x * x` or `std::pow(x, 2.0)` |
+| $x^2$ | `x ^ 2` | bitwise exclusive or (a compile error for `double`) | `x * x` or `std::pow(x, 2.0)` |
 | $\sin(30^\circ)$ | `std::sin(30.0)` | the sine of 30 radians | `std::sin(30.0 * pi / 180.0)` |
 | doubling time $\ln 2 / r$ | `std::log10(2.0) / r` | a time 2.3 times too short | `std::log(2.0) / r` |
 | $B_0 M^{3/4}$ | `std::pow(M, 3 / 4)` | $M^0 = 1$: `3 / 4` is integer division | `std::pow(M, 0.75)` |

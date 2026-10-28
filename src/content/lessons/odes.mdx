@@ -24,7 +24,7 @@ $$
 \frac{dN}{dt} = r\,N\left(1 - \frac{N}{K}\right)
 $$
 
-Here $N(t)$ is the population size (individuals) at time $t$ (days), $dN/dt$ is its rate of change (individuals per day), $r$ is the maximum per-capita growth rate (per day) and $K$ is the carrying capacity (individuals). Read the equation as a rule: tell me $N$ and I will tell you the slope of the trajectory. At $N = 50$ with $r = 0.8$ and $K = 100$ the population grows by 20 individuals per day; at $N = K$ it does not grow at all; above $K$ it shrinks.
+Here $N(t)$ is the population size (individuals) at time $t$ (days), $dN/dt$ is its rate of change (individuals per day), $r$ is the maximum per-capita growth rate (per day) and $K$ is the carrying capacity (individuals). Read the equation as a rule: given $N$, it gives the slope of the trajectory. At $N = 50$ with $r = 0.8$ and $K = 100$ the population grows by 20 individuals per day; at $N = K$ it does not grow at all; above $K$ it shrinks.
 
 The word *ordinary* means that every derivative is taken with respect to a single variable, almost always time. When derivatives with respect to several variables appear, for example time and position in a model of a population spreading along a river, the equation is a *partial* differential equation (PDE). This site deals with ODEs only.
 
@@ -99,7 +99,7 @@ Most models of interest have no such formula. The SIR model has none for $S(t)$,
 Keep two things apart from the start:
 
 1. **The biological model** is the right-hand side $\mathbf{f}(t, \mathbf{x})$ with its parameters. It encodes your assumptions: logistic density dependence, mass-action transmission, first-order elimination.
-2. **The numerical method** (Euler, Runge–Kutta, an adaptive solver) is a recipe for turning that right-hand side into an approximate trajectory. It knows nothing about biology, and it introduces errors of its own.
+2. **The numerical method** (Euler, Runge-Kutta, an adaptive solver) is a recipe for turning that right-hand side into an approximate trajectory. It knows nothing about biology, and it introduces errors of its own.
 
 A good program mirrors this separation. The model lives in one function that only computes rates; the method lives in another that only advances time. You can then change the method without touching the biology, and vice versa. It also tells you how to interpret a surprising result: if a pattern appears with one step size or method and disappears with another, it is a property of the method, not of the model.
 

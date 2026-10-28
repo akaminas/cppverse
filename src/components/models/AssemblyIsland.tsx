@@ -136,7 +136,7 @@ export default function AssemblyIsland({ title, file, download, codeHtml, compon
               {file}, line{comp.lines.length > 1 ? 's' : ''} {compress(comp.lines)}
             </p>
           ) : (
-            <p className="asm-lines">This component is not a line of code: it is part of the scientific workflow around the program.</p>
+            <p className="asm-lines">This component has no lines of code: it is part of the scientific workflow around the program.</p>
           )}
         </div>
         <div className="assembly-code" ref={codeRef}>
@@ -153,7 +153,7 @@ export default function AssemblyIsland({ title, file, download, codeHtml, compon
   );
 }
 
-/** [3,4,5,9] → "3–5, 9" */
+/** [3,4,5,9] → "3-5, 9" */
 function compress(lines: number[]): string {
   const sorted = [...new Set(lines)].sort((a, b) => a - b);
   const parts: string[] = [];
@@ -164,7 +164,7 @@ function compress(lines: number[]): string {
       prev = l;
       continue;
     }
-    parts.push(start === prev ? String(start) : `${start}–${prev}`);
+    parts.push(start === prev ? String(start) : `${start}-${prev}`);
     start = prev = l;
   }
   return parts.join(', ');

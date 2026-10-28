@@ -11,7 +11,7 @@ export const mathcode: Record<string, MathCode> = {
         id: 'rhs',
         label: 'right-hand side f',
         explain:
-          'The Lotka–Volterra model: prey N grow at rate r and are eaten at rate aNP; predators P convert eaten prey with efficiency e and die at rate m. rates() returns both derivatives as one State, so the vector f(s) is a single C++ value.',
+          'The Lotka-Volterra model: prey N grow at rate r and are eaten at rate aNP; predators P convert eaten prey with efficiency e and die at rate m. rates() returns both derivatives as one State, so the vector f(s) is a single C++ value.',
         lines: [42, 43, 44, 45],
       },
       {

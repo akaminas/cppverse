@@ -109,7 +109,7 @@ $$
 
 Dividing by $\bar w$ keeps the frequencies summing to one. The baseline $w_0$ must be large enough to keep every $w_i$ positive.
 
-One more design observation follows from the equation. With deterministic strategies and a fixed number of rounds, $\pi_{ij}$ does not depend on the frequencies, so the payoff matrix can be computed **once**, before the generations start, instead of replaying every match in every generation:
+One more design observation follows from the equation. With deterministic strategies and a fixed number of rounds, $\pi_{ij}$ does not depend on the frequencies, so the payoff matrix can be computed once, before the generations start, instead of replaying every match in every generation:
 
 ```cpp
 // Sketch: compute the payoff matrix once, then iterate selection on it.
@@ -215,7 +215,7 @@ Step through the first rounds of a match between tit-for-tat and the alternator.
 
 - **Scattered model logic.** When the update rule is spread over many small member functions in many classes, the equations of the model are hard to see anywhere. A model is easier to verify when its update rule can be read in one place (see <Concept id="update-rule" />).
 - **Hidden coupling.** Objects that hold pointers to each other form a web where a change in one place has effects far away, and copying or saving the model's state becomes difficult (see <Concept id="pointers-ownership" />).
-- **Over-design.** Class hierarchies, accessors and patterns for a model that a few structs and functions would express more clearly. A procedural design with plain structs, as in <Concept id="procedural-review" />, is often the right choice for a small model.
+- **Over-design.** Class hierarchies, accessors and patterns are wasted on a model that a few structs and functions would express more clearly. A procedural design with plain structs, as in <Concept id="procedural-review" />, is often the right choice for a small model.
 - **Performance.** A vector of large objects interleaves every field of every individual in memory. A loop that needs only positions then drags all the other fields through the processor cache as well.
 
 ### A data-oriented alternative
@@ -238,7 +238,7 @@ A neighbour search then reads only `x` and `y`, contiguously, which is fast. The
 
 ## Common mistakes
 
-- **One class that does everything.** A `Simulation` class with fifty members and the whole model in its member functions is a global namespace with extra steps. Split by responsibility.
+- **One class that does everything.** A `Simulation` class with fifty members and the whole model in its member functions is little better than a global namespace. Split by responsibility.
 - **Population-level quantities stored in individuals.** Frequencies, totals and means belong to the population. Storing them in each object duplicates them and lets the copies disagree.
 - **Parameters as static members or globals.** They work until the day you need two values in one run.
 - **Updating copies by mistake.** `for (Strategy s : strategies)` iterates over *copies*; any change to `s` is lost at the end of the iteration. Use `const Strategy&` to read and `Strategy&` to change (see <Concept id="auto-range-for" />).

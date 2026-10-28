@@ -28,7 +28,7 @@ A `std::string` behaves much like a `std::vector<char>` with extra member functi
 
 ## Why it matters
 
-Scientific code is full of small text tasks. A field data set identifies quadrats by codes such as `PLOT07-Q3`; a simulation writes each replicate to `run_017.csv`; a parameter file contains lines like `mortality 0.12` that must be split into a name and a number. Getting these right is unglamorous but essential: a file name built wrongly overwrites the results of another run, and a code compared as text instead of as a number sorts plot 10 before plot 9.
+Scientific code is full of small text tasks. A field data set identifies quadrats by codes such as `PLOT07-Q3`; a simulation writes each replicate to `run_017.csv`; a parameter file contains lines like `mortality 0.12` that must be split into a name and a number. Getting these right matters: a file name built wrongly overwrites the results of another run, and a code compared as text instead of as a number sorts plot 10 before plot 9.
 
 ## How it works in C++
 
@@ -85,7 +85,7 @@ std::string label = species + " (adult)";  // from an expression
 
 Strings have *value semantics*: assigning or copying a string copies its characters, and the copy can be changed independently, just like an `int`.
 
-The operators work as you would hope:
+Strings support these operators:
 
 | Operation | Meaning |
 |---|---|

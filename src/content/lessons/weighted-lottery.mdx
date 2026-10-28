@@ -78,7 +78,7 @@ Step through it, including one call of `pickIndex` in detail:
 
 <Trace id="weighted-lottery-by-hand" />
 
-Two details are worth seeing in the trace. A zero weight gives an empty interval, $[42, 42)$, so no value of $u$ can select female 2. And the intervals are *half-open*: a target of exactly 42 belongs to the next non-empty interval, female 3's, not to female 1's.
+The trace shows two details. A zero weight gives an empty interval, $[42, 42)$, so no value of $u$ can select female 2. And the intervals are *half-open*: a target of exactly 42 belongs to the next non-empty interval, female 3's, not to female 1's.
 
 A linear scan costs time proportional to $n$ for every draw. `std::discrete_distribution` does better when you draw many times from the same weights: standard libraries typically compute the cumulative sums once, when the distribution is constructed, and then find the interval by binary search. Construct the distribution once and reuse it while the weights stay the same; build a new one when they change.
 
@@ -158,7 +158,7 @@ The manual builds `std::discrete_distribution` from an iterator range over a wei
 
 ### Neutral drift by multinomial sampling
 
-The Wright–Fisher model is the simplest model of genetic drift. A haploid population has a constant size of $N$ individuals and non-overlapping generations. Each individual of the next generation copies the allele of a parent chosen at random from the current generation. With $n_i$ carriers of allele $i$, the parent carries allele $i$ with probability $n_i / N$: a weighted lottery with the allele counts as weights. Repeating the lottery $N$ times gives the counts of the next generation, a draw from a **multinomial distribution**.
+The Wright-Fisher model is the simplest model of genetic drift. A haploid population has a constant size of $N$ individuals and non-overlapping generations. Each individual of the next generation copies the allele of a parent chosen at random from the current generation. With $n_i$ carriers of allele $i$, the parent carries allele $i$ with probability $n_i / N$: a weighted lottery with the allele counts as weights. Repeating the lottery $N$ times gives the counts of the next generation, a draw from a **multinomial distribution**.
 
 The program follows five alleles, A to E, that are equally common at first and confer no advantage. It reports when an allele is lost and when one is fixed.
 
@@ -166,7 +166,7 @@ The program follows five alleles, A to E, that are equally common at first and c
 
 Run it with several seeds. The order in which alleles are lost, and the generation of fixation, change from run to run; that *some* allele is fixed does not. The distribution is rebuilt every generation because the weights, the counts, change. The new counts go into a separate vector `next`, and only replace `count` once all $N$ offspring have been drawn.
 
-A useful summary of diversity is the **heterozygosity** $H = 1 - \sum_i p_i^2$, where $p_i = n_i / N$: the probability that two individuals drawn at random (with replacement) carry different alleles. For the Wright–Fisher model one can show that, on average over replicate populations,
+A useful summary of diversity is the **heterozygosity** $H = 1 - \sum_i p_i^2$, where $p_i = n_i / N$: the probability that two individuals drawn at random (with replacement) carry different alleles. For the Wright-Fisher model one can show that, on average over replicate populations,
 
 $$
 \mathbb{E}[H_{t+1}] = \Big(1 - \frac{1}{N}\Big) H_t, \qquad \text{so} \qquad \mathbb{E}[H_t] = H_0 \Big(1 - \frac{1}{N}\Big)^{t},

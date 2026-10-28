@@ -59,7 +59,7 @@ Read from the census, write to a separate place, apply afterwards. In `plants.cp
 
 <Example file="ibm/plants.cpp" mark="80-98" />
 
-With synchronous scheduling the loop on lines 86–88 fills in every plant's crowding before any plant dies. Reproduction then builds a new vector from the survivors (lines 101–118), so newborns never take part in the step that produced them.
+With synchronous scheduling the loop on lines 86 to 88 fills in every plant's crowding before any plant dies. Reproduction then builds a new vector from the survivors (lines 101 to 118), so newborns never take part in the step that produced them.
 
 ### Random-order updating with std::shuffle
 
@@ -78,7 +78,7 @@ for (std::size_t i : order) {
 }
 ```
 
-`plants.cpp` does exactly this when run as `plants random-order` (lines 81–83 and 94). Three points matter:
+`plants.cpp` does exactly this when run as `plants random-order` (lines 81 to 83 and 94). Three points matter:
 
 - **Shuffle every step.** A fixed order, including plain index order, gives the same individuals the same advantage year after year. In `plants.cpp` index order is also age order (survivors come first, then seedlings), so a fixed order would quietly make age matter in a model whose rules never mention it.
 - **Use the model's own engine.** `std::shuffle` takes the engine as an argument, so the order is reproducible from the recorded seed.

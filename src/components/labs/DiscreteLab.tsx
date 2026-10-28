@@ -27,7 +27,7 @@ export default function DiscreteLab({ preset }: { preset?: string }) {
         value={mode}
         onChange={setMode}
         options={[
-          { value: 'bh', label: 'Beverton–Holt' },
+          { value: 'bh', label: 'Beverton-Holt' },
           { value: 'logistic', label: 'Logistic map' },
           { value: 'order', label: 'Update order' },
         ]}
@@ -51,7 +51,7 @@ function BevertonHolt() {
 
   return (
     <LabShell
-      title="Beverton–Holt laboratory"
+      title="Beverton-Holt laboratory"
       status={<>One generation per step · the simulation agrees with the closed-form solution to within {maxErr.toExponential(1)} individuals.</>}
       controls={
         <>
@@ -70,7 +70,7 @@ function BevertonHolt() {
     >
       <LabChart
         title={claim}
-        subtitle={`Beverton–Holt model, R₀ = ${fmt(R0)}, M = ${fmt(M, 0)}, N₀ = ${fmt(N0, 0)}`}
+        subtitle={`Beverton-Holt model, R₀ = ${fmt(R0)}, M = ${fmt(M, 0)}, N₀ = ${fmt(N0, 0)}`}
         xLabel="Generation t"
         yUnit="Population size N (individuals)"
         series={[{ id: 'N', label: 'Simulation', points: traj.map((N, t) => [t, N]), family: 'teal', markers: T <= 40 }]}
@@ -183,7 +183,7 @@ function UpdateOrder() {
     >
       <LabChart
         title={differ ? 'Updating hosts before parasitoids changes the dynamics of the same model' : 'Both update orders share the same fixed point'}
-        subtitle={`Hosts in the host–parasitoid model, r = ${fmt(r)}, K = ${fmt(K, 0)}, a = ${fmt(a, 3)}, c = ${fmt(c)}`}
+        subtitle={`Hosts in the host-parasitoid model, r = ${fmt(r)}, K = ${fmt(K, 0)}, a = ${fmt(a, 3)}, c = ${fmt(c)}`}
         xLabel="Generation t"
         yUnit="Hosts H (per unit area)"
         series={[

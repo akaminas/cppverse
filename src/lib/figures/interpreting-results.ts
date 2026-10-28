@@ -21,7 +21,7 @@ export const figures: Record<string, () => FigureSpec> = {
     const times = Array.from({ length: 41 }, (_, i) => i / 10);
     return {
       title: `The expected population more than doubles, yet ${extinct} of ${n} replicate populations die out`,
-      subtitle: `Linear birth–death process, b = ${b}, d = ${d} per individual per year, N₀ = ${N0}; ${n} replicates with seeds 101–${100 + n}`,
+      subtitle: `Linear birth-death process, b = ${b}, d = ${d} per individual per year, N₀ = ${N0}; ${n} replicates with seeds 101 to ${100 + n}`,
       xLabel: 'Time (years)',
       yUnit: 'Population size N (individuals)',
       series: [

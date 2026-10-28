@@ -64,17 +64,17 @@ For the plant: rosettes stay (0.5) or flower (0.25), so 75% survive and 25% die.
 
 The check throws a `std::invalid_argument` (see <Concept id="exceptions" />), so an impossible matrix cannot reach the projection. Fecundities are not probabilities and may exceed 1; that is why they are kept in $F$ and checked separately, if at all.
 
-### Matrix–vector multiplication
+### Matrix-vector multiplication
 
 The canonical program stores the matrix as a vector of rows, `std::vector<std::vector<double>>` (see <Concept id="nested-vectors" />), and multiplies with two nested loops:
 
 <Example file="algorithms/stage_matrix.cpp" mark="36-46" />
 
-The result goes into a **new** vector `y`. Every stage of next year is computed from the same, unchanged vector of this year. Writing into `x` while reading from it would mix old and new values: the update-order bug of <Concept id="update-order" />, which here would silently change the matrix.
+The result goes into a new vector `y`. Every stage of next year is computed from the same, unchanged vector of this year. Writing into `x` while reading from it would mix old and new values: the update-order bug of <Concept id="update-order" />, which here would silently change the matrix.
 
 ### Projection over time
 
-Projecting the population is the simulation loop of a discrete-time model with a vector as its state (lines 89–94 of the program): print the year, multiply, repeat. Starting from 100 seedlings, 20 rosettes and 5 flowering plants:
+Projecting the population is the simulation loop of a discrete-time model with a vector as its state (lines 89 to 94 of the program): print the year, multiply, repeat. Starting from 100 seedlings, 20 rosettes and 5 flowering plants:
 
 <Figure id="matrix-models-projection" />
 
@@ -84,7 +84,7 @@ The first years are irregular. Most of the initial seedlings die, so the total d
 
 ### The growth rate and the stable structure
 
-The parallel lines are no accident. If $A$ is non-negative and *primitive* (every stage can eventually produce every other stage, and the lengths of the possible cycles through the life-cycle graph have no common divisor greater than 1), the Perron–Frobenius theorem guarantees a real, positive eigenvalue $\lambda$ larger in magnitude than all others, with an eigenvector $\mathbf w$ whose entries are all positive. For large $t$,
+The parallel lines are no accident. If $A$ is non-negative and *primitive* (every stage can eventually produce every other stage, and the lengths of the possible cycles through the life-cycle graph have no common divisor greater than 1), the Perron-Frobenius theorem guarantees a real, positive eigenvalue $\lambda$ larger in magnitude than all others, with an eigenvector $\mathbf w$ whose entries are all positive. For large $t$,
 
 $$
 \mathbf n(t) \approx c\,\lambda^t\,\mathbf w,

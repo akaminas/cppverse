@@ -20,7 +20,7 @@ export const anatomies: Record<string, Anatomy> = {
         label: 'template',
         role: 'Keyword',
         explain:
-          'Announces that what follows is not one function but a recipe for a family of functions. Nothing is compiled from it until it is used with a particular type.',
+          'Announces that what follows is a recipe for a family of functions rather than a single function. Nothing is compiled from it until it is used with a particular type.',
       },
       brackets: {
         label: '< >',

@@ -42,37 +42,37 @@ export const labDocs: Record<LabId, LabDoc> = {
       'H_{t+1} = H_t\\,e^{\\,r(1 - H_t/K) - aP_t}, \\qquad P_{t+1} = c\\,H_t\\,\\bigl(1 - e^{-aP_t}\\bigr)',
     ],
     modelNote:
-      'These are genuinely discrete-time models: the census is taken once per generation and the recurrence is the model. They are not numerical approximations of differential equations.',
+      'These are discrete-time models in their own right: the census is taken once per generation and the recurrence is the model. They are not numerical approximations of differential equations.',
     parameters: [
-      { symbol: 'R_0', meaning: 'Beverton–Holt growth factor at low density', unit: 'per generation', value: '2.2 (0.5–6)' },
+      { symbol: 'R_0', meaning: 'Beverton-Holt growth factor at low density', unit: 'per generation', value: '2.2 (0.5-6)' },
       { symbol: 'M', meaning: 'density at which the growth factor is halved', unit: 'individuals', value: '40' },
-      { symbol: 'r', meaning: 'logistic-map growth factor', unit: 'per generation', value: '3.2 (0.5–4)' },
+      { symbol: 'r', meaning: 'logistic-map growth factor', unit: 'per generation', value: '3.2 (0.5-4)' },
       { symbol: 'r, K, a, c', meaning: 'host growth rate, host carrying capacity, parasitoid search efficiency, parasitoids per host attacked', unit: '—, hosts, per parasitoid, —', value: '1.2, 80, 0.06, 0.8' },
     ],
-    initial: 'Beverton–Holt: N₀ = 5. Logistic map: x₀ = 0.2. Host–parasitoid: H₀ = 20, P₀ = 2.',
+    initial: 'Beverton-Holt: N₀ = 5. Logistic map: x₀ = 0.2. Host-parasitoid: H₀ = 20, P₀ = 2.',
     assumptions: [
       'Non-overlapping generations and a single census per generation.',
       'Density dependence acts through the current census only (no time lags beyond one generation).',
       'Deterministic dynamics: no demographic or environmental stochasticity; densities are continuous.',
-      'Host–parasitoid: random search by parasitoids (Poisson-distributed attacks) and host self-limitation.',
+      'Host-parasitoid: random search by parasitoids (Poisson-distributed attacks) and host self-limitation.',
     ],
     algorithm: [
       'Set the parameters and the initial state.',
       'For t = 0, 1, …, T − 1: compute every component of the next state from the current state only, then replace the state.',
       'Store every state in a vector so that the trajectory can be plotted and checked.',
-      'Verify: compare Beverton–Holt with its closed-form solution N_t = K N₀ / (N₀ + (K − N₀) R₀^{−t}).',
+      'Verify: compare Beverton-Holt with its closed-form solution N_t = K N₀ / (N₀ + (K − N₀) R₀^{−t}).',
     ],
     cpp: ['algorithms/beverton_holt.cpp', 'algorithms/host_parasitoid.cpp'],
     verification: [
-      'Beverton–Holt matches its closed-form solution to rounding error (unit tests and CI cross-validation).',
+      'Beverton-Holt matches its closed-form solution to rounding error (unit tests and CI cross-validation).',
       'The logistic map reaches its fixed point 1 − 1/r for 1 < r < 3 and a two-cycle at r = 3.2 (unit tests).',
-      'Both update orders of the host–parasitoid model leave the fixed point unchanged; the sequential bug converges to it while the correct model cycles (unit tests and CI).',
+      'Both update orders of the host-parasitoid model leave the fixed point unchanged; the sequential bug converges to it while the correct model cycles (unit tests and CI).',
       'The C++ programs reproduce the browser trajectories to a relative tolerance of 10⁻⁸ (CI).',
     ],
     interpretation: [
-      { question: 'What pattern occurs?', answer: 'Beverton–Holt populations approach K = (R₀ − 1) M monotonically; the logistic map can settle, cycle or behave chaotically; the host–parasitoid model cycles.' },
-      { question: 'Which assumptions generate it?', answer: 'Compensatory density dependence (Beverton–Holt) cannot overshoot; overcompensation (the logistic map) can. Delayed parasitoid feedback drives cycles.' },
-      { question: 'Does the implementation affect it?', answer: 'Yes: updating hosts before parasitoids stabilises the host–parasitoid system, a qualitative error that looks like a plausible result.' },
+      { question: 'What pattern occurs?', answer: 'Beverton-Holt populations approach K = (R₀ − 1) M monotonically; the logistic map can settle, cycle or behave chaotically; the host-parasitoid model cycles.' },
+      { question: 'Which assumptions generate it?', answer: 'Compensatory density dependence (Beverton-Holt) cannot overshoot; overcompensation (the logistic map) can. Delayed parasitoid feedback drives cycles.' },
+      { question: 'Does the implementation affect it?', answer: 'Yes: updating hosts before parasitoids stabilises the host-parasitoid system, a qualitative error that looks like a plausible result.' },
       { question: 'What cannot be inferred?', answer: 'Deterministic recurrences say nothing about extinction risk from chance events in small populations; that needs a stochastic model.' },
     ],
     limitations: [
@@ -141,7 +141,7 @@ export const labDocs: Record<LabId, LabDoc> = {
       { symbol: 'r, K', meaning: 'logistic growth rate and carrying capacity', unit: 'per day, individuals', value: '0.8, 100' },
       { symbol: 'k', meaning: 'first-order elimination rate', unit: 'per hour', value: '0.5' },
       { symbol: 'β, γ', meaning: 'transmission and recovery rates', unit: 'per day', value: '0.5, 0.2' },
-      { symbol: 'h', meaning: 'integration step size', unit: 'time units', value: '0.5 (0.01–6)' },
+      { symbol: 'h', meaning: 'integration step size', unit: 'time units', value: '0.5 (0.01-6)' },
     ],
     initial: 'N(0) = 2; C(0) = 10 mg/L; (S, I, R)(0) = (0.999, 0.001, 0).',
     assumptions: [
@@ -186,7 +186,7 @@ export const labDocs: Record<LabId, LabDoc> = {
       { symbol: 'N', meaning: 'population size (SIR)', unit: 'individuals', value: '200' },
       { symbol: 'seed', meaning: 'seed of the pseudo-random generator', unit: '—', value: '2024' },
     ],
-    initial: 'Birth–death: N₀ = 5 individuals. SIR: I₀ = 3 infectious, the rest susceptible.',
+    initial: 'Birth-death: N₀ = 5 individuals. SIR: I₀ = 3 infectious, the rest susceptible.',
     assumptions: [
       'Events happen one at a time, at rates that depend only on the current state (Markov property).',
       'Individuals are identical and, in SIR, mix homogeneously.',
@@ -208,7 +208,7 @@ export const labDocs: Record<LabId, LabDoc> = {
     interpretation: [
       { question: 'Why do runs differ?', answer: 'Each run is one possible history of the same process; the model is the distribution of histories, so one run is a sample of size one.' },
       { question: 'What claim is supported?', answer: 'Probabilities and distributions, e.g. the chance of extinction by time t, with Monte Carlo uncertainty from the number of replicates.' },
-      { question: 'How does it relate to the deterministic model?', answer: 'For the linear birth–death process the mean equals the deterministic solution; for nonlinear models such as SIR the mean of runs and the ODE can differ, especially when early extinction is likely.' },
+      { question: 'How does it relate to the deterministic model?', answer: 'For the linear birth-death process the mean equals the deterministic solution; for nonlinear models such as SIR the mean of runs and the ODE can differ, especially when early extinction is likely.' },
     ],
     limitations: [
       'The direct method recomputes every propensity at every event; very large systems need faster variants (next-reaction method, tau-leaping).',

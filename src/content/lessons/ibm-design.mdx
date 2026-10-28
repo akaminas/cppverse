@@ -83,7 +83,7 @@ The complete canonical model puts these pieces together. Select a term in the eq
 
 <Example file="ibm/plants.cpp" mark="85-98" />
 
-Two details of `plants.cpp` matter for design. The `alive` flags (line 80) let a plant be marked dead without moving anything, so indices stay valid for the rest of the year. And reproduction builds a fresh vector `next` (lines 101–118) instead of editing the population in place. Both are protections against the bugs described next.
+Two details of `plants.cpp` matter for design. The `alive` flags (line 80) let a plant be marked dead without moving anything, so indices stay valid for the rest of the year. And reproduction builds a fresh vector `next` (lines 101 to 118) instead of editing the population in place. Both are protections against the bugs described next.
 
 ### Births and deaths in a container
 
@@ -97,7 +97,7 @@ Removing the dead has its own trap. Calling `erase` inside an index loop and the
 
 <Example file="ibm/design_remove_dead.cpp" mark="31,37-44" />
 
-- **Erase–remove.** `std::remove_if` moves the survivors forward, keeping their order, and returns where the leftover tail begins; `erase` then cuts the tail. The order is preserved, which matters if your schedule or output depends on it. <Std v="c++20" /> `std::erase_if(plants, predicate)` does both steps in one call.
+- **Erase-remove.** `std::remove_if` moves the survivors forward, keeping their order, and returns where the leftover tail begins; `erase` then cuts the tail. The order is preserved, which matters if your schedule or output depends on it. <Std v="c++20" /> `std::erase_if(plants, predicate)` does both steps in one call.
 - **Swap-and-pop.** Overwrite a dead individual with the last one and shrink the vector. Each removal costs one copy, but the survivors are reordered, so use it only when order is irrelevant (for example, when individuals are shuffled every step anyway). Note that the index must not advance after a swap, because the plant moved into the slot has not been checked yet.
 
 <Callout kind="pitfall" title="References into a growing vector">
@@ -155,7 +155,7 @@ Step through the buggy reproduction loop and watch `i` chase `plants.size()`:
   answer={1}
   feedback={[
     "That is what a correct removal would give. Follow the index: after erasing at position 1, plant 2 slides into position 1, but the loop moves straight on to position 2.",
-    "Correct. Erasing plant 1 shifts plant 2 into position 1; then ++i moves to position 2, which now holds plant 3. Plant 2 is never examined and survives as a ghost. Use erase–remove or swap-and-pop instead.",
+    "Correct. Erasing plant 1 shifts plant 2 into position 1; then ++i moves to position 2, which now holds plant 3. Plant 2 is never examined and survives as a ghost. Use erase-remove or swap-and-pop instead.",
     "Plant 1 is examined first, at position 1, and is erased. It is plant 2 that escapes.",
     "Only dead plants are erased, and plants 3 and 4 are alive.",
   ]}
@@ -195,7 +195,7 @@ Good representation choices are those that make the biology explicit:
 - **Members left uninitialised.** A struct without a constructor or default member initialisers can hold garbage. Give every member a value at construction.
 - **Using indices as identities.** After any removal, index 17 is a different plant. Use an `id` for anything that must persist.
 - **Newborns reproducing in their birth year.** Fix the list of parents before the first birth.
-- **Erasing inside a counting loop.** It skips elements and is slow. Use erase–remove, swap-and-pop, or build a new vector of survivors.
+- **Erasing inside a counting loop.** It skips elements and is slow. Use erase-remove, swap-and-pop, or build a new vector of survivors.
 - **Counting the focal individual as its own neighbour.** Exclude `j == i`; otherwise every plant has at least one neighbour and $s_0$ is never reached.
 - **Counting the dead.** Decide whether plants that died earlier in the same step still interact, and implement that decision explicitly with flags such as `alive`.
 - **Global variables for parameters and the engine.** They make it impossible to run two populations with different settings in one program, and they hide dependencies that tests need to control.
@@ -206,7 +206,7 @@ Good representation choices are those that make the biology explicit:
 
 1. Give `Plant` a rosette diameter in centimetres that must be positive, and make the constructor reject anything else. Then change the survival rule so that a plant of diameter $d$ survives with probability $s_0\,d/(d + d_{50})/(1 + c\,n)$, where $d_{50}$ is the diameter at which the size effect halves survival. What test would show that your change behaves as intended for a very large plant?
 2. Replace the torus in `design_crowding.cpp` by a plot with hard edges, where distance is simply $|a - b|$. Predict the new neighbour counts and survival probabilities of plants 3 and 4 before running the program.
-3. Write a function `void removeDead(std::vector<Plant>& plants)` using erase–remove for a `Plant` that carries an `alive` flag. Then explain why keeping the flags in a separate `std::vector<char>`, as `plants.cpp` does during the survival phase, would make erase–remove awkward.
+3. Write a function `void removeDead(std::vector<Plant>& plants)` using erase-remove for a `Plant` that carries an `alive` flag. Then explain why keeping the flags in a separate `std::vector<char>`, as `plants.cpp` does during the survival phase, would make erase-remove awkward.
 4. Give each plant a `parent` id and a founder id inherited unchanged by its descendants. After 50 years of the full model, count how many plants descend from each of the founders that still has descendants. What does the answer suggest about whether clusters are families?
 
 <details>

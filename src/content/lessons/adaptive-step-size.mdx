@@ -10,7 +10,7 @@ objectives:
   - Estimate the local error of a step without the true solution by comparing two methods of different order
   - Scale the error estimate with absolute and relative tolerances and decide whether to accept a step
   - Choose the next step from the error estimate with a safety factor and limits on growth and shrinkage
-  - Implement an adaptive Heun–Euler integrator that fails safely
+  - Implement an adaptive Heun-Euler integrator that fails safely
   - Name the standard embedded pairs and the libraries that provide them
 lab: ode
 references:
@@ -52,7 +52,7 @@ $$
 \mathbf{x}_{\mathrm{Euler}} - \mathbf{x}_{\mathrm{Heun}} = \tfrac{h}{2}(\mathbf{a} - \mathbf{b}).
 $$
 
-The error estimate for component $i$ is $e_i = \tfrac{h}{2}\lvert b_i - a_i \rvert$, at no cost beyond the two evaluations Heun's method needs anyway. Such pairs are labelled by their orders, here Heun–Euler 2(1).
+The error estimate for component $i$ is $e_i = \tfrac{h}{2}\lvert b_i - a_i \rvert$, at no cost beyond the two evaluations Heun's method needs anyway. Such pairs are labelled by their orders, here Heun-Euler 2(1).
 
 ### Tolerances and the scaled error
 
@@ -98,11 +98,11 @@ The error estimate refers to the lower-order (Euler) answer, but an accepted ste
 
 Adaptive control changes what you specify. Instead of a step size, whose consequences for accuracy you can only discover by experiment, you state an accuracy and let the integrator find the steps. For models with fast and slow phases (outbreaks, pulses of drug absorption, the spike of a neuron, a bloom and crash of plankton) the savings are large, because the steps can differ by orders of magnitude between phases. And the controller doubles as a diagnostic: steps that shrink drastically point to where the model is hard to integrate.
 
-Two caveats keep expectations realistic. The tolerance controls the *local* error of each step, not the *global* error at the end; the two are related, but only a run with a tighter tolerance tells you how far the result has converged. And an explicit adaptive method does not cure stiffness: on a stiff problem it will find the stability limit by trial and error and stay there (see <Concept id="numerical-stability" />).
+Two caveats apply. The tolerance controls the *local* error of each step, not the *global* error at the end; the two are related, but only a run with a tighter tolerance tells you how far the result has converged. And an explicit adaptive method does not cure stiffness: on a stiff problem it will find the stability limit by trial and error and stay there (see <Concept id="numerical-stability" />).
 
 ## How it works in C++
 
-The program below integrates the SIR model for 400 days with the Heun–Euler pair. `tryStep` makes one attempt: it computes the shared slope, the Euler predictor and the slope there, the Heun solution and the scaled error, and then either rejects the attempt and shrinks `h`, or accepts it, advances `t` and `x` and adjusts `h`. It reports success with its `bool` return value and changes `t`, `x` and `h` through references (see <Concept id="references" />). The driver loops until the end time, clipping the last step so that the run ends exactly at 400 days.
+The program below integrates the SIR model for 400 days with the Heun-Euler pair. `tryStep` makes one attempt: it computes the shared slope, the Euler predictor and the slope there, the Heun solution and the scaled error, and then either rejects the attempt and shrinks `h`, or accepts it, advances `t` and `x` and adjusts `h`. It reports success with its `bool` return value and changes `t`, `x` and `h` through references (see <Concept id="references" />). The driver loops until the end time, clipping the last step so that the run ends exactly at 400 days.
 
 <Example file="ode/adaptive_heun_euler_sir.cpp" mark="33-55,67-75" />
 
@@ -133,7 +133,7 @@ The decisive comparison is cost against accuracy. For the same error in the fina
 <Check
   id="next-step"
   kind="predict"
-  question="An attempted Heun–Euler step with h = 0.2 days gives a scaled error E = 4. The controller uses safety factor 0.9, shrink limit 0.1 and growth limit 5. What happens?"
+  question="An attempted Heun-Euler step with h = 0.2 days gives a scaled error E = 4. The controller uses safety factor 0.9, shrink limit 0.1 and growth limit 5. What happens?"
   options={[
     "The step is accepted and the next step is 0.2 × 0.9 / 2 = 0.09 days",
     "The step is rejected and retried with h = 0.2 × 0.9 / √4 = 0.09 days",
@@ -191,19 +191,19 @@ The decisive comparison is cost against accuracy. For the same error in the fina
 
 ### Standard embedded pairs
 
-The Heun–Euler pair is ideal for learning but too low in order for serious work. Two higher-order pairs dominate practice, and you will meet them under these names in every library:
+The Heun-Euler pair is ideal for learning but too low in order for serious work. Two higher-order pairs dominate practice, and you will meet them under these names in every library:
 
-- **Bogacki–Shampine 3(2)**: a third-order method with an embedded second-order estimate. It has four stages, but the last slope of an accepted step is the slope at the new point, which is exactly the first slope of the next step. Reusing it ("first same as last", FSAL) brings the cost to three evaluations per step. It suits moderate tolerances. MATLAB's `ode23` and SciPy's `RK23` are of this kind.
-- **Dormand–Prince 5(4)**: a fifth-order method with a fourth-order estimate and FSAL, about six evaluations per step. It is the default general-purpose choice: MATLAB's `ode45`, SciPy's `RK45` and Boost.Odeint's `runge_kutta_dopri5` use it.
+- **Bogacki-Shampine 3(2)**: a third-order method with an embedded second-order estimate. It has four stages, but the last slope of an accepted step is the slope at the new point, which is exactly the first slope of the next step. Reusing it ("first same as last", FSAL) brings the cost to three evaluations per step. It suits moderate tolerances. MATLAB's `ode23` and SciPy's `RK23` are of this kind.
+- **Dormand-Prince 5(4)**: a fifth-order method with a fourth-order estimate and FSAL, about six evaluations per step. It is the default general-purpose choice: MATLAB's `ode45`, SciPy's `RK45` and Boost.Odeint's `runge_kutta_dopri5` use it.
 
-Both follow exactly the pattern of this lesson: shared stages, an error estimate from the difference, a scaled error, accept or reject, and a step update with exponent $1/(p+1)$ for the lower order $p$ (a cube root for Bogacki–Shampine, a fifth root for Dormand–Prince). Their coefficient tables are published in the original papers listed above and in standard texts.
+Both follow exactly the pattern of this lesson: shared stages, an error estimate from the difference, a scaled error, accept or reject, and a step update with exponent $1/(p+1)$ for the lower order $p$ (a cube root for Bogacki-Shampine, a fifth root for Dormand-Prince). Their coefficient tables are published in the original papers listed above and in standard texts.
 
 ### Use a library for production work
 
 For research code, prefer a tested library over your own integrator:
 
-- **Boost.Odeint** (header-only C++): fixed-step and controlled steppers, Dormand–Prince with dense output, and Rosenbrock methods for stiff systems. It works with `std::vector`, `std::array` and your own state types.
-- **GNU Scientific Library (GSL)**, `gsl_odeiv2`: embedded Runge–Kutta pairs and implicit methods behind a C interface.
+- **Boost.Odeint** (header-only C++): fixed-step and controlled steppers, Dormand-Prince with dense output, and Rosenbrock methods for stiff systems. It works with `std::vector`, `std::array` and your own state types.
+- **GNU Scientific Library (GSL)**, `gsl_odeiv2`: embedded Runge-Kutta pairs and implicit methods behind a C interface.
 - **SUNDIALS** (CVODE, ARKODE, IDA): the reference for large and stiff systems, with variable-order implicit methods and sensitivity analysis.
 
 Having written a controller yourself, you know what their options mean: absolute and relative tolerances, an initial step, a minimum step, a maximum number of steps, and what an error such as "step size too small" is telling you.

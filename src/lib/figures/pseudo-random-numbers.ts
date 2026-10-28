@@ -24,7 +24,7 @@ export const figures: Record<string, () => FigureSpec> = {
     const extinctSmall = small.filter((p) => p[p.length - 1][1] === 0).length;
     return {
       title: 'Chance scatters a population of 10 far from the deterministic curve but barely moves a population of 1000',
-      subtitle: `Linear birth–death process, b = ${b} and d = ${d} per individual per year; ${runs} runs from N₀ = 10 and ${runs} from N₀ = 1000, each divided by N₀`,
+      subtitle: `Linear birth-death process, b = ${b} and d = ${d} per individual per year; ${runs} runs from N₀ = 10 and ${runs} from N₀ = 1000, each divided by N₀`,
       xLabel: 'Time (years)',
       yUnit: 'Relative population size N(t)/N₀',
       series: [
@@ -33,7 +33,7 @@ export const figures: Record<string, () => FigureSpec> = {
         { id: 'det', label: 'Deterministic model', points: times.map((t) => [t, birthDeathMean(1, t, b, d)] as [number, number]), family: 'teal' as const, dashed: true },
       ],
       y: { includeZero: true },
-      footer: `Computed with gillespie and birthDeath (src/lib/simulations/gillespie.ts), seeds 101–106 and 201–206. ${extinctSmall} of the ${runs} small populations are extinct by year ${T}. Twelve runs show the spread, not its exact size.`,
+      footer: `Computed with gillespie and birthDeath (src/lib/simulations/gillespie.ts), seeds 101 to 106 and 201 to 206. ${extinctSmall} of the ${runs} small populations are extinct by year ${T}. Twelve runs show the spread, not its exact size.`,
     };
   },
 };

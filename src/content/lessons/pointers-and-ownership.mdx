@@ -189,7 +189,7 @@ std::cout << mother.massGrams() << '\\n';`}
 
 ### Prefer values in containers
 
-The default representation of a population is a `std::vector<Individual>`: the individuals are stored by value, contiguously, and the vector owns them. Copying the population, saving it, sorting it or destroying it all work without any thought about ownership. Removing dead individuals is a single `erase`–`remove_if` (see <Concept id="standard-algorithms" />). Most models never need anything else.
+The default representation of a population is a `std::vector<Individual>`: the individuals are stored by value, contiguously, and the vector owns them. Copying the population, saving it, sorting it or destroying it all work without any thought about ownership. Removing dead individuals is a single erase-remove step, `erase` applied to the result of `remove_if` (see <Concept id="standard-algorithms" />). Most models never need anything else.
 
 ### Relations between individuals: indices, not pointers
 

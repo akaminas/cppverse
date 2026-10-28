@@ -32,7 +32,7 @@ To simulate chance, a program needs random numbers. Computers produce them with 
 
 ## Why it matters
 
-Chance is not a nuisance added to biology; in many systems it decides the outcome.
+In many biological systems, chance decides the outcome.
 
 - **Demographic stochasticity.** In a population of ten, whether three or five individuals die this year changes its future. In a population of ten thousand, individual fates average out.
 - **Genetic drift.** Which individuals happen to reproduce changes allele frequencies, fastest in small populations, even when no allele is favoured.
@@ -104,7 +104,7 @@ Do not use it for modelling, for four reasons.
 
 1. **Unknown quality.** The standard does not say which algorithm `rand()` uses. Some implementations are poor, and the same seed gives different sequences on different platforms, so results are not portable.
 2. **A small range.** `rand()` returns an integer from 0 to `RAND_MAX` inclusive, and `RAND_MAX` may be as small as 32 767. On Windows it is exactly that: only 32 768 distinct values, too coarse for small probabilities such as a mutation rate of $10^{-5}$.
-3. **Modulo bias.** `rand() % n` maps the 32 768 raw values onto $n$ outcomes. Unless $n$ divides 32 768, some outcomes receive one raw value more than others. With $n = 6$ the bias is small: $32\,768 = 6 \times 5461 + 2$, so outcomes 0 and 1 occur with probability $5462/32\,768$ and the other four with $5461/32\,768$. With $n = 20\,000$ it is gross: each value from 0 to 12 767 can be produced by two raw values ($r$ and $r + 20\,000$), each value from 12 768 to 19 999 by only one, so the low values are **twice** as likely.
+3. **Modulo bias.** `rand() % n` maps the 32 768 raw values onto $n$ outcomes. Unless $n$ divides 32 768, some outcomes receive one raw value more than others. With $n = 6$ the bias is small: $32\,768 = 6 \times 5461 + 2$, so outcomes 0 and 1 occur with probability $5462/32\,768$ and the other four with $5461/32\,768$. With $n = 20\,000$ it is gross: each value from 0 to 12 767 can be produced by two raw values ($r$ and $r + 20\,000$), each value from 12 768 to 19 999 by only one, so the low values are twice as likely.
 4. **Hidden shared state.** There is one `rand()` sequence for the whole program. Any library function that calls `rand()` silently shifts your sequence, and the function is not safe to call from several threads at once.
 
 The `<random>` library has none of these problems.
@@ -166,7 +166,7 @@ The manual gives the range of `rand()` as $[0, \text{RAND\_MAX})$. The C standar
   answer={1}
   feedback={[
     "That would need 32 768 to be a multiple of 20 000. It is not, so the outcomes cannot all receive the same number of raw values.",
-    "Raw values 0–19 999 map to themselves and raw values 20 000–32 767 map to 0–12 767, so the low cells have two chances each and the high cells only one.",
+    "Raw values 0 to 19 999 map to themselves and raw values 20 000 to 32 767 map to 0 to 12 767, so the low cells have two chances each and the high cells only one.",
     "They are chosen, but only from one raw value each, so half as often as the low cells.",
     "The expression compiles; the bias is a silent statistical error, which makes it more dangerous than a compiler error.",
   ]}

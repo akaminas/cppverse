@@ -11,7 +11,7 @@ export const mathcode: Record<string, MathCode> = {
         id: 'recruit',
         label: 'recruitment',
         explain:
-          'New juveniles produced by the adults of generation t: b per adult at low density, reduced as adults become crowded. At A = M each adult produces b/2. This is the Beverton–Holt form, applied to the adults.',
+          'New juveniles produced by the adults of generation t: b per adult at low density, reduced as adults become crowded. At A = M each adult produces b/2. This is the Beverton-Holt form, applied to the adults.',
         lines: [38],
       },
       {

@@ -27,7 +27,7 @@ export const capstones: Record<string, Capstone> = {
     context:
       'A fish stock with compensatory density dependence is harvested once a year. Managers choose either a fixed quota (a constant number of fish) or a fixed effort (a constant fraction of the stock). You will build a complete procedural simulation and compare the two policies.',
     model: [
-      'Reproduction follows a Beverton–Holt recurrence; the harvest is removed after reproduction.',
+      'Reproduction follows a Beverton-Holt recurrence; the harvest is removed after reproduction.',
       'A fixed quota removes min(Q, N) fish; a fixed effort removes a fraction E of the stock.',
       'The stock is declared collapsed when it falls below one fish.',
     ],
@@ -40,8 +40,8 @@ export const capstones: Record<string, Capstone> = {
       { title: 'Policy comparison', text: 'For a range of quotas and of efforts, record the long-run catch and whether the stock collapses.' },
     ],
     verification: [
-      'With Q = 0 (or E = 0) the trajectory equals the unharvested Beverton–Holt model, which has a closed-form solution.',
-      'For fixed effort, the harvested model is again Beverton–Holt with a reduced R₀; check that your equilibrium matches (R₀(1 − E) − 1) M.',
+      'With Q = 0 (or E = 0) the trajectory equals the unharvested Beverton-Holt model, which has a closed-form solution.',
+      'For fixed effort, the harvested model is again Beverton-Holt with a reduced R₀; check that your equilibrium matches (R₀(1 − E) − 1) M.',
       'Catch never exceeds the stock available, and the stock is never negative.',
     ],
     deliverables: ['The C++ program and its parameter file', 'One CSV per policy setting', 'A one-page interpretation with a figure of long-run catch against quota and effort'],
@@ -62,7 +62,7 @@ export const capstones: Record<string, Capstone> = {
     equations: ['\\mathbf n_{t+1} = A\\,\\mathbf n_t', 'A\\mathbf w = \\lambda \\mathbf w'],
     milestones: [
       { title: 'Life-cycle graph', text: 'Draw the life cycle and derive each matrix entry from stage survival and the probability of growing out of the stage.' },
-      { title: 'Projection and λ', text: 'Implement matrix–vector multiplication and power iteration with a convergence test and an iteration cap.' },
+      { title: 'Projection and λ', text: 'Implement matrix-vector multiplication and power iteration with a convergence test and an iteration cap.' },
       { title: 'Interventions', text: 'For each intervention and a range of improvement factors, compute λ and the stable stage structure.' },
       { title: 'Sensitivity', text: 'Compute numerical elasticities of λ to each matrix entry and compare them with the interventions.' },
     ],
@@ -86,7 +86,7 @@ export const capstones: Record<string, Capstone> = {
     milestones: [
       { title: 'Right-hand side', text: 'Implement the model as a function of (t, state) independent of any integrator.' },
       { title: 'Integrators', text: 'Implement Euler and RK4 with a common stepper interface; integrate to a fixed end time.' },
-      { title: 'Convergence', text: 'Without an exact solution, estimate the error of each method by comparing with a run at a much smaller step; plot error against step size on log–log axes.' },
+      { title: 'Convergence', text: 'Without an exact solution, estimate the error of each method by comparing with a run at a much smaller step; plot error against step size on log-log axes.' },
       { title: 'Experiment', text: 'Vary β over a range and record the peak viral load and its timing.' },
     ],
     verification: [
@@ -116,7 +116,7 @@ export const capstones: Record<string, Capstone> = {
       { title: 'Deterministic comparison', text: 'Compare the replicate mean with the logistic solution and explain the difference.' },
     ],
     verification: [
-      'With κ = 0 the process is a linear birth–death process: compare the extinction fraction with Kendall’s exact formula.',
+      'With κ = 0 the process is a linear birth-death process: compare the extinction fraction with Kendall’s exact formula.',
       'Mean waiting times match 1/a₀ in a test with fixed state.',
       'Results are reproducible from the recorded seeds.',
     ],
@@ -169,7 +169,7 @@ export const capstones: Record<string, Capstone> = {
       { title: 'Conclusion', text: 'Write a conclusion that states what is supported, under which assumptions, and what cannot be inferred.' },
     ],
     verification: ['Mean-field agreement in the global-interaction limit', 'Reproducibility from recorded seeds and version', 'Monte Carlo uncertainty small relative to the effects reported'],
-    deliverables: ['Code under version control with a tagged release', 'Raw output and an analysis script', 'Two to four figures', 'A two-page report in the structure question–model–methods–results–limitations'],
+    deliverables: ['Code under version control with a tagged release', 'Raw output and an analysis script', 'Two to four figures', 'A two-page report structured as question, model, methods, results and limitations'],
     extensions: ['Add environmental heterogeneity among patches.', 'Compare with a pair-approximation model of the same system.'],
   },
 };

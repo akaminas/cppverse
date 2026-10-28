@@ -39,8 +39,8 @@ The C++ function follows the two lines of the definition:
 
 <Example file="foundations/recursion_descendants.cpp" mark="10-14" />
 
-- **Base case** (lines 10–12): with no generations there are no descendants. The function returns at once, without calling itself.
-- **Recursive case** (lines 13–14): the function calls itself with `generations - 1`, a strictly smaller problem, and builds its own answer from the result.
+- **Base case** (lines 10 to 12): with no generations there are no descendants. The function returns at once, without calling itself.
+- **Recursive case** (lines 13 to 14): the function calls itself with `generations - 1`, a strictly smaller problem, and builds its own answer from the result.
 
 Every recursive function needs both parts, and every chain of calls must reach a base case. Here each call reduces `generations` by one, so starting from any non-negative value the chain ends at 0.
 
@@ -146,7 +146,7 @@ If a chain of calls never reaches a base case, each call adds another frame unti
 ## In biological modelling
 
 - **Trees.** Phylogenies, genealogies and cell lineages are trees. Counting tips, computing the total branch length, finding the depth or visiting every node in order are recursive functions with the leaf as the base case. Reading tree files in the Newick format, in which clades are nested in parentheses, is recursive as well.
-- **Branching processes.** Expected numbers of descendants, extinction probabilities over a fixed number of generations and the size distribution of a lineage satisfy recursions such as $D(n) = k\,(1 + D(n-1))$. Often the recursion is best used to *derive* a closed form or a loop, and the recursive code serves as a check.
+- **Branching processes.** Expected numbers of descendants, extinction probabilities over a fixed number of generations and the size distribution of a lineage satisfy recursions such as $D(n) = k\,(1 + D(n-1))$. Often the recursion is best used to *derive* a closed form or a loop, which the recursive code then checks.
 - **Divide and conquer.** Some algorithms split a problem into halves, solve each recursively and combine the results, for example to sort data or search a sorted table (see <Concept id="algorithm-design" />).
 - **Not for time steps.** A simulation's time loop should be a loop. Writing $N_t = \lambda N_{t-1}$ as a recursive function is correct, but costly, and over long runs it overflows the stack.
 

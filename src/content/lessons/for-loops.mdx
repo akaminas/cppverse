@@ -35,7 +35,7 @@ This works for three generations, but not for three hundred. The program grows w
 
 The update `N = lambda * N;` appears once, inside the loop. The loop variable `t` runs through 1, 2, 3 and 4, so the body runs four times, and each pass turns $N_t$ into $N_{t+1}$. To simulate 400 generations, change one number.
 
-Notice what the loop does *not* do: it does not store the earlier values. `N` always holds the current state, and each pass overwrites it. If you need the whole trajectory afterwards, store it in a <Concept id="std-vector" /> or write each state to a file as it is computed.
+The loop does not store the earlier values: `N` always holds the current state, and each pass overwrites it. If you need the whole trajectory afterwards, store it in a <Concept id="std-vector" /> or write each state to a file as it is computed.
 
 ### The parts of a for loop
 

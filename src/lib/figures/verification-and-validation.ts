@@ -48,7 +48,7 @@ export const figures: Record<string, () => FigureSpec> = {
     const worst = Math.max(...z.map(Math.abs));
     return {
       title: 'Simulated extinction fractions stay within sampling error of Kendall’s exact curve',
-      subtitle: `Linear birth–death process, b = ${b}, d = ${d} per year, N₀ = ${N0}; ${n} Gillespie replicates. Band: exact value ± 1.96 binomial standard errors`,
+      subtitle: `Linear birth-death process, b = ${b}, d = ${d} per year, N₀ = ${N0}; ${n} Gillespie replicates. Band: exact value ± 1.96 binomial standard errors`,
       xLabel: 'Time (years)',
       yUnit: 'Probability that the population is extinct',
       bands: [
@@ -68,7 +68,7 @@ export const figures: Record<string, () => FigureSpec> = {
       ],
       references: [{ axis: 'y', value: Math.pow(d / b, N0), label: `eventual extinction, (d/b)⁵ = ${Math.pow(d / b, N0).toFixed(3)}` }],
       y: { domain: [0, 0.4] },
-      footer: `Computed with gillespie, summarise and birthDeathExtinction (src/lib/simulations/gillespie.ts), seeds 20001–${20000 + n}. Largest |z| over the ${times.length - 1} time points: ${worst.toFixed(2)}.`,
+      footer: `Computed with gillespie, summarise and birthDeathExtinction (src/lib/simulations/gillespie.ts), seeds 20001 to ${20000 + n}. Largest |z| over the ${times.length - 1} time points: ${worst.toFixed(2)}.`,
     };
   },
 };

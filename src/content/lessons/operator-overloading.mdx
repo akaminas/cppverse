@@ -25,7 +25,7 @@ You have relied on this since your first program. `std::cout << "N = "` calls an
 
 ## Why it matters
 
-Models are written in mathematics, and the closer the code stays to the mathematics, the easier it is to check. Suppose the state of a predator–prey model is a small struct with two densities. Without operators, one step of a numerical integrator is a thicket of component-wise assignments, each a chance to swap a prey for a predator. With `+`, `+=` and scalar `*` defined for the state, the step is one line that can be compared with the equation symbol for symbol.
+Models are written in mathematics, and the closer the code stays to the mathematics, the easier it is to check. Suppose the state of a predator-prey model is a small struct with two densities. Without operators, one step of a numerical integrator is a thicket of component-wise assignments, each a chance to swap a prey for a predator. With `+`, `+=` and scalar `*` defined for the state, the step is one line that can be compared with the equation symbol for symbol.
 
 The output operator is the other everyday use. Once `operator<<` is defined for a state, the same one line prints it to the console, to a <Concept id="file-streams">file</Concept> or into a <Concept id="string-streams">string stream</Concept>.
 
@@ -131,7 +131,7 @@ Overloading gives an existing operator a new meaning for new types. It cannot ch
 
 ### Overload only with the conventional meaning
 
-An operator is a promise about meaning. Readers assume that `+` adds without side effects, that `a == b` and `b == a` agree, and that `<<` writes to a stream. Overload an operator only when the operation really behaves like the familiar one. If a pairwise interaction between two individuals changes both of them and returns nothing, `a * b` hides all of that behind a symbol; a named function, `interact(a, b)`, says what happens. The rule of thumb: if you have to explain what the operator means, use a function.
+Readers bring assumptions to an operator: that `+` adds without side effects, that `a == b` and `b == a` agree, and that `<<` writes to a stream. Overload an operator only when the operation really behaves like the familiar one. If a pairwise interaction between two individuals changes both of them and returns nothing, `a * b` hides all of that behind a symbol; a named function, `interact(a, b)`, says what happens. The rule of thumb: if you have to explain what the operator means, use a function.
 
 <Callout kind="modern" title="Comparisons in C++20">
 Since C++20 <Std v="c++20" /> the compiler can write comparisons for you: declaring `bool operator==(const State&) const = default;` inside the struct compares the members one by one, and `!=` follows automatically. A defaulted three-way comparison, `auto operator<=>(const State&) const = default;`, generates `<`, `<=`, `>` and `>=` as well. With C++17, write `operator==` by hand.
@@ -139,7 +139,7 @@ Since C++20 <Std v="c++20" /> the compiler can write comparisons for you: declar
 
 ## A minimal example
 
-The Lotka–Volterra model describes prey $N$ and predators $P$ (both per km²):
+The Lotka-Volterra model describes prey $N$ and predators $P$ (both per km²):
 
 $$
 \frac{dN}{dt} = rN - aNP, \qquad \frac{dP}{dt} = e\,aNP - mP,
@@ -221,7 +221,7 @@ Select a term of the equation to see which lines compute it, including the opera
 
 Small state types with arithmetic are the main use:
 
-- **State vectors for ODE integrators.** Euler, Heun and Runge–Kutta steps are linear combinations of states; with `+`, `+=` and scalar `*`, one generic step function serves every model whose state supports them (see <Concept id="odes" /> and <Concept id="templates" />).
+- **State vectors for ODE integrators.** Euler, Heun and Runge-Kutta steps are linear combinations of states; with `+`, `+=` and scalar `*`, one generic step function serves every model whose state supports them (see <Concept id="odes" /> and <Concept id="templates" />).
 - **Frequencies and compositions**, such as genotype or allele frequencies, which are added, scaled and normalised.
 - **Positions and displacements** in spatial models: a `Vec2` with `+`, `-` and scalar `*` makes movement rules readable.
 
@@ -248,7 +248,7 @@ Operator syntax creates temporaries: `s + h * k1` builds two intermediate `State
 1. Add `operator-=` and binary `operator-` to `State`, following the canonical pattern, and use them to print the difference between the state at $t = 10$ and the initial state.
 2. Add `State operator*(const State& s, double k)` so that `s * h` also works. Implement it by calling the existing `operator*(double, const State&)`, so that the arithmetic is written only once.
 3. Write an output operator for the `Tree` class from <Concept id="access-control" /> that prints its identifier and diameter. It should use only the public const getters, so it need not be a friend. Check that it works with `std::cout` and with a `std::ostringstream`.
-4. Replace Heun's step in the example by Euler's method, `s += h * rates(s, p);`, and compare the state at $t = 10$. Why does a predator–prey cycle drift outwards faster with Euler?
+4. Replace Heun's step in the example by Euler's method, `s += h * rates(s, p);`, and compare the state at $t = 10$. Why does a predator-prey cycle drift outwards faster with Euler?
 
 <details>
 <summary>Hints and worked answers</summary>

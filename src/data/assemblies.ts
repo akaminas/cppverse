@@ -37,7 +37,7 @@ export const assemblies: Assembly[] = [
     id: 'discrete-time',
     destination: 'algorithms',
     title: 'Assembling a discrete-time population model',
-    summary: 'From a biological hypothesis to a verified trajectory of the Beverton–Holt model.',
+    summary: 'From a biological hypothesis to a verified trajectory of the Beverton-Holt model.',
     file: 'algorithms/beverton_holt.cpp',
     components: [
       {
@@ -127,7 +127,7 @@ export const assemblies: Assembly[] = [
         title: 'Verification',
         role: 'Checks that the code implements the model.',
         tex: 'N_t = \\frac{K N_0}{N_0 + (K - N_0) R_0^{-t}}, \\qquad K = (R_0 - 1)M',
-        explain: 'The Beverton–Holt model has a closed-form solution. The simulated trajectory must match it to rounding error; this site checks that automatically for both the C++ and the browser implementation.',
+        explain: 'The Beverton-Holt model has a closed-form solution. The simulated trajectory must match it to rounding error; this site checks that automatically for both the C++ and the browser implementation.',
         lines: [],
         prerequisites: ['verification'],
         mistakes: ['Trusting a smooth curve as evidence of correctness.'],
@@ -258,7 +258,7 @@ export const assemblies: Assembly[] = [
       },
       {
         id: 'rk4',
-        title: 'Runge–Kutta step',
+        title: 'Runge-Kutta step',
         role: 'Four slopes per step for much higher accuracy at the same interface.',
         tex: 'x_{n+1} = x_n + \\tfrac{h}{6}(k_1 + 2k_2 + 2k_3 + k_4)',
         explain: 'k₁ at the start, k₂ and k₃ at the midpoint, k₄ at the end of the step.',

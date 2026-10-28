@@ -32,7 +32,7 @@ Most of the work happens before any code is typed: deciding what the model assum
 
 ## Why it matters
 
-A computer does not guess. Consider an instruction that sounds clear in a methods section: *"each year, individuals reproduce and then a fraction die over winter"*. To program it you must decide whether newborns can die in their first winter, whether the census is taken before or after mortality, and what happens to a fractional individual. A verbal model can leave these questions open; a program cannot. Instructions must be **accurate**, **unambiguous** and **complete**, and they must follow the language's rules of grammar (syntax) and meaning (semantics).
+A computer does not guess. Consider an instruction that sounds clear in a methods section: *"each year, individuals reproduce and then a fraction die over winter"*. To program it you must decide whether newborns can die in their first winter, whether the census is taken before or after mortality, and what happens to a fractional individual. A verbal model can leave these questions open; a program cannot. Instructions must be accurate, unambiguous and complete, and they must follow the language's rules of grammar (syntax) and meaning (semantics).
 
 That strictness is a scientific benefit. Writing the program forces every assumption into the open, where it can be read, questioned and changed. The order of updates is one example: <Concept id="update-order">the order in which state variables are updated</Concept> can change the outcome of a model completely, and the code is where that order is decided.
 
@@ -61,7 +61,7 @@ Step through the program. At each step, the highlighted line has just been carri
 <Check
   id="levels"
   kind="model"
-  question="A simulation of a predator–prey system settles at the wrong equilibrium. The equations are correct and the code does exactly what the equations say, but the time step used to approximate the continuous dynamics is far too large. Where is the problem?"
+  question="A simulation of a predator-prey system settles at the wrong equilibrium. The equations are correct and the code does exactly what the equations say, but the time step used to approximate the continuous dynamics is far too large. Where is the problem?"
   options={["In the model", "In the algorithm", "In the implementation", "In the compiler"]}
   answer={1}
   feedback={[
@@ -107,7 +107,7 @@ Step through the program. At each step, the highlighted line has just been carri
 
 ## In biological modelling
 
-Almost every simulation on this site has the shape of the small program above: **parameters** that stay fixed during a run, a **state** that describes the system at one moment, an **update rule** that turns one state into the next, and **output** that records the trajectory (see <Concept id="state-representation" /> and <Concept id="update-rule" />). Learning C++ is learning how to express each of these clearly.
+Almost every simulation on this site has the shape of the small program above: parameters that stay fixed during a run, a state that describes the system at one moment, an update rule that turns one state into the next, and output that records the trajectory (see <Concept id="state-representation" /> and <Concept id="update-rule" />). Learning C++ is learning how to express each of these clearly.
 
 Treat a program as a scientific instrument. Like a balance or a sequencer, it should be checked against known cases before it is trusted: does it reproduce the closed-form solution $N_t = \lambda^t N_0$, does a population with $\lambda = 1$ stay constant? <Concept id="verification" /> develops this idea.
 
@@ -154,7 +154,7 @@ The open questions you had to settle: is "fewer than 100" strict (yes, so the lo
 
 Exercise 2: whether offspring born this spring can die in their first winter; whether the census is taken before breeding, after breeding or after winter; whether the winter mortality fraction is the same for adults and young; how many offspring an adult produces and whether that depends on density; what happens to fractional individuals if the model works with counts.
 
-Exercise 3: repeated multiplication. Each year's update simply uses that year's $\lambda_t$: $N_{t+1} = \lambda_t N_t$. The closed form no longer applies as written; it becomes a product of all the $\lambda_t$, which you would compute by repeated multiplication anyway.
+Exercise 3: repeated multiplication. Each year's update uses that year's $\lambda_t$: $N_{t+1} = \lambda_t N_t$. The closed form no longer applies as written; it becomes a product of all the $\lambda_t$, which you would compute by repeated multiplication anyway.
 </details>
 
 </Practice>

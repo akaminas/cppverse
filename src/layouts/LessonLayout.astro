@@ -100,7 +100,7 @@ const hue = domainPastel(ctx.domain.id);
               {ctx.needs.length ? (
                 <ul class="link-list">
                   {ctx.needs.map((n) => (
-                    <li><a href={n.href}>{n.title}</a>{n.note && <span class="muted"> — {n.note}</span>}</li>
+                    <li><a href={n.href}>{n.title}</a>{n.note && <span class="muted">: {n.note}</span>}</li>
                   ))}
                 </ul>
               ) : <p class="muted">Nothing: this is a starting point.</p>}
@@ -112,7 +112,7 @@ const hue = domainPastel(ctx.domain.id);
                   {ctx.leads.map((n) => (
                     <li>
                       <a href={n.href}>{n.title}</a>{kindNote(n.kind) && <span class="tag">{kindNote(n.kind)}</span>}
-                      {n.note && <span class="muted"> — {n.note}</span>}
+                      {n.note && <span class="muted">: {n.note}</span>}
                     </li>
                   ))}
                 </ul>
@@ -123,7 +123,7 @@ const hue = domainPastel(ctx.domain.id);
             <>
               <h3>Related ideas</h3>
               <ul class="link-list inline-list">
-                {ctx.related.map((n) => <li><a href={n.href}>{n.title}</a>{n.note && <span class="muted"> — {n.note}</span>}</li>)}
+                {ctx.related.map((n) => <li><a href={n.href}>{n.title}</a>{n.note && <span class="muted">: {n.note}</span>}</li>)}
               </ul>
             </>
           )}

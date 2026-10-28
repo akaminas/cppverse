@@ -68,7 +68,7 @@ Printing a matrix follows the same pattern: print the elements of a row separate
 
 ## A minimal example
 
-A matrix population model projects the stage densities from one year to the next by a matrix–vector product, $\mathbf{n}(t+1) = \mathbf{A}\,\mathbf{n}(t)$. Element *i* of the new vector is a sum over all stages *j* this year:
+A matrix population model projects the stage densities from one year to the next by a matrix-vector product, $\mathbf{n}(t+1) = \mathbf{A}\,\mathbf{n}(t)$. Element *i* of the new vector is a sum over all stages *j* this year:
 
 $$
 n_i(t+1) = \sum_{j=1}^{3} a_{ij}\, n_j(t)
@@ -125,7 +125,7 @@ for (std::size_t j = 0; j < g[0].size(); ++j) {
 <Check
   id="product-order"
   kind="debug"
-  question="A student computes the matrix–vector product with `n[i] += A[i][j] * n[j];` directly in the vector `n`, starting each `n[i]` at zero. Why are the results wrong?"
+  question="A student computes the matrix-vector product with `n[i] += A[i][j] * n[j];` directly in the vector `n`, starting each `n[i]` at zero. Why are the results wrong?"
   options={[
     "Because += is not allowed on vector elements",
     "Because setting n[i] to zero and then adding to it destroys values that later rows still need",
@@ -143,7 +143,7 @@ for (std::size_t j = 0; j < g[0].size(); ++j) {
 
 ## In biological modelling
 
-- **Projection matrices.** A Leslie (age-classified) or Lefkovitch (stage-classified) matrix is a small, square vector of vectors. The matrix–vector product above is the whole of one time step; repeated products give the projection, and the long-term growth rate is the dominant eigenvalue of the matrix (<Concept id="power-iteration" />).
+- **Projection matrices.** A Leslie (age-classified) or Lefkovitch (stage-classified) matrix is a small, square vector of vectors. The matrix-vector product above is the whole of one time step; repeated products give the projection, and the long-term growth rate is the dominant eigenvalue of the matrix (<Concept id="power-iteration" />).
 - **Landscapes.** Occupancy, habitat quality or density on a grid of patches. Dispersal to neighbouring cells uses indices `[i - 1][j]`, `[i + 1][j]` and so on, which must be checked at the edges of the grid: row −1 does not exist (see <Concept id="indexing-errors" />).
 - **Trajectories of structured states.** A vector of stage vectors, one per year, `std::vector<std::vector<double>> history;` with `history.push_back(n);` after every step, is a matrix whose rows are years and whose columns are stages: exactly the table you will want to write to a file.
 
@@ -154,7 +154,7 @@ A name for the type makes such code easier to read. `using Matrix = std::vector<
 - **Swapping rows and columns.** Decide once whether `[i][j]` means (row, column) or (column, row), write it in a comment next to the declaration, and match the mathematics: in a projection matrix, $a_{ij}$ is the contribution of stage *j* to stage *i*.
 - **Using the row count for columns.** `for (j = 0; j < grid.size(); ++j)` runs over as many columns as there are rows. Use `grid[i].size()` for the length of a row.
 - **Indexing rows that were never created.** `std::vector<std::vector<int>> g(3);` has three *empty* rows, so `g[0][0]` is out of range. Give each row a size, as in the fill form above.
-- **Updating a state in place** during a matrix–vector product, instead of writing into a new vector.
+- **Updating a state in place** during a matrix-vector product, instead of writing into a new vector.
 - **Writing `> >`.** Older code (and the course manual) writes `std::vector<std::vector<int> >` with a space; since C++11 the space is unnecessary.
 
 ## Practice

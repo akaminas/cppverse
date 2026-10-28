@@ -55,7 +55,7 @@ A single program usually serves both, so you must control formatting deliberatel
 | `std::skipws` / `std::noskipws` | (input) skip leading whitespace before `>>` | until changed |
 | `std::flush`, `std::endl` | act immediately: flush; newline and flush | — |
 
-The single exception to stickiness is the one you would most like to stick: `setw` is reset after every field, so a table needs it before each value.
+The one exception to stickiness is `setw`: it is reset after every field, so a table needs it before each value.
 
 <Callout kind="manual" title="What setprecision counts">
 The course manual describes `setprecision` as the number of digits after the decimal point. That is its meaning only in fixed and scientific notation; in the default notation it counts significant digits, as the next paragraph explains.
@@ -205,7 +205,7 @@ std::cout << 7.0 << '\\n';`}
 
 <Practice>
 
-1. Print the Beverton–Holt trajectory with R0 = 2.2, M = 40 and N0 = 5 as a console table with three right-aligned columns: generation (width 4), N with three decimals (width 10), and the change from the previous generation with an explicit sign (width 10, `+` for growth).
+1. Print the Beverton-Holt trajectory with R0 = 2.2, M = 40 and N0 = 5 as a console table with three right-aligned columns: generation (width 4), N with three decimals (width 10), and the change from the previous generation with an explicit sign (width 10, `+` for growth).
 2. Write a function `printRow(std::ostream& out, const std::string& label, double value)` that prints `label` left-aligned in 12 characters and `value` in scientific notation with three decimals, and leaves the stream's settings as it found them. Test it by printing a number with default formatting before and after.
 3. Write the Kleiber table to a file with a semicolon separator chosen by a single constant. Open it in a spreadsheet with the regional settings of your computer and check that the columns are recognised.
 

@@ -87,7 +87,7 @@ private:
 };
 ```
 
-Two rules to remember. First, members are initialised in the order in which the class *declares* them, whatever order you write in the list. If one member's initial value depends on another, declare them in that order; GCC and Clang warn about a mismatched list with `-Wall` (`-Wreorder`). Second, an empty body `{}` is perfectly normal: often the initialiser list does all the work.
+Two rules apply. First, members are initialised in the order in which the class *declares* them, whatever order you write in the list. If one member's initial value depends on another, declare them in that order; GCC and Clang warn about a mismatched list with `-Wall` (`-Wreorder`). Second, an empty body `{}` is perfectly normal: often the initialiser list does all the work.
 
 <Callout kind="pitfall" title="const data members block assignment">
 A `const` member makes its whole object impossible to assign: `a = b;` no longer compiles. That sounds harmless until you store such objects in a `std::vector` and call `erase`, `std::sort` or `std::remove_if`, all of which move elements around by assignment. To protect a value that never changes, it is usually better to make the member private and simply not provide a function that changes it.
@@ -133,7 +133,7 @@ Ask yourself whether a default object makes biological sense before you add one.
 
 ### `explicit`
 
-A constructor that can be called with one argument also acts as an implicit conversion. Without `explicit`, any function that takes an `Individual` would silently accept a `double` and build a newborn from it, even if the number was really a litter mass or a temperature. Mark single-argument constructors `explicit` unless the conversion is genuinely natural:
+A constructor that can be called with one argument also defines an implicit conversion. Without `explicit`, any function that takes an `Individual` would silently accept a `double` and build a newborn from it, even if the number was really a litter mass or a temperature. Mark single-argument constructors `explicit` unless the conversion is genuinely natural:
 
 <Example file="architecture/constructors_explicit_error.cpp" mark="11,25" />
 
@@ -277,7 +277,7 @@ Validation in a constructor costs almost nothing compared with the rest of a sim
 - **Assigning a `const` or reference member in the body.** Use the initialiser list.
 - **A list order that disagrees with the declaration order.** Initialisation follows the declarations; heed `-Wreorder`.
 - **Calling another constructor from the body.** Writing `Individual(0, Stage::juvenile, mass);` *inside* a constructor body does not delegate: it creates and immediately destroys a temporary object, and leaves `*this` untouched. Delegation happens only in the initialiser list.
-- **Losing the default constructor by surprise.** Declaring any constructor removes the implicit default one. Add `= default` if a default object makes sense; otherwise enjoy the compile error.
+- **Losing the default constructor by surprise.** Declaring any constructor removes the implicit default one. Add `= default` if a default object makes sense; otherwise the compile error is doing its job.
 - **The most vexing parse.** `Individual ind();` declares a *function* called `ind` that returns an `Individual`. Use `Individual ind;` or `Individual ind{};`.
 - **Forgetting `explicit`** on single-argument constructors, so numbers turn into objects without anyone noticing.
 - **Writing copy functions or a destructor that the compiler would have generated correctly.** Hand-written versions must be kept in step with every new member; generated ones never forget.

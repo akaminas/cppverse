@@ -8,7 +8,7 @@ minutes: 35
 objectives:
   - Read command-line arguments through int main(int argc, char* argv[])
   - Convert arguments to numbers, keep defaults for missing ones and reject malformed ones
-  - Parse a key–value parameter file into a struct, treating unknown, duplicate and missing keys as errors
+  - Parse a key-value parameter file into a struct, treating unknown, duplicate and missing keys as errors
   - Explain why parameters belong outside the source code
 references:
   - "cppreference.com: main function; std::stoi, std::stod; std::boolalpha"
@@ -85,7 +85,7 @@ write_trajectory true
 output_file      bh_param_run.csv
 ```
 
-Reading it takes the stream tools from <Concept id="file-streams" />: read a key with `>>`, then read the value into the struct member that the key names. The essential part is what the reader refuses.
+Reading it takes the stream tools from <Concept id="file-streams" />: read a key with `>>`, then read the value into the struct member that the key names. The reader's main job is to refuse bad input.
 
 <Example file="io/param_file_bh.cpp" mark="40-59" />
 

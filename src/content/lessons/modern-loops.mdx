@@ -27,7 +27,7 @@ None of them changes what a program can do. All three remove noise, so that what
 
 ## Why it matters
 
-Model code combines containers: a map from site codes to vectors of counts, a vector of (time, state) pairs, a list of individuals. Their full type names quickly become longer than the logic around them, and a loop over one by iterator spells the type three times. Long names are not just tiresome; they hide mistakes. The most common is copying every element of a large container on each pass through a loop, or silently modifying a copy and then wondering why the population never changed. The loop-variable rules in this lesson make those choices visible.
+Model code combines containers: a map from site codes to vectors of counts, a vector of (time, state) pairs, a list of individuals. Their full type names quickly become longer than the logic around them, and a loop over one by iterator spells the type three times. Long names also hide mistakes. The most common is copying every element of a large container on each pass through a loop, or silently modifying a copy and then wondering why the population never changed. The loop-variable rules in this lesson make those choices visible.
 
 ## How it works in C++
 
@@ -64,7 +64,7 @@ using SiteIter = std::map<std::string, int>::const_iterator;
 
 Prefer `using`: it reads left to right like an assignment ("Trajectory is a vector of double"), and it also works for templates, which `typedef` cannot do: `template <typename T> using Series = std::vector<std::pair<double, T>>;`.
 
-An alias is not a new type. A `Trajectory` *is* a `std::vector<double>`; you can pass one where the other is expected. Its value is documentation: `Trajectory simulate(const Parameters& p)` says what the function returns in the language of the model.
+An alias is not a new type. A `Trajectory` *is* a `std::vector<double>`; you can pass one where the other is expected. Its value is documentation: `Trajectory simulate(const Parameters& p)` says what the function returns in the model's own terms.
 
 ### Range-for: copy, reference or const reference
 
@@ -160,7 +160,7 @@ std::cout << total << '\\n';`}
 
 ## In biological modelling
 
-- **Name the model's types.** `using State = std::vector<double>;`, `using Trajectory = std::vector<State>;` and `using ParameterSet = std::map<std::string, double>;` let function signatures speak the language of the model: `Trajectory run(const ParameterSet& p, State start, int steps)`.
+- **Name the model's types.** `using State = std::vector<double>;`, `using Trajectory = std::vector<State>;` and `using ParameterSet = std::map<std::string, double>;` let function signatures describe the model: `Trajectory run(const ParameterSet& p, State start, int steps)`.
 - **Update individuals by reference.** `for (auto& plant : population) { plant.height += growth(plant); }` changes the population; the same loop without `&` would silently change copies and leave the model unchanged.
 - **Summarise by const reference.** Loops that compute totals, means or counts over individuals, patches or records should use `const auto&`.
 - **Loop over parameter tables** with `for (const auto& [name, value] : parameters)` to print every parameter at the start of a run, so that the output file records exactly which values produced it.

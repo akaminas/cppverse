@@ -20,7 +20,7 @@ references:
 
 ## What it is
 
-C++ is revised every three years. C++20 was the largest revision since C++11, and C++23 added a further set of conveniences. This lesson selects the features that most improve model code, shows each one briefly, and says which compilers support it. Everything here is optional: **the C++17 code used throughout this atlas remains correct, idiomatic and fast**, and nothing in the later lessons requires these features.
+C++ is revised every three years. C++20 was the largest revision since C++11, and C++23 added a further set of conveniences. This lesson selects the features that most improve model code, shows each one briefly, and says which compilers support it. Everything here is optional: the C++17 code used throughout this atlas remains correct, idiomatic and fast, and nothing in the later lessons requires these features.
 
 Features that need a newer standard carry a badge such as <Std v="c++20" /> or <Std v="c++23" />. To use them, compile with `-std=c++20` or `-std=c++23` (GCC, Clang) or `/std:c++20` or `/std:c++latest` (Visual Studio).
 
@@ -80,7 +80,7 @@ auto growth = std::views::iota(std::size_t{1}, N.size())
 for (const double lambda : growth) std::cout << lambda << '\n';
 ```
 
-Views are powerful but have sharp edges: they refer to the data they view, so they must not outlive it; some views, such as `filter`, cannot be iterated through a `const` reference; and compiler errors in long pipelines are hard to read. For a simple loop, a plain range-based `for` (see <Concept id="auto-range-for" />) is often clearer.
+Views are useful but have sharp edges: they refer to the data they view, so they must not outlive it; some views, such as `filter`, cannot be iterated through a `const` reference; and compiler errors in long pipelines are hard to read. For a simple loop, a plain range-based `for` (see <Concept id="auto-range-for" />) is often clearer.
 
 ### `std::format` and `std::print` <Std v="c++20" />
 
@@ -177,7 +177,7 @@ C++20 widened what such functions may do <Std v="c++20" />: they may use `std::v
 
 ### Small conveniences worth knowing
 
-- `std::erase_if(v, predicate)` <Std v="c++20" /> removes matching elements from a vector in one call, replacing the erase–remove idiom.
+- `std::erase_if(v, predicate)` <Std v="c++20" /> removes matching elements from a vector in one call, replacing the erase-remove idiom.
 - `map.contains(key)` <Std v="c++20" /> asks whether a key exists without inserting it, as `operator[]` would.
 - Defaulted comparisons <Std v="c++20" />: `bool operator==(const State&) const = default;` (see <Concept id="operator-overloading" />).
 - `std::views::enumerate` and `std::ranges::to` <Std v="c++23" /> give an index alongside each element, and collect a view into a container.

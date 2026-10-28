@@ -25,7 +25,7 @@ A deterministic model makes one prediction. A stochastic model makes a *distribu
 
 ## Why it matters
 
-A single run is a sample of size one. It tells you that an outcome is *possible*, not how likely it is. Here are 40 runs of the same birth–death model, with $b = 1$ and $d = 0.8$ per individual per year and $N_0 = 5$ individuals:
+A single run is a sample of size one. It tells you that an outcome is *possible*, not how likely it is. Here are 40 runs of the same birth-death model, with $b = 1$ and $d = 0.8$ per individual per year and $N_0 = 5$ individuals:
 
 <Figure id="stochastic-replicates-members" />
 
@@ -35,7 +35,7 @@ Any one of these paths, shown alone, would suggest a different conclusion: stead
 
 ### A replicate loop
 
-A replicate experiment has three parts: run the model many times, record the same quantities at the same times in every run, and summarise across runs. Gillespie events happen at irregular times, so the runs are recorded on a common **time grid**, as in `sir_gillespie.cpp`. The program below does this for the birth–death process.
+A replicate experiment has three parts: run the model many times, record the same quantities at the same times in every run, and summarise across runs. Gillespie events happen at irregular times, so the runs are recorded on a common **time grid**, as in `sir_gillespie.cpp`. The program below does this for the birth-death process.
 
 <Example file="stochastic/birth_death_replicate_summary.cpp" mark="36,56-59,71-74" />
 
@@ -81,7 +81,7 @@ Summaries such as these, and figures of them, are often easier to make in R or P
 
 ## Explore it
 
-The linear birth–death process is one of the few stochastic models with exact results, which makes it the ideal test of a simulator. Kendall (1948) showed that, for $b \ne d$,
+The linear birth-death process is one of the few stochastic models with exact results, which makes it a good test of a simulator. Kendall (1948) showed that, for $b \ne d$,
 
 $$
 \mathbb{E}[N(t)] = N_0\, e^{(b - d)t}, \qquad
@@ -156,7 +156,7 @@ The fraction of extinct replicates scatters around Kendall's curve by about the 
 
 ### The mean and the deterministic model
 
-For the linear birth–death process the replicate mean follows the deterministic solution $N_0 e^{(b - d)t}$ exactly, in expectation. That is a special property of **linear** propensities: taking expectations of the process gives $d\,\mathbb{E}[N]/dt = (b - d)\,\mathbb{E}[N]$, the same equation as the deterministic model.
+For the linear birth-death process the replicate mean follows the deterministic solution $N_0 e^{(b - d)t}$ exactly, in expectation. That is a special property of **linear** propensities: taking expectations of the process gives $d\,\mathbb{E}[N]/dt = (b - d)\,\mathbb{E}[N]$, the same equation as the deterministic model.
 
 It is not true in general. In the SIR model the infection propensity $\beta S I / N$ contains a product, and the expectation of a product is not the product of expectations: $\mathbb{E}[SI] = \mathbb{E}[S]\,\mathbb{E}[I] + \operatorname{Cov}(S, I)$. So the mean of the stochastic model does not obey the ODE. In small populations two further effects add to this. Some epidemics fizzle out early, which pulls the mean down, and the large outbreaks peak at different times, which spreads the mean out.
 
@@ -178,7 +178,7 @@ With 20 000 hosts, twelve runs are almost indistinguishable from each other and 
 - **The same seed for every replicate.** Identical replicates are one run counted many times. Derive each replicate's seed from a base seed and the replicate number, and record both.
 - **Dropping extinct runs.** Excluding runs that went extinct conditions the results on survival and overestimates means. Keep them, as zeros.
 - **Comparing without standard errors.** Whether a replicate mean "agrees" with a prediction can only be judged against its standard error.
-- **Assuming the mean follows the ODE.** That holds for linear models such as the birth–death process, not for nonlinear ones such as the SIR model in small populations.
+- **Assuming the mean follows the ODE.** That holds for linear models such as the birth-death process, not for nonlinear ones such as the SIR model in small populations.
 - **Too few replicates for rare events.** With $n$ replicates and no extinctions, the extinction probability is not zero: an approximate 95 % upper bound is $3/n$ ("rule of three").
 
 ## Practice

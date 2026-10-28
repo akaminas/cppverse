@@ -65,8 +65,6 @@ Save it, open a terminal in the same folder, and type the two commands below. Se
 
 <Anatomy id="toolchain-command" />
 
-Three points deserve emphasis.
-
 **Use `g++`, not `gcc`.** Both commands run the same compiler, and `gcc` will even compile a `.cpp` file as C++. But `gcc` links only the C library, so the link step fails with a long list of `undefined reference` errors mentioning `std::cout` or `std::basic_ostream`. The same holds for `clang++` versus `clang`.
 
 **Ask for warnings.** `-Wall -Wextra -Wpedantic` costs nothing and catches real mistakes. Adding `-Werror` turns every warning into an error, so that nothing suspicious can slip through; this site's examples are all built that way.

@@ -4,7 +4,7 @@ import type { MathCode } from './types';
 // complete files, whose first line is the "// Title:" comment.
 export const mathcode: Record<string, MathCode> = {
   'gillespie-birth-death': {
-    title: 'One run of the direct method for the linear birth–death process',
+    title: 'One run of the direct method for the linear birth-death process',
     file: 'stochastic/birth_death_gillespie.cpp',
     show: [30, 50],
     tex: String.raw`\begin{gathered}

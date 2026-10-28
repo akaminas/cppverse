@@ -24,8 +24,8 @@ export const destinations: Destination[] = [
     eyebrow: 'Destination',
     capability: 'Translate biological hypotheses and mathematical models into computational procedures.',
     intro: [
-      'Algorithm design is where programming becomes modelling. A biological hypothesis is written as equations, the equations become a step-by-step procedure, the procedure becomes C++, and the program produces output that can be checked and interpreted.',
-      'This destination covers decomposition and pseudocode, debugging and error handling, discrete-time population models, the subtle but consequential question of update order, and matrix models of structured populations.',
+      'In algorithm design, programming becomes modelling: a biological hypothesis is written as equations, the equations become a step-by-step procedure, the procedure becomes C++, and the program produces output that can be checked and interpreted.',
+      'This destination covers decomposition and pseudocode, debugging and error handling, discrete-time population models, the way update order changes a model, and matrix models of structured populations.',
     ],
     assemblies: ['discrete-time', 'matrix'],
     lab: 'discrete',
@@ -39,7 +39,7 @@ export const destinations: Destination[] = [
     capability: 'Implement continuous-time models with numerical methods, and know how accurate the result is.',
     intro: [
       'Most continuous-time models in biology have no closed-form solution, so they are solved numerically. The model, a set of rates of change, is distinct from the numerical method that approximates its solution.',
-      'This destination builds Euler and Runge–Kutta integrators behind a common interface, measures their errors against exact solutions, shows when large steps create artefacts, and introduces adaptive step-size control.',
+      'This destination builds Euler and Runge-Kutta integrators behind a common interface, measures their errors against exact solutions, shows when large steps create artefacts, and introduces adaptive step-size control.',
     ],
     assemblies: ['ode'],
     lab: 'ode',
@@ -80,7 +80,7 @@ export const destinations: Destination[] = [
     eyebrow: 'Synthesis · original to this site',
     capability: 'Design simulation experiments, analyse their output, and draw appropriately qualified scientific conclusions.',
     intro: [
-      'A working simulation is the beginning of a study, not its end. The four destinations converge here: computational experiments with replicates and recorded seeds, analysis of the output in R or Python, verification and validation, and conclusions that state what the model can and cannot support.',
+      'A working simulation is only the start of a study. The four destinations converge here: computational experiments with replicates and recorded seeds, analysis of the output in R or Python, verification and validation, and conclusions that state what the model can and cannot support.',
       'This region is an original synthesis of this site.',
     ],
     assemblies: [],

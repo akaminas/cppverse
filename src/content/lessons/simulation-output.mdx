@@ -37,7 +37,7 @@ A well-written output file prevents all three. It is also the cheapest form of r
 
 ## How it works in C++
 
-The program below runs the Beverton–Holt model with the same update rule and defaults as in <Concept id="discrete-time" /> ($R_0 = 2.2$, $M = 40$, $N_0 = 5$, 30 generations) and writes `beverton_holt_output.csv` into the folder from which it is run. Read it from the bottom up: `main` opens the file, `writeTrajectory` fills it.
+The program below runs the Beverton-Holt model with the same update rule and defaults as in <Concept id="discrete-time" /> ($R_0 = 2.2$, $M = 40$, $N_0 = 5$, 30 generations) and writes `beverton_holt_output.csv` into the folder from which it is run. Read it from the bottom up: `main` opens the file, `writeTrajectory` fills it.
 
 <Example file="io/bh_trajectory_csv.cpp" mark="37-50" />
 
@@ -61,7 +61,7 @@ The same 31 rows as a figure: the population rises from 5 and approaches the car
 
 ### One observation per row
 
-A model with several state variables raises a layout question. For the two stages of a juvenile–adult model, the *wide* layout gives each variable a column; the *long* layout gives each value a row and adds a column saying which variable it is:
+A model with several state variables raises a layout question. For the two stages of a juvenile-adult model, the *wide* layout gives each variable a column; the *long* layout gives each value a row and adds a column saying which variable it is:
 
 ```text
 wide                          long
@@ -79,7 +79,7 @@ Both are tidy as long as every row is one observation and every column one varia
 Write each run to its own file, and give the file a name that says what is inside: `beverton_holt_R0-2.2.csv` rather than `output.csv`. Opening an existing file for writing erases it, so a fixed name silently replaces yesterday's results. <Concept id="string-streams" /> shows how to build such names from parameter values, replicate numbers and seeds.
 
 <Callout kind="biology" title="What a deterministic model still needs to record">
-The Beverton–Holt model has no randomness, so the same parameters always give the same trajectory, and the seed line says "none". For a stochastic model the seed is essential: without it, a single replicate can never be regenerated. See <Concept id="random-seeds" /> and <Concept id="seed-management" />.
+The Beverton-Holt model has no randomness, so the same parameters always give the same trajectory, and the seed line says "none". For a stochastic model the seed is essential: without it, a single replicate can never be regenerated. See <Concept id="random-seeds" /> and <Concept id="seed-management" />.
 </Callout>
 
 ## Reading the file in R or Python
@@ -192,7 +192,7 @@ A checklist for every output file:
 
 <Practice>
 
-1. Add a third column, `N_exact`, with the closed-form solution of the Beverton–Holt model, $N_t = K N_0 / (N_0 + (K - N_0) R_0^{-t})$ with $K = (R_0 - 1)M$. Read the file in R or Python and compute the largest absolute difference between the two columns. What size do you expect?
+1. Add a third column, `N_exact`, with the closed-form solution of the Beverton-Holt model, $N_t = K N_0 / (N_0 + (K - N_0) R_0^{-t})$ with $K = (R_0 - 1)M$. Read the file in R or Python and compute the largest absolute difference between the two columns. What size do you expect?
 2. Change the program so that the file name contains the value of R0, for example `beverton_holt_R0-2.2.csv`, and run it for R0 = 1.5, 2.2 and 3.0 (edit the default, or combine with <Concept id="command-line" />).
 3. Read the three files from exercise 2 in R or Python, add a column `R0` taken from each file's metadata, stack them into one long table and plot N against generation with one line per R0.
 

@@ -546,7 +546,7 @@ export const LESSON_GUIDES: Readonly<Record<string, LessonGuide>> = {
       rule('Combine absolute and relative tolerances, so that values near zero and large values are both controlled.'),
       style('Use a safety factor and cap how fast the step may grow or shrink, or the step size oscillates.'),
       disaster('No minimum step. A stiff model drives the step towards zero and the program never finishes.'),
-      deep('For real work, use a tested library pair such as Dormand–Prince (RK45), available in Boost.Odeint.'),
+      deep('For real work, use a tested library pair such as Dormand-Prince (RK45), available in Boost.Odeint.'),
     ],
   },
   // ── Stochastic modelling ─────────────────────────────────────────────────
@@ -573,7 +573,7 @@ export const LESSON_GUIDES: Readonly<Record<string, LessonGuide>> = {
     tips: [
       style('std::discrete_distribution draws an index with probability proportional to its weight, with no hand-written loop.'),
       disaster('All weights zero. Handle that case before drawing; it usually means nothing can happen.'),
-      field('Drawing the parents of each new generation with equal weights is neutral genetic drift: the Wright–Fisher model.'),
+      field('Drawing the parents of each new generation with equal weights is neutral genetic drift: the Wright-Fisher model.'),
     ],
   },
   gillespie: {

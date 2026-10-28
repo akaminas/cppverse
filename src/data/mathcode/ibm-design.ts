@@ -14,7 +14,7 @@ export const mathcode: Record<string, MathCode> = {
       { id: 'c', label: 'crowding strength c', explain: 'How strongly each neighbour reduces survival. With c = 0.25, four neighbours halve the survival probability of an uncrowded plant.', lines: [96] },
       { id: 'n', label: 'crowding nᵢ', explain: 'The number of living neighbours. Synchronous scheduling counts it for every plant before any plant dies (line 87); random-order scheduling counts it at the moment the plant is visited (line 94). The count itself is a plain scan over all plants.', lines: [87, 94, 125, 127, 128, 132, 134] },
       { id: 'others', label: 'other living plants', explain: 'A plant does not crowd itself, and a plant already marked dead no longer crowds anyone.', lines: [129] },
-      { id: 'dist', label: 'distance on the torus', explain: 'The separation along each axis is the shorter of the direct distance and the distance across the plot edge (torusDelta, lines 52–55).', lines: [130, 131] },
+      { id: 'dist', label: 'distance on the torus', explain: 'The separation along each axis is the shorter of the direct distance and the distance across the plot edge (torusDelta, lines 52 to 55).', lines: [130, 131] },
       { id: 'radius', label: 'interaction radius R', explain: 'A neighbour counts if it lies within R. Comparing squared distances with R² avoids a square root per pair.', lines: [126, 132] },
     ],
   },

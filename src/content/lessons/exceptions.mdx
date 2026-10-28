@@ -53,7 +53,7 @@ The rules, in the order they apply:
 1. `throw expression;` creates an exception object and leaves the current function immediately. The statements after the `throw` do not run.
 2. The exception passes up the chain of calls (it *propagates*) until it reaches a `try` block with a handler for its type. On the way, every local object is destroyed, in reverse order of construction. This is called *stack unwinding*.
 3. The handlers after a `try` block are tried in order, and the first whose type matches runs. A handler for a base class also matches derived classes.
-4. After the handler finishes, execution continues *after the whole try–catch construct*, not after the `throw`. There is no way back into the function that threw.
+4. After the handler finishes, execution continues *after the whole try-catch construct*, not after the `throw`. There is no way back into the function that threw.
 5. If no handler matches anywhere, the program calls `std::terminate`, which by default aborts it.
 
 ### The standard exception types
@@ -82,7 +82,7 @@ The course manual throws `std::string` messages and catches them by non-const re
 
 ### Recoverable and fatal errors
 
-The program below reads a list of scenarios for a Beverton–Holt model (see <Concept id="discrete-time" />): a name, $R_0$, $M$ and $N_0$ on each line. Its input file is
+The program below reads a list of scenarios for a Beverton-Holt model (see <Concept id="discrete-time" />): a name, $R_0$, $M$ and $N_0$ on each line. Its input file is
 
 ```text
 heathland 1.8 40 5
@@ -96,8 +96,8 @@ woodland 3.0 60 -2
 
 There are two levels of handling:
 
-- **Recoverable, handled locally.** `validate` (lines 22–28) throws `std::invalid_argument` with a message that names the parameter, the rule and the offending value. The inner `try` (lines 45–52) catches it, records the rejection and moves on to the next scenario. One impossible scenario should not end a sensitivity analysis of a hundred.
-- **Fatal, handled in `main`.** If a line cannot be read at all, `readScenario` throws `std::runtime_error` (line 34), which the inner handler does not catch, because it is not an `invalid_argument`. It propagates to the outer handlers (lines 55–61), which print the message to `std::cerr` and end the program with `EXIT_FAILURE`, so that a calling script knows the run failed. A line such as `grassland 2.0 forty 5` would stop the program with `fatal error: scenario 'grassland': expected three numbers`.
+- **Recoverable, handled locally.** `validate` (lines 22 to 28) throws `std::invalid_argument` with a message that names the parameter, the rule and the offending value. The inner `try` (lines 45 to 52) catches it, records the rejection and moves on to the next scenario. One impossible scenario should not end a sensitivity analysis of a hundred.
+- **Fatal, handled in `main`.** If a line cannot be read at all, `readScenario` throws `std::runtime_error` (line 34), which the inner handler does not catch, because it is not an `invalid_argument`. It propagates to the outer handlers (lines 55 to 61), which print the message to `std::cerr` and end the program with `EXIT_FAILURE`, so that a calling script knows the run failed. A line such as `grassland 2.0 forty 5` would stop the program with `fatal error: scenario 'grassland': expected three numbers`.
 
 Notice also what is *not* treated as an error: a scenario with $R_0 < 1$ is valid and simply predicts extinction. An exception means "this computation cannot be carried out", not "the result is biologically interesting".
 
@@ -105,7 +105,7 @@ Notice also what is *not* treated as an error: a scenario with $R_0 < 1$ is vali
 
 Parameters arrive from files, command lines and other people's scripts, so check them where they enter the program, before any simulation runs. Good checks:
 
-- test the biological constraint, not just the type: probabilities in $[0, 1]$, rates and carrying capacities positive, survival out of a stage at most 1 (see <Concept id="matrix-models" />);
+- test the biological constraint as well as the type: probabilities in $[0, 1]$, rates and carrying capacities positive, survival out of a stage at most 1 (see <Concept id="matrix-models" />);
 - write `!(x > 0.0)` rather than `x <= 0.0` when a NaN must be rejected too, since every comparison with NaN is false;
 - say in the message which parameter, which value and which rule;
 - add context when you translate a library exception. `std::stod` reports only `stod` as its message; catch it and throw a message that names the parameter:
@@ -130,7 +130,7 @@ The check `used == text.size()` rejects input such as `2.5x`, which `std::stod` 
 There are three ways to stop a C++ program, and they differ in what is cleaned up:
 
 - **Returning from `main`** ends the program normally. All local objects are destroyed, open files are flushed and closed, and the return value becomes the exit status (`EXIT_SUCCESS` or `EXIT_FAILURE` from `<cstdlib>`).
-- **`std::exit(status)`** ends the program from anywhere. It destroys objects with static storage duration and flushes the C streams, but it does **not** unwind the stack: local objects of the functions still running are never destroyed. A local `std::ofstream` that still holds buffered output can lose it.
+- **`std::exit(status)`** ends the program from anywhere. It destroys objects with static storage duration and flushes the C streams, but it does not unwind the stack: local objects of the functions still running are never destroyed. A local `std::ofstream` that still holds buffered output can lose it.
 - **`std::abort()`** ends the program immediately and abnormally, with no clean-up at all. A failed `assert` calls it, and so does `std::terminate` for an uncaught exception.
 
 The program below makes the difference visible. A small `Announcer` object prints a line when it is destroyed:
@@ -184,7 +184,7 @@ std::cout << "d\\n";`}
   answer={1}
   feedback={[
     "The statement after throw never runs: the try block is abandoned at the throw.",
-    "a is printed, the throw skips b, the handler prints c, and execution continues after the try–catch construct with d.",
+    "a is printed, the throw skips b, the handler prints c, and execution continues after the try-catch construct with d.",
     "After a handler, execution never returns to the point of the throw.",
     "The handler does not end the program. Unless it returns or throws again, execution continues after the handlers.",
   ]}

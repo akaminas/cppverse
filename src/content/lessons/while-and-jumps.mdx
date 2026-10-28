@@ -67,7 +67,7 @@ A `do`-`while` loop fits when the condition can only be evaluated after one pass
 
 <Example file="foundations/dowhile_equilibrium.cpp" mark="19-24" />
 
-The Beverton–Holt model approaches its equilibrium $(R_0 - 1)M = 50$, and the loop stops once a generation changes $N$ by less than 0.01. The result, 49.993, is close to the equilibrium but not on it: a stopping tolerance on the *change* is not a guarantee about the *distance* to the answer. Another classic use is asking for input until it is acceptable, since the question has to be asked at least once:
+The Beverton-Holt model approaches its equilibrium $(R_0 - 1)M = 50$, and the loop stops once a generation changes $N$ by less than 0.01. The result, 49.993, is close to the equilibrium but not on it: a stopping tolerance on the *change* is not a guarantee about the *distance* to the answer. Another classic use is asking for input until it is acceptable, since the question has to be asked at least once:
 
 ```cpp
 double survival = -1.0;

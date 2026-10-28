@@ -72,7 +72,7 @@ When there are more than two values, or when `first` and `second` would hide the
 
 <Anatomy id="pairs-and-structs-struct" />
 
-In summary:
+The rules for a struct are short:
 
 - `struct Name { members };` defines a new type. **The semicolon after the closing brace is required.**
 - Each member is declared like a variable, with a type and a name. Members may have different types: numbers, strings, vectors, even other structs.
@@ -105,7 +105,7 @@ A discrete-time logistic model, $N_{t+1} = N_t + r N_t (1 - N_t/K)$, with its tw
 
 <Example file="data/struct_logistic.cpp" mark="11-19,22,27-28" />
 
-Notice how the update rule reads almost like the equation: `now.N + p.r * now.N * (1.0 - now.N / p.K)`. The names `p.r` and `p.K` say where each value comes from, and the next state is built from the current one, not by overwriting it.
+The update rule reads almost like the equation: `now.N + p.r * now.N * (1.0 - now.N / p.K)`. The names `p.r` and `p.K` say where each value comes from, and the next state is built from the current one, not by overwriting it.
 
 ## Explore it
 

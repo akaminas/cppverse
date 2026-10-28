@@ -50,7 +50,7 @@ An *invariant* is a statement that must be true at a given point if the program 
 - proportions over all stages sum to 1;
 - a process that only moves individuals, such as dispersal, neither creates nor destroys them.
 
-The macro `assert` from `<cassert>` checks such a statement. If the condition is true, nothing happens. If it is false, the program prints the condition, the file, the line and the function, and stops immediately by calling `std::abort`. The program below asserts three invariants of a source–sink model, in which a sink patch ($R < 1$) persists only through immigration from a source:
+The macro `assert` from `<cassert>` checks such a statement. If the condition is true, nothing happens. If it is false, the program prints the condition, the file, the line and the function, and stops immediately by calling `std::abort`. The program below asserts three invariants of a source-sink model, in which a sink patch ($R < 1$) persists only through immigration from a source:
 
 <Example file="algorithms/dispersal_invariants.cpp" mark="21,23,29" />
 
@@ -91,7 +91,7 @@ The quickest way to look inside a running model is still to print its state. A f
 
 ### Debuggers
 
-A *debugger* runs your program under its control. It can stop the program at a chosen line, show every variable at that moment, and continue one line at a time. For C++ the common debuggers are **gdb** (with GCC, mostly on Linux and Windows) and **lldb** (with Clang, the default on macOS). Compile with debugging information and without optimisation, so that every variable is still there to inspect:
+A *debugger* runs your program under its control. It can stop the program at a chosen line, show every variable at that moment, and continue one line at a time. For C++ the common debuggers are gdb (with GCC, mostly on Linux and Windows) and lldb (with Clang, the default on macOS). Compile with debugging information and without optimisation, so that every variable is still there to inspect:
 
 ```text
 g++ -std=c++17 -g -O0 dispersal_invariants.cpp -o dispersal_invariants
@@ -113,7 +113,7 @@ The essential operations are the same in every debugger:
 
 After a crash, `backtrace` shows the line at which the program stopped and the chain of calls that led there, with their arguments. That is usually the fastest route from a crash to its cause.
 
-In **Visual Studio Code** the same operations are buttons. With the C/C++ extension installed, click in the margin to set a breakpoint (right-click for a condition), start debugging with F5, and use the toolbar to step over, into and out. The Variables panel shows locals, the Watch panel evaluates expressions you choose, and the Call Stack panel shows the backtrace. The extension needs a `launch.json` file that names the program and the debugger:
+In Visual Studio Code the same operations are buttons. With the C/C++ extension installed, click in the margin to set a breakpoint (right-click for a condition), start debugging with F5, and use the toolbar to step over, into and out. The Variables panel shows locals, the Watch panel evaluates expressions you choose, and the Call Stack panel shows the backtrace. The extension needs a `launch.json` file that names the program and the debugger:
 
 ```json
 {

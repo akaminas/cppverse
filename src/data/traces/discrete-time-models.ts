@@ -7,7 +7,7 @@ const params = { R0: '2.2', M: '40', generations: '5' };
 
 export const traces: Record<string, Trace> = {
   'discrete-time-models-first': {
-    title: 'Five generations of the Beverton–Holt model',
+    title: 'Five generations of the Beverton-Holt model',
     file: 'algorithms/bh_first_simulation.cpp',
     steps: [
       { line: 9, note: 'A parameter: the growth factor at low density. const means it cannot change during the run.', vars: { R0: '2.2' } },

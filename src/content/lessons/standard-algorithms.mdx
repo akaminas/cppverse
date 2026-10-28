@@ -10,7 +10,7 @@ objectives:
   - Sort, search, count, sum and transform the contents of a container
   - Write lambdas, capturing outside variables by value or by reference
   - Summarise a simulated trajectory (peak, time of peak, mean, settling time) with standard algorithms
-  - Remove elements that satisfy a condition in one pass with the erase–remove idiom
+  - Remove elements that satisfy a condition in one pass with the erase-remove idiom
 references:
   - "cppreference.com: Algorithms library; Numerics library (std::accumulate)"
   - "cppreference.com: Lambda expressions"
@@ -18,7 +18,7 @@ references:
 
 ## What it is
 
-The headers `<algorithm>` and `<numeric>` contain more than a hundred *algorithms*: function templates for the small, recurring tasks of data processing. Finding the largest element, sorting, counting the elements that satisfy a condition, summing, copying with a transformation. Each takes an iterator range, usually `c.begin()` and `c.end()`, so the same algorithm works on a vector, an array, a list or a string (<Concept id="iterators" />).
+The headers `<algorithm>` and `<numeric>` contain more than a hundred *algorithms*: function templates for the small, recurring tasks of data processing: finding the largest element, sorting, counting the elements that satisfy a condition, summing, copying with a transformation. Each takes an iterator range, usually `c.begin()` and `c.end()`, so the same algorithm works on a vector, an array, a list or a string (<Concept id="iterators" />).
 
 Many algorithms take a small function as an argument: the condition to count, the rule for transforming each element, the order for sorting. Such functions are usually written on the spot as *lambdas*, which this lesson introduces from scratch.
 
@@ -55,7 +55,7 @@ The most useful algorithms for summarising data:
 
 <Example file="data/algorithms_clutches.cpp" mark="26,28,31,36-38" />
 
-Two details deserve attention. `std::greater<int>()` from `<functional>` is a ready-made comparison that reverses the order. And `std::distance(clutches.begin(), four)` turns the iterator returned by `find` into a position.
+`std::greater<int>()` from `<functional>` is a ready-made comparison that reverses the order, and `std::distance(clutches.begin(), four)` turns the iterator returned by `find` into a position.
 
 <Callout kind="pitfall" title="The type of accumulate's initial value">
 `std::accumulate` adds in the type of its *third* argument. `std::accumulate(x.begin(), x.end(), 0)` sums a vector of doubles as an `int`, truncating after every addition, so the "total" of {0.4, 0.3, 0.6} is 0. Write `0.0` for doubles.
@@ -88,7 +88,7 @@ A lambda body cannot see the local variables of the function in which it is writ
 
 Capturing by value is the safe default for parameters such as a threshold or a rate. Capture by reference when the lambda must update something, or when copying would be expensive, and only if the lambda is used while that variable still exists. (A lambda that outlives the function in which it was created, for example one that is stored for later, must not hold references to that function's local variables.)
 
-### Removing elements: the erase–remove idiom
+### Removing elements: the erase-remove idiom
 
 `std::remove_if` does not remove anything from the container. Algorithms see only iterators, so they cannot change a container's size. It moves every element that is to be *kept* to the front, in order, and returns an iterator to the end of the kept elements. The container's own `erase` then cuts off the rest:
 
@@ -175,7 +175,7 @@ std::cout << byValue(100.0) << ' ' << byRef(100.0) << '\\n';`}
   answer={1}
   feedback={[
     "An algorithm cannot change a container's size; it sees only iterators. The size changes only with v.erase(keep, v.end()).",
-    "That is why remove_if is always followed by erase: the erase–remove idiom.",
+    "That is why remove_if is always followed by erase: the erase-remove idiom.",
     "The elements after keep are in a valid but unspecified state; they are not guaranteed to be the dead individuals.",
     "remove_if rearranges the elements; std::count_if is the one that counts.",
   ]}
@@ -186,7 +186,7 @@ std::cout << byValue(100.0) << ' ' << byRef(100.0) << '\\n';`}
 - **Trajectory summaries**, as in the example: `max_element` for peaks (the epidemic peak and its day), `accumulate` for totals and means (the cumulative number of infections), `count_if` for time spent above or below a threshold, `find_if` for the first time something happens (extinction, invasion, settling).
 - **After a burn-in.** Every algorithm takes a range, so `std::accumulate(x.begin() + 100, x.end(), 0.0)` sums only the generations after the first 100.
 - **Ranking and selection.** `std::sort` with a lambda such as `[](const Plant& a, const Plant& b) { return a.seeds > b.seeds; }` orders individuals by fitness; `std::nth_element` finds a median or a quantile without sorting everything.
-- **Mortality in one pass.** The erase–remove idiom removes all individuals that died in a time step.
+- **Mortality in one pass.** The erase-remove idiom removes all individuals that died in a time step.
 - **Replicates.** The final sizes of a set of replicate runs, collected in a vector, are summarised with the same algorithms; for distributions and confidence intervals see <Concept id="output-analysis" />.
 
 ## Common mistakes

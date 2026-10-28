@@ -28,7 +28,7 @@ export const traces: Record<string, Trace> = {
       { line: 7, note: 'Round 1, (C, D): tit-for-tat pays the cost and receives nothing; the alternator receives 3 for free.', vars: { round: '1', moveA: 'C', moveB: 'D', totalA: '1', totalB: '5' } },
       { line: 10, note: 'Tit-for-tat copies the D; the alternator switches back to C.', vars: { round: '1', moveA: 'D', moveB: 'C', totalA: '1', totalB: '5' } },
       { line: 7, note: 'Round 2, (D, C): now tit-for-tat gains 3 and the alternator loses 1. From here the pattern repeats.', vars: { round: '2', moveA: 'D', moveB: 'C', totalA: '4', totalB: '4' } },
-      { line: 11, note: 'After 10 rounds totalA = 9 and totalB = 13: mean payoffs of 0.90 and 1.30, the TFT–Alt and Alt–TFT cells of the table.', vars: { totalA: '9', totalB: '13' } },
+      { line: 11, note: 'After 10 rounds totalA = 9 and totalB = 13: mean payoffs of 0.90 and 1.30, the TFT-Alt and Alt-TFT cells of the table.', vars: { totalA: '9', totalB: '13' } },
     ],
   },
 };

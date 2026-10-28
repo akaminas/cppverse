@@ -54,7 +54,7 @@ export const figures: Record<string, () => FigureSpec> = {
       ),
       references: [{ axis: 'y', value: Nstar, label: `Mean-field N* ≈ ${Nstar.toFixed(0)}` }],
       y: { includeZero: true },
-      footer: `Mean N over years ${BURN_IN}–${YEARS} and three seeds: ${rand.toFixed(0)} (random order) and ${sync.toFixed(0)} (synchronous). Computed with PlantPopulation (src/lib/simulations/ibm.ts).`,
+      footer: `Mean N over years ${BURN_IN} to ${YEARS} and three seeds: ${rand.toFixed(0)} (random order) and ${sync.toFixed(0)} (synchronous). Computed with PlantPopulation (src/lib/simulations/ibm.ts).`,
     };
   }),
 
@@ -78,7 +78,7 @@ export const figures: Record<string, () => FigureSpec> = {
       series: SCHEDULES.map((s) => ({ id: `crowding-${s.schedule}`, label: s.label, family: s.family, points: smoothed(s.schedule) })),
       references: [{ axis: 'y', value: meanFieldCrowding, label: `Mean field ${meanFieldCrowding.toFixed(2)}` }],
       y: { domain: [0, 7], ticks: [0, 2, 4, 6] },
-      footer: `Mean over years ${BURN_IN}–${YEARS} and three seeds: ${rand.toFixed(2)} (random order) and ${sync.toFixed(2)} (synchronous) neighbours. Computed with PlantPopulation (src/lib/simulations/ibm.ts).`,
+      footer: `Mean over years ${BURN_IN} to ${YEARS} and three seeds: ${rand.toFixed(2)} (random order) and ${sync.toFixed(2)} (synchronous) neighbours. Computed with PlantPopulation (src/lib/simulations/ibm.ts).`,
     };
   }),
 };

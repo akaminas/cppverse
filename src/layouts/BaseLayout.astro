@@ -17,8 +17,8 @@ interface Props {
   bodyClass?: string;
 }
 
-const { title, description = 'Learn the language. Build the model. Understand the system.', section, bare = false, app = false, bodyClass } = Astro.props;
-const fullTitle = title === 'C++ Atlas' ? 'C++ Atlas — Programming and Modelling for Biologists' : `${title} · C++ Atlas`;
+const { title, description = 'Learn C++ and use it to build and understand models of biological systems.', section, bare = false, app = false, bodyClass } = Astro.props;
+const fullTitle = title === 'C++ Atlas' ? 'C++ Atlas: Programming and Modelling for Biologists' : `${title} · C++ Atlas`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 
 const nav = [

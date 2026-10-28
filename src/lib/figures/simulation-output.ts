@@ -11,7 +11,7 @@ export const figures: Record<string, () => FigureSpec> = {
     const K = (p.R0 - 1) * p.M;
     return {
       title: 'The trajectory in the file rises from 5 and levels off just below K = 48',
-      subtitle: 'Beverton–Holt model, R₀ = 2.2, M = 40, N₀ = 5: the 31 rows of beverton_holt_output.csv',
+      subtitle: 'Beverton-Holt model, R₀ = 2.2, M = 40, N₀ = 5: the 31 rows of beverton_holt_output.csv',
       xLabel: 'Generation t',
       yUnit: 'Population size N (individuals)',
       series: [

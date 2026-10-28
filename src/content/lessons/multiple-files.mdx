@@ -19,7 +19,7 @@ references:
 
 Until now every program has been a single `.cpp` file. Larger programs are split into several files, in pairs:
 
-- a **header** (`growth.hpp`) contains *declarations*: the names, types and function signatures that other code needs in order to use a part of the program;
+- a **header** (`growth.hpp`) contains *declarations*: the names, types and function signatures that other code needs to use a part of the program;
 - a **source file** (`growth.cpp`) contains the *definitions*: the function bodies that do the work.
 
 Any other file that needs the growth model writes `#include "growth.hpp"` and can then call its functions without seeing how they are implemented. Each `.cpp` file is compiled on its own; the *linker* then joins the compiled pieces into one executable (see <Concept id="compilation" />).
@@ -136,7 +136,7 @@ The rule behind the table is the *one-definition rule* (ODR): a program may cont
 A default argument, such as a default time step, is written once, in the declaration in the header, so that every caller sees it.
 
 <Callout kind="manual" title="Names in prototypes">
-The course manual lists only the parameter types in header prototypes. Parameter names are optional for the compiler but valuable for the reader (`double ageAtLength(double length, const GrowthParameters& p);` says what the first argument means), so this site keeps them.
+The course manual lists only the parameter types in header prototypes. Parameter names are optional for the compiler but useful to the reader (`double ageAtLength(double length, const GrowthParameters& p);` says what the first argument means), so this site keeps them.
 </Callout>
 
 ### Separate compilation and linking
@@ -185,7 +185,7 @@ Headers are not listed in `add_executable`: CMake finds out which sources includ
 Use lower-case file names with underscores (`growth_model.hpp`), give a header and its source file the same base name, and use one extension convention throughout (`.hpp`/`.cpp` on this site; `.h` and `.cc` are also common).
 
 <Callout kind="modern" title="Modules">
-C++20 <Std v="c++20" /> introduces *modules* (`export module growth;` and `import growth;`), which replace textual inclusion: no include guards, no ODR traps from headers, faster builds. Compiler and build-tool support is still maturing, so headers remain the norm in scientific code.
+C++20 <Std v="c++20" /> introduces *modules* (`export module growth;` and `import growth;`), which replace textual inclusion. They need no include guards, cannot cause the ODR errors that headers can, and can build faster. Compiler and build-tool support is still maturing, so headers remain the norm in scientific code.
 </Callout>
 
 ## Explore it

@@ -29,7 +29,7 @@ A common shorthand is that verification asks "are we solving the equations right
 
 ## Why it matters
 
-Simulation code fails silently. A program with a wrong sign, a sequential update where a simultaneous one was intended, or a step size that is too large still produces plausible-looking curves. The host–parasitoid example of <Concept id="update-order" /> is the cautionary tale: one reordered line turns persistent cycles into a stable equilibrium, and nothing in the output looks wrong.
+Simulation code fails silently. A program with a wrong sign, a sequential update where a simultaneous one was intended, or a step size that is too large still produces plausible-looking curves. The host-parasitoid example of <Concept id="update-order" /> is the cautionary tale: one reordered line turns persistent cycles into a stable equilibrium, and nothing in the output looks wrong.
 
 Verification is how you earn the right to interpret the output. It also protects against a subtler failure: a bug that pushes results towards what you expected is far less likely to be found than one that does the opposite, because nobody investigates a result they like.
 
@@ -39,7 +39,7 @@ Every verification test compares the simulation with something known *independen
 
 ### Closed-form benchmarks
 
-Some models, or special cases of them, have exact solutions. The Beverton–Holt recurrence $N_{t+1} = R_0 N_t / (1 + N_t/M)$ has one:
+Some models, or special cases of them, have exact solutions. The Beverton-Holt recurrence $N_{t+1} = R_0 N_t / (1 + N_t/M)$ has one:
 
 $$
 N_t = \frac{K N_0}{N_0 + (K - N_0)\,R_0^{-t}}, \qquad K = (R_0 - 1)\,M ,
@@ -57,11 +57,11 @@ An *invariant* is a property that must hold at every step. Population sizes are 
 
 The cheapest way to check an invariant is an `assert` (<Concept id="debugging" />): `assert(N >= 0.0);` stops the program with a message if the condition is ever false. Assertions document assumptions and catch violations where they happen, not thousands of steps later. They are removed when the program is compiled with `-DNDEBUG`, so never put code with side effects inside one.
 
-Choose invariants that a bug would actually break. Every Runge–Kutta method preserves linear invariants such as $S + I + R$ exactly, apart from rounding, whatever the step size. The SIR conservation check therefore catches a wrong right-hand side, such as a term missing from one equation, but says nothing about whether the step is small enough. For that you need the next test.
+Choose invariants that a bug would actually break. Every Runge-Kutta method preserves linear invariants such as $S + I + R$ exactly, apart from rounding, whatever the step size. The SIR conservation check therefore catches a wrong right-hand side, such as a term missing from one equation, but says nothing about whether the step is small enough. For that you need the next test.
 
 ### Convergence order
 
-A numerical method of order $p$ has a global error that shrinks like $C h^p$ as the step $h$ shrinks (<Concept id="numerical-error" />). This prediction is a powerful test: halving $h$ should divide the error by $2^p$. The *observed order* from errors $E(h)$ and $E(h/2)$ is
+A numerical method of order $p$ has a global error that shrinks like $C h^p$ as the step $h$ shrinks (<Concept id="numerical-error" />). This prediction gives a sharp test: halving $h$ should divide the error by $2^p$. The *observed order* from errors $E(h)$ and $E(h/2)$ is
 
 $$
 p_{\text{obs}} = \log_2 \frac{E(h)}{E(h/2)} .
@@ -73,7 +73,7 @@ On logarithmic axes the three methods give straight lines of slopes 1, 2 and 4. 
 
 ### Statistical tests against exact results
 
-A stochastic simulation never reproduces an exact result exactly; it should agree with it *within sampling error*. For the linear birth–death process with birth rate $b$ and death rate $d$ per individual, Kendall (1948) derived the probability that a population started from $N_0$ individuals is extinct by time $t$:
+A stochastic simulation never reproduces an exact result exactly; it should agree with it *within sampling error*. For the linear birth-death process with birth rate $b$ and death rate $d$ per individual, Kendall (1948) derived the probability that a population started from $N_0$ individuals is extinct by time $t$:
 
 $$
 p_0(t) = \left[\frac{d\,\big(e^{(b-d)t} - 1\big)}{b\,e^{(b-d)t} - d}\right]^{N_0}, \qquad b \ne d .
@@ -105,7 +105,7 @@ A strong form of verification is to implement the same model twice, independentl
 
 The comparison is honest about what each kind of model allows:
 
-- **Deterministic models** (Beverton–Holt, host–parasitoid, the stage matrix, the ODE integrators) must agree closely: typically to a relative tolerance of $10^{-9}$, and elsewhere to the number of digits a program prints. They are not required to agree to the last bit, because the two languages may evaluate `exp` and `pow` slightly differently and accumulate rounding in different orders; but any real difference in the model would be many orders of magnitude larger.
+- **Deterministic models** (Beverton-Holt, host-parasitoid, the stage matrix, the ODE integrators) must agree closely: typically to a relative tolerance of $10^{-9}$, and elsewhere to the number of digits a program prints. They are not required to agree to the last bit, because the two languages may evaluate `exp` and `pow` slightly differently and accumulate rounding in different orders; but any real difference in the model would be many orders of magnitude larger.
 - **Stochastic models** are never compared trajectory by trajectory. The browser uses a different generator (`xoshiro128**`) from the C++ programs (`std::mt19937_64`), and C++ standard libraries are free to implement distributions differently. Instead, the means and extinction fractions of both must lie within four standard errors of Kendall's exact values, and the individual-based model must approach its mean-field limit.
 
 Re-implementation catches coding errors well. It is weaker against conceptual errors: two programs written from the same misunderstanding agree perfectly. If both implementations update hosts before parasitoids, they will agree on the wrong dynamics. That is why re-implementation complements, rather than replaces, tests against independent mathematics.
@@ -119,7 +119,7 @@ Re-implementation catches coding errors well. It is weaker against conceptual er
   options={[
     "The simulated extinction fraction agrees with Kendall’s formula within two standard errors",
     "Halving the step size divides the RK4 error by about 16",
-    "The model, fitted to counts from 2001–2015, predicts the counts from 2016–2020 within their observation error",
+    "The model, fitted to counts from 2001 to 2015, predicts the counts from 2016 to 2020 within their observation error",
     "The C++ and TypeScript implementations agree to a relative tolerance of 10⁻⁹",
   ]}
   answer={2}
@@ -153,7 +153,7 @@ Re-implementation catches coding errors well. It is weaker against conceptual er
 <Check
   id="order-bug"
   kind="debug"
-  question="A student’s fourth-order Runge–Kutta integrator gives an error of 4.0 × 10⁻³ at h = 0.1 and 1.0 × 10⁻³ at h = 0.05 on the logistic equation. What does this suggest?"
+  question="A student’s fourth-order Runge-Kutta integrator gives an error of 4.0 × 10⁻³ at h = 0.1 and 1.0 × 10⁻³ at h = 0.05 on the logistic equation. What does this suggest?"
   options={[
     "The integrator is fine: the error is small and decreasing",
     "The integrator behaves like a second-order method, so one of its stages or weights is probably wrong",
@@ -212,10 +212,10 @@ If a statistical test fails, it is tempting to try another seed, then another, u
 
 <Practice>
 
-1. Add a test to `verify_models.cpp` that checks the observed order of a fourth-order Runge–Kutta step on the logistic equation. Which pair of step counts gives an observed order within 0.1 of 4, given that very small steps reach rounding error?
+1. Add a test to `verify_models.cpp` that checks the observed order of a fourth-order Runge-Kutta step on the logistic equation. Which pair of step counts gives an observed order within 0.1 of 4, given that very small steps reach rounding error?
 2. Add $R_0 = 1$ to the list of growth factors in `verify_models.cpp`. The test fails. Explain why, and fix the closed form using the special case $N_t = N_0 / (1 + N_0 t / M)$.
 3. Run `birth_death_gillespie.cpp` with ten different seeds and 2000 replicates each, and compute $z$ for the extinction fraction in each run. How many values of $|z|$ above 2 do you expect? How many do you see?
-4. A colleague fits the Beverton–Holt model to 15 years of counts of a laboratory population and reports an excellent fit. Design a validation that would convince a sceptical reviewer: which data would you hold back, which alternative model would you compare it with, and what result would make you doubt the model?
+4. A colleague fits the Beverton-Holt model to 15 years of counts of a laboratory population and reports an excellent fit. Design a validation that would convince a sceptical reviewer: which data would you hold back, which alternative model would you compare it with, and what result would make you doubt the model?
 
 <details>
 <summary>Hint for exercise 1</summary>
@@ -230,7 +230,7 @@ At $R_0 = 1$ the equilibrium is $K = 0$, and the general formula becomes $0 \cdo
 
 <details>
 <summary>Hint for exercise 4</summary>
-Fit to the first ten years, predict the last five, and judge the predictions against the observation error. Compare with a model of a different shape, for example the Ricker model $N_{t+1} = N_t e^{r(1 - N_t/K)}$, which can overshoot its equilibrium, using AIC on the fitting years and prediction error on the held-out years. Systematic misses in the held-out years, such as overshoots the Beverton–Holt model cannot produce, would be strong evidence against it.
+Fit to the first ten years, predict the last five, and judge the predictions against the observation error. Compare with a model of a different shape, for example the Ricker model $N_{t+1} = N_t e^{r(1 - N_t/K)}$, which can overshoot its equilibrium, using AIC on the fitting years and prediction error on the held-out years. Systematic misses in the held-out years, such as overshoots the Beverton-Holt model cannot produce, would be strong evidence against it.
 </details>
 
 </Practice>

@@ -123,7 +123,7 @@ export const domains: Domain[] = [
     kind: 'destination',
     family: 'teal',
     modules: [15],
-    summary: 'Continuous-time models approximated by Euler, Runge–Kutta and adaptive methods.',
+    summary: 'Continuous-time models approximated by Euler, Runge-Kutta and adaptive methods.',
     column: 3,
     row: 1,
   },

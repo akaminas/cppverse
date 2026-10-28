@@ -31,7 +31,7 @@ export const figures: Record<string, () => FigureSpec> = {
     const finals = paths.map((p) => sampleAt(p, [T])[0][0]);
     const extinct = finals.filter((x) => x === 0).length;
     return {
-      title: 'Forty runs of one birth–death model end anywhere from extinction to several times the starting size',
+      title: 'Forty runs of one birth-death model end anywhere from extinction to several times the starting size',
       subtitle: `Gillespie simulation, b = ${b} and d = ${d} per individual per year, N₀ = ${N0}; 40 replicates, their mean and the exact expectation`,
       xLabel: 'Time t (years)',
       yUnit: 'Population size N (individuals)',
@@ -53,12 +53,12 @@ export const figures: Record<string, () => FigureSpec> = {
     const last = s.quantiles[s.quantiles.length - 1];
     return {
       title: 'The mean lies above the median: a few large populations pull it up while many stay small or die out',
-      subtitle: `${n} replicates of the birth–death process (b = ${b}, d = ${d}, N₀ = ${N0}); bands hold the central 50 % and 90 % of runs`,
+      subtitle: `${n} replicates of the birth-death process (b = ${b}, d = ${d}, N₀ = ${N0}); bands hold the central 50 % and 90 % of runs`,
       xLabel: 'Time t (years)',
       yUnit: 'Population size N (individuals)',
       bands: [
-        { id: 'q90', label: '5–95 %', points: times.map((t, i) => [t, s.quantiles[i][0], s.quantiles[i][4]] as [number, number, number]), family: 'indigo', opacity: 0.3 },
-        { id: 'q50', label: '25–75 %', points: times.map((t, i) => [t, s.quantiles[i][1], s.quantiles[i][3]] as [number, number, number]), family: 'indigo', opacity: 0.55 },
+        { id: 'q90', label: '5-95 %', points: times.map((t, i) => [t, s.quantiles[i][0], s.quantiles[i][4]] as [number, number, number]), family: 'indigo', opacity: 0.3 },
+        { id: 'q50', label: '25-75 %', points: times.map((t, i) => [t, s.quantiles[i][1], s.quantiles[i][3]] as [number, number, number]), family: 'indigo', opacity: 0.55 },
       ],
       series: [
         { id: 'median', label: 'Median', points: times.map((t, i) => [t, s.quantiles[i][2]] as [number, number]), family: 'indigo' },
@@ -82,7 +82,7 @@ export const figures: Record<string, () => FigureSpec> = {
     const limit = (d / b) ** N0;
     return {
       title: 'The fraction of extinct replicates tracks Kendall’s exact extinction probability within its sampling error',
-      subtitle: `${n} replicates of the birth–death process (b = ${b}, d = ${d}, N₀ = ${N0}); band: ±2 standard errors of the fraction`,
+      subtitle: `${n} replicates of the birth-death process (b = ${b}, d = ${d}, N₀ = ${N0}); band: ±2 standard errors of the fraction`,
       xLabel: 'Time t (years)',
       yUnit: 'Probability that N(t) = 0',
       bands: [{ id: 'se', label: '±2 SE', points: times.map((t, i) => [t, Math.max(0, s.zeroFraction[i] - 2 * se[i]), s.zeroFraction[i] + 2 * se[i]] as [number, number, number]), family: 'terracotta' }],
@@ -149,14 +149,14 @@ export const figures: Record<string, () => FigureSpec> = {
       subtitle: `${n} stochastic SIR runs in N = ${N} hosts (β = ${beta}, γ = ${gamma} per day, I₀ = 2) against the ODE from the same initial proportions`,
       xLabel: 'Time (days)',
       yUnit: 'Proportion infectious I/N',
-      bands: [{ id: 'q90', label: '5–95 %', points: times.map((t, i) => [t, s.quantiles[i][0] / N, s.quantiles[i][4] / N] as [number, number, number]), family: 'terracotta', opacity: 0.3 }],
+      bands: [{ id: 'q90', label: '5-95 %', points: times.map((t, i) => [t, s.quantiles[i][0] / N, s.quantiles[i][4] / N] as [number, number, number]), family: 'terracotta', opacity: 0.3 }],
       series: [
         { id: 'ode', label: 'ODE', points: odePts, family: 'teal', dashed: true },
         { id: 'mean', label: 'Replicate mean', points: meanPts, family: 'terracotta' },
       ],
       x: { domain: [0, 160], ticks: [0, 40, 80, 120, 160] },
       y: { includeZero: true },
-      footer: `Computed with gillespie, sirStochastic and summarise (gillespie.ts) and integrateFixed (ode.ts), seed 33. Peak of the ODE ${odePeak.toFixed(3)}, peak of the replicate mean ${meanPeak.toFixed(3)}; ${fizzled} of ${n} runs ended with fewer than 5 % of hosts ever infected. Band: 5–95 % of runs.`,
+      footer: `Computed with gillespie, sirStochastic and summarise (gillespie.ts) and integrateFixed (ode.ts), seed 33. Peak of the ODE ${odePeak.toFixed(3)}, peak of the replicate mean ${meanPeak.toFixed(3)}; ${fizzled} of ${n} runs ended with fewer than 5 % of hosts ever infected. Band: 5 to 95 % of runs.`,
     };
   },
 };

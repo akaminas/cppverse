@@ -176,7 +176,7 @@ export default function OdeLab({ preset }: { preset?: string }) {
           x={{ type: 'log' }}
           y={{ type: 'log' }}
           aspect={0.5}
-          footer="On log–log axes the slope of each line is the order of the method; the smallest errors reach the limit of double precision."
+          footer="On log-log axes the slope of each line is the order of the method; the smallest errors reach the limit of double precision."
         />
       )}
       {model === 'sir' && (

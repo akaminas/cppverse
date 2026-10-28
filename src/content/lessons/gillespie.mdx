@@ -42,7 +42,7 @@ A Gillespie model is a list of events. Each event $j$ has
 - a **state change** $\nu_j$: what it adds to or removes from each count, and
 - a **propensity** $a_j(x)$: its rate in the current state $x$, in events per unit time. For a short interval $dt$, $a_j(x)\,dt$ is the probability that event $j$ happens during that interval.
 
-The **linear birth–death process** has one count, the population size $N$. Each individual gives birth at rate $b$ and dies at rate $d$, both per individual per year:
+The **linear birth-death process** has one count, the population size $N$. Each individual gives birth at rate $b$ and dies at rate $d$, both per individual per year:
 
 | Event | Reaction | State change | Propensity |
 |---|---|---|---|
@@ -119,7 +119,7 @@ Only steps 1 and 6 depend on the model: the propensities and the state changes. 
 
 **At the end time.** The state at time $T$ is the state after the last event *before* $T$. An event drawn for $t + \tau > T$ has not happened yet at $T$. Applying it anyway records, as the state at $T$, the state at some later time. The error is at most one event per run, but it is systematic: when $b > d$ the extra event is more often a birth than a death, so the recorded population sizes are biased upwards on average.
 
-**In an absorbing state.** When $N = 0$ in the birth–death process, or $I = 0$ in the epidemic, every propensity is zero and nothing can ever happen again. That is extinction, or the end of the epidemic: a normal, often the most important, outcome. Stop the run and record it. Test $a_0$ *before* drawing a waiting time, because `std::exponential_distribution` requires a positive rate; a rate of zero violates its precondition. A zero total propensity is an error only in a model where it cannot legitimately occur, and there throwing an exception (<Concept id="exceptions" />) is the right response.
+**In an absorbing state.** When $N = 0$ in the birth-death process, or $I = 0$ in the epidemic, every propensity is zero and nothing can ever happen again. That is extinction, or the end of the epidemic: a normal, often the most important, outcome. Stop the run and record it. Test $a_0$ *before* drawing a waiting time, because `std::exponential_distribution` requires a positive rate; a rate of zero violates its precondition. A zero total propensity is an error only in a model where it cannot legitimately occur, and there throwing an exception (<Concept id="exceptions" />) is the right response.
 
 <Callout kind="manual" title="Two differences from the course manual">
 The manual's Gillespie program loops `while (t < tEnd)` and advances the time before applying each event, so the last event of a run, which falls after `tEnd`, is still applied. It also throws an exception when the total rate is zero. For the models here that state is extinction or the end of an epidemic, a result to be recorded rather than an error, so this site stops the run instead.
@@ -131,7 +131,7 @@ A common alternative divides time into steps of length $dt$ and lets a birth hap
 
 ## A minimal example
 
-This program simulates the linear birth–death process with $b = 1$ and $d = 0.8$ per individual per year from $N_0 = 5$ until $T = 4$ years, many times, and compares the results with exact formulas. The function `simulateOnce` is the direct method.
+This program simulates the linear birth-death process with $b = 1$ and $d = 0.8$ per individual per year from $N_0 = 5$ until $T = 4$ years, many times, and compares the results with exact formulas. The function `simulateOnce` is the direct method.
 
 <Example file="stochastic/birth_death_gillespie.cpp" mark="36-48" />
 
@@ -199,7 +199,7 @@ Each path is a staircase: constant between events, jumping by exactly one indivi
 <Check
   id="extinction-result"
   kind="interpret"
-  question="In 20 000 runs of the birth–death program, about 15 % of runs reach N = 0 before t = 4. How should these runs be treated?"
+  question="In 20 000 runs of the birth-death program, about 15 % of runs reach N = 0 before t = 4. How should these runs be treated?"
   options={[
     "As failed runs, to be discarded before computing the mean",
     "As outcomes of the model: they are extinctions and must be counted, including in the mean (with N = 0)",

@@ -267,8 +267,8 @@ std::cout << n << ' ' << total << '\\n';`}
 
 The two directions of file input and output map onto the two ends of a modelling project:
 
-- **Input** carries everything the model is not: measured initial conditions, environmental time series, parameter sets. Reading them from files keeps the program general, and the robust reading loop keeps it honest about what it actually read.
-- **Output** carries the result: one file per run with the trajectory, written so that analysis software can read it without manual editing. <Concept id="trajectory-output" /> shows how to write such a file, including the metadata needed to reproduce it.
+- **Input** supplies what the model does not contain itself: measured initial conditions, environmental time series, parameter sets. Reading them from files keeps the program general, and the robust reading loop reports what was and was not read.
+- **Output** is the result: one file per run with the trajectory, written so that analysis software can read it without manual editing. <Concept id="trajectory-output" /> shows how to write such a file, including the metadata needed to reproduce it.
 
 A useful habit is to print a short summary of what was read (how many values, how many skipped, the range) to `std::clog` at the start of every run. Most data problems become obvious at that point, before they distort a result.
 

@@ -58,7 +58,7 @@ Reference parameters let one function update several variables at once, somethin
 
 <Example file="foundations/passing_stage_update.cpp" mark="9-15,22" />
 
-Two details deserve attention.
+Two details of the function matter.
 
 - **Compute first, then assign.** Both new values are computed from the *old* state into temporary variables before either reference is overwritten. Had the function written `juveniles = fecundity * adults;` first, the adult update on the next line would use the new number of juveniles, silently changing the model. See <Concept id="update-order" />.
 - **The call does not show it.** `step(juveniles, adults, 3.0, 0.25, 0.5)` looks exactly like a call by value. Only the declaration of `step` reveals that the first two arguments will be changed. Choose a function name that says so (`step`, `update`, `advance`), and do not use non-const references for parameters that are only read.

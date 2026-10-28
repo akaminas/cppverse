@@ -19,7 +19,7 @@ export const figures: Record<string, () => FigureSpec> = {
     ];
     return {
       title: 'Populations settle at (R₀ − 1) M, or decline when R₀ < 1',
-      subtitle: 'Beverton–Holt model, N₀ = 5, M = 40; one point per generation',
+      subtitle: 'Beverton-Holt model, N₀ = 5, M = 40; one point per generation',
       xLabel: 'Generation t',
       yUnit: 'Population size N (individuals)',
       series: cases.map((c, i) => ({
@@ -42,7 +42,7 @@ export const figures: Record<string, () => FigureSpec> = {
     const sim = iterate((N) => bevertonHoltStep(N, p), 5, 30);
     return {
       title: 'The simulated recurrence lies exactly on its closed-form solution',
-      subtitle: 'Beverton–Holt model, R₀ = 2.2, M = 40, N₀ = 5; dots: simulation, line: closed form',
+      subtitle: 'Beverton-Holt model, R₀ = 2.2, M = 40, N₀ = 5; dots: simulation, line: closed form',
       xLabel: 'Generation t',
       yUnit: 'Population size N (individuals)',
       series: [
@@ -84,7 +84,7 @@ export const figures: Record<string, () => FigureSpec> = {
     const seq = hostParasitoidTrajectory([20, 2], T, p, 'sequential');
     return {
       title: 'Updating hosts before parasitoids turns persistent cycles into a false equilibrium',
-      subtitle: 'Host density in the host–parasitoid model with r = 1.2, K = 80, a = 0.06, c = 0.8',
+      subtitle: 'Host density in the host-parasitoid model with r = 1.2, K = 80, a = 0.06, c = 0.8',
       xLabel: 'Generation t',
       yUnit: 'Hosts H (per unit area)',
       series: [

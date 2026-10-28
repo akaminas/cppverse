@@ -31,7 +31,7 @@ export const traces: Record<string, Trace> = {
       },
       {
         line: 25,
-        note: 'Case labels are only targets for the jump, not tests, so execution passes lines 23–24 and counts a pupa too: an adult was once a pupa.',
+        note: 'Case labels are only targets for the jump, not tests, so execution passes lines 23 and 24 and counts a pupa too: an adult was once a pupa.',
         vars: v('a', { larva: 0, pupa: 1, adult: 1, unknown: 0 }),
       },
       { line: 29, note: 'Falling through once more: the adult is also counted as having reached the larval stage.', vars: v('a', { larva: 1, pupa: 1, adult: 1, unknown: 0 }) },

@@ -84,7 +84,7 @@ export default function GillespieLab({ preset }: { preset?: string }) {
             value={model}
             onChange={setModel}
             options={[
-              { value: 'bd', label: 'Birth–death' },
+              { value: 'bd', label: 'Birth-death' },
               { value: 'sir', label: 'SIR epidemic' },
             ]}
           />
@@ -132,7 +132,7 @@ export default function GillespieLab({ preset }: { preset?: string }) {
         title={model === 'bd' ? 'Identical rules produce very different histories; their average follows the exact mean' : 'Chance decides whether an outbreak takes off; major outbreaks follow the deterministic curve'}
         subtitle={
           model === 'bd'
-            ? `Linear birth–death process, b = ${fmt(b)}, d = ${fmt(d)}, N₀ = ${N0}; ${shown.length} of ${reps} runs drawn, 50 % and 90 % bands across all runs`
+            ? `Linear birth-death process, b = ${fmt(b)}, d = ${fmt(d)}, N₀ = ${N0}; ${shown.length} of ${reps} runs drawn, 50 % and 90 % bands across all runs`
             : `Stochastic SIR, N = ${Npop}, I₀ = ${I0}, β = ${fmt(beta)}, γ = ${fmt(gamma)} per day; ${shown.length} of ${reps} runs drawn`
         }
         xLabel={model === 'bd' ? 'Time' : 'Time (days)'}

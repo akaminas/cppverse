@@ -47,18 +47,18 @@ const contract = [
   { col: 'cum_p_in, cum_p_out', unit: 'as total_p', need: 'if open', note: 'Cumulative inputs and losses (inflow, harvest, burial).' },
   { col: 'every other pool', unit: 'your choice', need: 'if in the web', note: 'Each compartment of your food web needs a column, named as in the web.' },
   { col: 'deep_oxygen', unit: 'mg/L', need: 'bonus', note: 'A second, deeper layer.' },
-  { col: 'total_c, cum_c_in, cum_c_out', unit: 'your choice', need: 'bonus', note: 'A closed carbon budget, air–water exchange included.' },
+  { col: 'total_c, cum_c_in, cum_c_out', unit: 'your choice', need: 'bonus', note: 'A closed carbon budget, air-water exchange included.' },
 ];
 
 const checked = [
   ['A long enough, fine enough run', `at least ${MIN_YEARS} years, output every ${MAX_STEP} days or less`],
   ['Finite, non-negative state', 'no NaN, no infinity, no negative concentration or biomass'],
-  ['A lake that could exist', 'temperature 5–40 °C, oxygen at most 25 mg/L, pH 4–12'],
+  ['A lake that could exist', 'temperature 5 to 40 °C, oxygen at most 25 mg/L, pH 4 to 12'],
   ['A seasonal climate', 'an annual temperature cycle of at least 0.3 °C'],
   ['Seasonal plankton', 'an annual cycle explains at least 15% of phytoplankton or oxygen'],
   ['Coupled chemistry', 'pH falls as CO₂ rises (r < −0.5); oxygen and CO₂ move in opposite directions (r < −0.2)'],
   ['Nutrient mass balance', 'the total drifts from its budget by at most 1%'],
-  ['Grazers follow the bloom', 'the annual zooplankton cycle trails phytoplankton by 3–150 days'],
+  ['Grazers follow the bloom', 'the annual zooplankton cycle trails phytoplankton by 3 to 150 days'],
   ['Coexistence', 'four or more fish guilds persist through the final year'],
   ['Bounded dynamics', 'plankton and fish within a factor of three, year on year, at the end'],
   ['The food web', 'eight or more compartments, all simulated; a top trophic level of 3.5 or more; at least one omnivore; competing guilds whose diets still differ'],
@@ -83,7 +83,7 @@ const checked = [
       <p>
         Underneath the food web runs the chemistry. Phytoplankton take up phosphate and carbon dioxide and release oxygen, which raises the pH. Every
         animal, and every bacterium decomposing the dead, does the reverse. Warm water holds less oxygen. From May to September the south-east trade winds
-        stir the surface layer deeper, bringing nutrient-rich, oxygen-poor water up from below and setting off a plankton bloom that the grazers follow.
+        stir the surface layer deeper. That brings nutrient-rich, oxygen-poor water up from below and sets off a plankton bloom that the grazers follow.
       </p>
     </section>
 
@@ -181,7 +181,7 @@ const checked = [
           the summed biomass of each guild.
         </li>
         <li>
-          <strong>Grow it.</strong> Start with temperature and one nutrient–phytoplankton pair, and check the budget. Add oxygen, then carbon and
+          <strong>Grow it.</strong> Start with temperature and one nutrient-phytoplankton pair, and check the budget. Add oxygen, then carbon and
           pH, then grazers, then one fish, then the rest. Test each step against what it should do before adding the next.
         </li>
       </ul>

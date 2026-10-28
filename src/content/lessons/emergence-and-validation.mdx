@@ -198,7 +198,7 @@ A validation plan for any IBM follows the same order as this lesson:
 <Practice>
 
 1. Compute the clustering index for the six plants of `design_crowding.cpp` (radius $R = 0.1$). Is the number meaningful? What would you need to make it so?
-2. Run `plants.cpp` with `synchronous global` for five seeds and 200 years. For each run, average $N$ over years 50–200. Write a short program or script that reads the five means and fails (non-zero exit status) if their average differs from $N^*$ by more than 5 %. What kind of error would this test catch, and what kind would it miss?
+2. Run `plants.cpp` with `synchronous global` for five seeds and 200 years. For each run, average $N$ over years 50 to 200. Write a short program or script that reads the five means and fails (non-zero exit status) if their average differs from $N^*$ by more than 5 %. What kind of error would this test catch, and what kind would it miss?
 3. Suppose survival were $s(n) = s_0\,e^{-c\,n}$ instead. Derive the mean-field mean crowding at equilibrium and the corresponding value when crowding is Poisson-distributed, using $\mathbb{E}[e^{-cn}] = \exp(-\lambda(1 - e^{-c}))$ for a Poisson variable with mean $\lambda$. Would wide dispersal still push abundance above the mean-field value?
 4. Design, but do not necessarily run, an experiment to measure how much the torus raises or lowers abundance compared with a bounded plot. Which outputs would you compare, how many seeds would you use, and how would you decide whether the difference matters?
 

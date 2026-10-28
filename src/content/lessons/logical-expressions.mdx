@@ -45,7 +45,7 @@ A `bool` variable holds `true` or `false`. Storing a condition in a well-named `
 
 <Example file="foundations/logic_spawning.cpp" mark="13-15" />
 
-Two details of the output are worth noticing. By default `std::cout` prints a `bool` as `1` or `0`; after `std::cout << std::boolalpha` it prints `true` and `false`. And the condition of the `if` is just the variable `can_spawn`: writing `can_spawn == true` would add nothing.
+By default `std::cout` prints a `bool` as `1` or `0`; after `std::cout << std::boolalpha` it prints `true` and `false`. The condition of the `if` is just the variable `can_spawn`: writing `can_spawn == true` would add nothing.
 
 ### Logical operators: &&, || and !
 
@@ -78,7 +78,7 @@ The test that was meant is `12.0 < T && T < 25.0`. GCC warns about the chained f
 - in `a && b`, if `a` is false the whole expression is false, and `b` is never evaluated;
 - in `a || b`, if `a` is true the whole expression is true, and `b` is never evaluated.
 
-This is not just an optimisation. It lets the left side *guard* the right side:
+Besides saving work, short-circuiting lets the left side *guard* the right side:
 
 <Example file="foundations/logic_short_circuit.cpp" mark="20" />
 

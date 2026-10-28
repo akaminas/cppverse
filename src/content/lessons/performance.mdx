@@ -27,7 +27,7 @@ This lesson covers the tools of each step: building in release mode, timing with
 
 A model is rarely run once. A sensitivity analysis of five parameters at five values each, with 100 replicates per combination, is 312,500 runs. Whether one run takes one second or ten decides whether the analysis takes about four days or about five weeks, and whether you try a second design at all.
 
-At the same time, speed is worth nothing if the answers are wrong. **Never optimise a model before it is verified** (see <Concept id="verification" />), and keep the slow, simple version: it is the reference that every faster version must reproduce.
+At the same time, speed is worth nothing if the answers are wrong. Never optimise a model before it is verified (see <Concept id="verification" />), and keep the slow, simple version: it is the reference that every faster version must reproduce.
 
 ## How it works in C++
 
@@ -89,11 +89,11 @@ times faster (Amdahl's law). Speeding up a function that takes 10 % of the time 
 
 ### Step 4: change the algorithm first
 
-The largest gains come from doing less work, not from doing the same work faster. Complexity is the first thing to check. An operation that is $O(N)$ (proportional to the number of individuals) done once per individual is $O(N^2)$ per time step, which doubles in cost four times when $N$ doubles. Common culprits:
+The largest gains come from doing less work, not from doing the same work faster. Complexity is the first thing to check. An operation that is $O(N)$ (proportional to the number of individuals) done once per individual is $O(N^2)$ per time step, which quadruples in cost when $N$ doubles. Common culprits:
 
 - **all-pairs neighbour searches**, where every individual is compared with every other;
 - **linear searches** in a vector inside a loop, where a sorted vector, a map or an index would do (see <Concept id="container-choice" />);
-- **erasing individuals one at a time** from the middle of a vector, which shifts all later elements each time. Mark them, then remove them in one pass with the erase–remove idiom (or `std::erase_if` in C++20);
+- **erasing individuals one at a time** from the middle of a vector, which shifts all later elements each time. Mark them, then remove them in one pass with the erase-remove idiom (or `std::erase_if` in C++20);
 - **recomputing totals** from scratch every step when they could be updated as individuals change.
 
 ### Spatial hashing for neighbour search
@@ -112,7 +112,7 @@ On a typical laptop, the all-pairs scan of 20,000 points takes a few tenths of a
 
 ### Step 5: mind the memory
 
-A modern processor computes much faster than it can fetch data from main memory. It hides the difference with small, fast *caches* that hold recently used memory in blocks of 64 bytes, and with prefetching, which loads the next blocks when it sees data being read in order. Code is fast when it reads memory **contiguously**, and slow when it jumps around.
+A modern processor computes much faster than it can fetch data from main memory. It hides the difference with small, fast *caches* that hold recently used memory in blocks of 64 bytes, and with prefetching, which loads the next blocks when it sees data being read in order. Code is fast when it reads memory contiguously, and slow when it jumps around.
 
 - A `std::vector` of values is contiguous; a `std::list`, or a vector of `std::unique_ptr` to individually allocated objects, is not, because each element lives wherever the allocator put it.
 - **Array of structs versus struct of arrays.** A `std::vector<Individual>` with twenty fields per individual interleaves all twenty in memory. A loop that reads only positions still pulls every other field through the cache. Storing each attribute in its own vector (`struct Population { std::vector<double> x, y, mass; ... };`) lets such loops read only what they need. Whether this helps depends on the access pattern, so measure; for loops that use most of the fields, the array of structs can be just as fast. See <Concept id="object-design" /> for the design trade-off.
@@ -123,7 +123,7 @@ A modern processor computes much faster than it can fetch data from main memory.
 Allocating memory (each `push_back` that grows a vector, each new `std::string`, each `std::make_unique`) costs far more than arithmetic. In a loop that runs millions of times:
 
 - `reserve` a vector's final size before filling it, when you know or can bound it;
-- **reuse buffers**: declare a work vector outside the loop and `clear()` it each iteration; `clear` keeps the capacity, so later iterations allocate nothing;
+- reuse buffers: declare a work vector outside the loop and `clear()` it each iteration; `clear` keeps the capacity, so later iterations allocate nothing;
 - pass large objects by `const&` and return them by value (the compiler elides the copy), and move rather than copy when ownership changes (`std::move`);
 - construct random number distributions outside the loop when their parameters do not change (see <Concept id="random-library" />);
 - build output strings once per line, not once per value, and never flush per line (`'\n'`, not `std::endl`).
@@ -211,9 +211,9 @@ Keep a record of each optimisation with its measured effect. A change that gains
 <Practice>
 
 1. Build the example program without optimisation (`-O0`) and with `-O2`, and run each three times. How large is the difference for the all-pairs scan and for the grid search?
-2. Change `N` in the example to 5,000, 10,000, 20,000 and 40,000 and record both timings. Plot them on log–log axes. What slopes do you expect, and what do you observe?
+2. Change `N` in the example to 5,000, 10,000, 20,000 and 40,000 and record both timings. Plot them on log-log axes. What slopes do you expect, and what do you observe?
 3. The plant model `ibm/plants.cpp` counts neighbours with a straightforward scan of all plants. Profile it with the tool for your platform and confirm that `countNeighbours` is the hot spot. Then sketch how a grid would work on its torus, where neighbours can be found across the edges.
-4. A model removes dead individuals with `for (std::size_t i = 0; i < pop.size(); ) { if (!pop[i].alive()) pop.erase(pop.begin() + i); else ++i; }`. What is its complexity when many die? Rewrite it with the erase–remove idiom and measure the difference for 100,000 individuals with 30 % mortality.
+4. A model removes dead individuals with `for (std::size_t i = 0; i < pop.size(); ) { if (!pop[i].alive()) pop.erase(pop.begin() + i); else ++i; }`. What is its complexity when many die? Rewrite it with the erase-remove idiom and measure the difference for 100,000 individuals with 30 % mortality.
 
 <details>
 <summary>Hints and worked answers</summary>

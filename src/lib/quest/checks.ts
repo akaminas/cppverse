@@ -343,11 +343,11 @@ export function checkLake(sub: LakeSubmission): LakeReport {
       const [o0, o1] = range(O.values);
       const [p0, p1] = range(PH.values);
       const out = [
-        (t0 < 5 || t1 > 40) && `temperature ${fmt(t0, 1)}–${fmt(t1, 1)} °C (expected 5–40)`,
+        (t0 < 5 || t1 > 40) && `temperature ${fmt(t0, 1)} to ${fmt(t1, 1)} °C (expected 5 to 40)`,
         o1 > 25 && `oxygen up to ${fmt(o1, 1)} mg/L (above 25: check the units are mg/L)`,
-        (p0 < 4 || p1 > 12) && `pH ${fmt(p0)}–${fmt(p1)} (expected 4–12)`,
+        (p0 < 4 || p1 > 12) && `pH ${fmt(p0)} to ${fmt(p1)} (expected 4 to 12)`,
       ].filter(Boolean);
-      add('Run', 'ranges', RUN_IDS[3][1], out.length ? 'fail' : 'pass', out.length ? `Out of range: ${out.join('; ')}.` : `Temperature ${fmt(t0, 1)}–${fmt(t1, 1)} °C, oxygen ${fmt(o0, 1)}–${fmt(o1, 1)} mg/L, pH ${fmt(p0)}–${fmt(p1)}.`);
+      add('Run', 'ranges', RUN_IDS[3][1], out.length ? 'fail' : 'pass', out.length ? `Out of range: ${out.join('; ')}.` : `Temperature ${fmt(t0, 1)} to ${fmt(t1, 1)} °C, oxygen ${fmt(o0, 1)} to ${fmt(o1, 1)} mg/L, pH ${fmt(p0)} to ${fmt(p1)}.`);
 
       // Seasonal forcing and response.
       const late = run.afterFirstYear;
@@ -402,7 +402,7 @@ export function checkLake(sub: LakeSubmission): LakeReport {
         lags.r2 >= 0.1 && lags.phase >= 3 && lags.phase <= 150 ? 'pass' : 'fail',
         lags.r2 < 0.1
           ? 'Phytoplankton or zooplankton has no clear annual cycle, so no lag can be measured.'
-          : `Over the run, the zooplankton peak trails the phytoplankton peak by ${fmt(lags.phase, 0)} days (3–150 expected).`,
+          : `Over the run, the zooplankton peak trails the phytoplankton peak by ${fmt(lags.phase, 0)} days (3 to 150 expected).`,
       );
 
       // Coexistence.
@@ -513,7 +513,7 @@ export function checkLake(sub: LakeSubmission): LakeReport {
         : clones.length
           ? `Diets almost identical (Pianka overlap ≥ 0.95): ${clones.map(([a, b, o]) => `${nm(a)} and ${nm(b)} (${fmt(o)})`).join(', ')}. Give each guild its own niche.`
           : competing.length
-            ? `Competitors that share prey: ${competing.slice(0, 3).map(([a, b, o]) => `${nm(a)} and ${nm(b)} (overlap ${fmt(o)})`).join(', ')}; no two guilds share a diet.`
+            ? `Competitors that share prey: ${competing.slice(0, 3).map(([a, b, o]) => `${nm(a)} and ${nm(b)} (overlap ${fmt(o)})`).join(', ')}; no two guilds have identical diets.`
             : 'No two fish share prey (Pianka overlap ≥ 0.3 needed for at least one pair): there is no competition to coexist through.',
     );
   }
@@ -610,7 +610,7 @@ export function checkLake(sub: LakeSubmission): LakeReport {
     return dayDistance(runOk!.t[fy[k]], said) <= 15 || v[near] - v[k] <= 0.05 * range;
   };
   if (!oxygen || !runOk) add('Notes', 'note-oxygen', 'When oxygen is lowest', 'pending', 'Needs the baseline run.');
-  else if (!has(n.oxygenMinDay)) add('Notes', 'note-oxygen', 'When oxygen is lowest', 'pending', 'Give the day of the year (0–364) of the oxygen minimum in the final year.');
+  else if (!has(n.oxygenMinDay)) add('Notes', 'note-oxygen', 'When oxygen is lowest', 'pending', 'Give the day of the year (0 to 364) of the oxygen minimum in the final year.');
   else {
     const day = Number(n.oxygenMinDay);
     const ok = extremeDay(oxygen, day, 1);
@@ -626,7 +626,7 @@ export function checkLake(sub: LakeSubmission): LakeReport {
     add('Notes', 'note-dominant', 'The dominant guild', ok ? 'pass' : 'fail', ok ? `${n.dominantFish}: yes, the largest standing stock in the final year.` : NOTE_LOOK);
   }
   if (!runOk || !zoo) add('Notes', 'note-zooplankton', 'When grazers peak', 'pending', 'Needs the baseline run.');
-  else if (!has(n.zooplanktonPeakDay)) add('Notes', 'note-zooplankton', 'When grazers peak', 'pending', 'Give the day of the year (0–364) of the zooplankton maximum in the final year.');
+  else if (!has(n.zooplanktonPeakDay)) add('Notes', 'note-zooplankton', 'When grazers peak', 'pending', 'Give the day of the year (0 to 364) of the zooplankton maximum in the final year.');
   else {
     const day = Number(n.zooplanktonPeakDay);
     const ok = extremeDay(zoo, day, -1);

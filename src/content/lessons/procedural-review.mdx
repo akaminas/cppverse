@@ -1,6 +1,6 @@
 ---
 title: A complete procedural simulation
-summary: Parameters, state, update rule, simulation loop, validation, command-line input and CSV output, assembled into one program for a juvenile–adult population.
+summary: Parameters, state, update rule, simulation loop, validation, command-line input and CSV output, assembled into one program for a juvenile-adult population.
 level: beginner
 module: 11
 manual: ["M11.1", "M11.2", "M11.3", "M11.4", "M11.5"]
@@ -72,30 +72,30 @@ Select a term of the equations to see the line that implements it, or a highligh
 
 <MathCode id="procedural-review-step" />
 
-Read `main` (lines 82–110) first: it is an outline of the experiment. Convert the arguments, validate, simulate, write the file, report. Every step is a call to a function with a name that says what it does, and everything that can go wrong ends in the same `catch` block, which reports the problem on `std::cerr` and returns `EXIT_FAILURE`.
+Read `main` (lines 82 to 110) first: it is an outline of the experiment. It converts the arguments, validates them, simulates, writes the file and reports. Every step is a call to a function with a name that says what it does, and everything that can go wrong ends in the same `catch` block, which reports the problem on `std::cerr` and returns `EXIT_FAILURE`.
 
 ### Where each part comes from
 
 | In `two_stage_sim.cpp` | Lines | Taught in |
 |---|---|---|
-| Variables of type `double`, `int` and `bool`, all initialised | 16–27, 31 | <Concept id="variables" />, <Concept id="initialisation" /> |
-| `Parameters` and `State` as structs with default values | 15–28 | <Concept id="structs" />, <Concept id="state-representation" /> |
-| `const` for values computed once | 38–39, 91–95 | <Concept id="literals-constants" /> |
-| Compound conditions with `&&` and comparisons | 31–33 | <Concept id="boolean-logic" />, <Concept id="if-else" /> |
-| The update rule as a function returning the new state | 37–41 | <Concept id="update-rule" />, <Concept id="functions" /> |
-| Both new values computed from the old state | 38–40 | <Concept id="update-order" /> |
-| A `for` loop over generations, storing every state | 43–49 | <Concept id="for-loop" />, <Concept id="time-stepping" /> |
-| `std::vector<State>`, `push_back`, `back` | 44–46, 95 | <Concept id="std-vector" /> |
+| Variables of type `double`, `int` and `bool`, all initialised | 16-27, 31 | <Concept id="variables" />, <Concept id="initialisation" /> |
+| `Parameters` and `State` as structs with default values | 15-28 | <Concept id="structs" />, <Concept id="state-representation" /> |
+| `const` for values computed once | 38-39, 91-95 | <Concept id="literals-constants" /> |
+| Compound conditions with `&&` and comparisons | 31-33 | <Concept id="boolean-logic" />, <Concept id="if-else" /> |
+| The update rule as a function returning the new state | 37-41 | <Concept id="update-rule" />, <Concept id="functions" /> |
+| Both new values computed from the old state | 38-40 | <Concept id="update-order" /> |
+| A `for` loop over generations, storing every state | 43-49 | <Concept id="for-loop" />, <Concept id="time-stepping" /> |
+| `std::vector<State>`, `push_back`, `back` | 44-46, 95 | <Concept id="std-vector" /> |
 | Parameters by `const&`, the small `State` by value | 30, 37, 65 | <Concept id="const-reference" />, <Concept id="pass-by-value" /> |
-| `std::string` for file names and messages | 51–63, 65 | <Concept id="strings" /> |
-| Throwing and catching exceptions | 33, 54, 61, 79, 104–107 | <Concept id="exceptions" /> |
-| `argc`, `argv` and checked conversion with `std::stod`, `std::stoi` | 51–63, 82–89 | <Concept id="command-line" /> |
-| `std::ofstream`, opening, closing and checking | 66–67, 78–79 | <Concept id="file-streams" />, <Concept id="stream-state" /> |
-| Metadata, long format and full precision in the CSV file | 68–76 | <Concept id="trajectory-output" />, <Concept id="output-formatting" /> |
+| `std::string` for file names and messages | 51-63, 65 | <Concept id="strings" /> |
+| Throwing and catching exceptions | 33, 54, 61, 79, 104-107 | <Concept id="exceptions" /> |
+| `argc`, `argv` and checked conversion with `std::stod`, `std::stoi` | 51-63, 82-89 | <Concept id="command-line" /> |
+| `std::ofstream`, opening, closing and checking | 66-67, 78-79 | <Concept id="file-streams" />, <Concept id="stream-state" /> |
+| Metadata, long format and full precision in the CSV file | 68-76 | <Concept id="trajectory-output" />, <Concept id="output-formatting" /> |
 
 If any row is unfamiliar, follow its link before going on; the rest of this lesson assumes all of them.
 
-Two design choices are worth making explicit:
+The program makes two design choices:
 
 - **The model knows nothing about input and output.** `step` and `simulate` neither read nor print. They can be tested, reused in a parameter sweep, or moved into their own file pair (<Concept id="multiple-files" />) without change.
 - **Validation happens once, early.** After `validate(p)` the rest of the program may assume sensible parameters. The test is written as "all conditions hold" rather than "any condition fails", so that a `nan` parameter, for which every comparison is false, is rejected too.

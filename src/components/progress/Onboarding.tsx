@@ -121,7 +121,7 @@ export default function Onboarding({ base }: { base: string }) {
           </button>
           <a className="btn-outline" href={`${b}/atlas/`}>Skip and explore freely</a>
         </div>
-        <p className="ob-note">Stored only in this browser. No account, no tracking. Change it at any time on the progress page.</p>
+        <p className="ob-note">Stored only in this browser, with no account and no tracking. You can change it at any time on the progress page.</p>
       </div>
     </div>
   );

@@ -21,7 +21,7 @@ export const figures: Record<string, () => FigureSpec> = {
     const peak = s6.t[s6.x.reduce((best, x, i, all) => (x[1] > all[best][1] ? i : best), 0)];
     return {
       title: 'The controller takes its shortest steps while the epidemic rises and peaks, and lengthens them by orders of magnitude once it is over',
-      subtitle: 'Accepted step sizes of the adaptive Heun–Euler pair on the SIR model, β = 0.5 and γ = 0.2 per day, S(0) = 0.999, I(0) = 0.001; atol = rtol',
+      subtitle: 'Accepted step sizes of the adaptive Heun-Euler pair on the SIR model, β = 0.5 and γ = 0.2 per day, S(0) = 0.999, I(0) = 0.001; atol = rtol',
       xLabel: 'Time (days)',
       yUnit: 'Accepted step size h (days, log scale)',
       series: [
@@ -38,7 +38,7 @@ export const figures: Record<string, () => FigureSpec> = {
     const s = adaptive(1e-4, 100);
     return {
       title: 'Accepted steps crowd together where the proportion infectious changes fastest',
-      subtitle: 'Proportion infectious I at the end of every accepted step; adaptive Heun–Euler with atol = rtol = 10⁻⁴, SIR with β = 0.5 and γ = 0.2 per day',
+      subtitle: 'Proportion infectious I at the end of every accepted step; adaptive Heun-Euler with atol = rtol = 10⁻⁴, SIR with β = 0.5 and γ = 0.2 per day',
       xLabel: 'Time (days)',
       yUnit: 'Proportion infectious I',
       series: [{ id: 'I', label: 'I at accepted steps', points: s.t.map((t, i) => [t, s.x[i][1]] as [number, number]), family: 'terracotta', kind: 'points' }],
@@ -60,12 +60,12 @@ export const figures: Record<string, () => FigureSpec> = {
     });
     return {
       title: 'For the same accuracy, adaptive steps need several times fewer slope evaluations than a fixed step',
-      subtitle: 'Error in the final proportion susceptible, S(400), against the final-size relation; Heun steps of fixed size versus the adaptive Heun–Euler pair',
+      subtitle: 'Error in the final proportion susceptible, S(400), against the final-size relation; Heun steps of fixed size versus the adaptive Heun-Euler pair',
       xLabel: 'Right-hand-side evaluations (log scale)',
       yUnit: 'Absolute error in S(400) (log scale)',
       series: [
         { id: 'fixed', label: 'Fixed-step Heun', points: fixedPoints, family: 'terracotta', markers: true },
-        { id: 'adaptive', label: 'Adaptive Heun–Euler', points: adaptivePoints, family: 'indigo', markers: true },
+        { id: 'adaptive', label: 'Adaptive Heun-Euler', points: adaptivePoints, family: 'indigo', markers: true },
       ],
       x: { type: 'log' },
       y: { type: 'log' },

@@ -10,7 +10,7 @@ objectives:
   - Explain why the equations of a multi-variable model define a simultaneous update
   - Recognise a sequential-update bug in code that compiles, runs and gives plausible numbers
   - Keep updates simultaneous with temporary variables, a new state object or a second vector
-  - Explain how an update-order bug changed the stability of a host–parasitoid model, and the conclusion drawn from it
+  - Explain how an update-order bug changed the stability of a host-parasitoid model, and the conclusion drawn from it
 references:
   - "Nicholson, A. J. and Bailey, V. A. (1935) The balance of animal populations. Part I. Proceedings of the Zoological Society of London 105, 551–598."
   - "Beddington, J. R., Free, C. A. and Lawton, J. H. (1975) Dynamic complexity in predator–prey models framed in difference equations. Nature 255, 58–60."
@@ -48,17 +48,17 @@ The sequential version is not a crash or a compiler error. It is the most natura
 
 ## How it works in C++
 
-The canonical host–parasitoid program contains both versions:
+The canonical host-parasitoid program contains both versions:
 
 <Example file="algorithms/host_parasitoid.cpp" mark="29-42" />
 
-In `simultaneousStep` (lines 30–34), both new values are stored in `const` local variables computed from `now`, and a new `State` is returned. Nothing is overwritten while the equations are being evaluated.
+In `simultaneousStep` (lines 30 to 34), both new values are stored in `const` local variables computed from `now`, and a new `State` is returned. Nothing is overwritten while the equations are being evaluated.
 
-In `sequentialStep` (lines 37–42), line 39 overwrites `s.H`, and line 40 then reads `s.H` again, so the parasitoid equation sees the *new* hosts. Notice that the author did think about update order: line 38 saves the old `P` before anything changes. They protected one variable and forgot the other. This is the typical form of the bug.
+In `sequentialStep` (lines 37 to 42), line 39 overwrites `s.H`, and line 40 then reads `s.H` again, so the parasitoid equation sees the *new* hosts. Notice that the author did think about update order: line 38 saves the old `P` before anything changes. They protected one variable and forgot the other. This is the typical form of the bug.
 
 ### Three ways to keep an update simultaneous
 
-**Temporaries.** Compute every new value into its own variable, then assign them all. This is what lines 31–33 do. It is the simplest fix for a handful of variables.
+**Temporaries.** Compute every new value into its own variable, then assign them all. This is what lines 31 to 33 do. It is the simplest fix for a handful of variables.
 
 **A new state object.** Give the update rule the old state as a `const` reference and let it return a new one:
 
@@ -102,7 +102,7 @@ Three things have gone wrong at once. Symmetric dispersal has produced an asymme
 
 ### A false equilibrium
 
-Run the host–parasitoid program both ways with the same parameters ($r = 1.2$, $K = 80$, $a = 0.06$, $c = 0.8$) and the same start ($H_0 = 20$, $P_0 = 2$):
+Run the host-parasitoid program both ways with the same parameters ($r = 1.2$, $K = 80$, $a = 0.06$, $c = 0.8$) and the same start ($H_0 = 20$, $P_0 = 2$):
 
 <Figure id="update-order" />
 
@@ -123,7 +123,7 @@ The laboratory has an update-order mode. Change $r$ and $a$ and look for paramet
 <Check
   id="competition"
   kind="debug"
-  question="These two lines implement Leslie–Gower competition between two species: N₁′ = R₁N₁ / (1 + a₁₁N₁ + a₁₂N₂) and N₂′ = R₂N₂ / (1 + a₂₁N₁ + a₂₂N₂). What is wrong?"
+  question="These two lines implement Leslie-Gower competition between two species: N₁′ = R₁N₁ / (1 + a₁₁N₁ + a₁₂N₂) and N₂′ = R₂N₂ / (1 + a₂₁N₁ + a₂₂N₂). What is wrong?"
   code={`N1 = R1 * N1 / (1.0 + a11 * N1 + a12 * N2);
 N2 = R2 * N2 / (1.0 + a21 * N1 + a22 * N2);`}
   options={[
@@ -144,7 +144,7 @@ N2 = R2 * N2 / (1.0 + a21 * N1 + a22 * N2);`}
 <Check
   id="equilibrium-test"
   kind="interpret"
-  question="To test the host–parasitoid code, a student starts both versions exactly at the analytical fixed point (H*, P*) and checks that the state does not change. Both pass. What does this show?"
+  question="To test the host-parasitoid code, a student starts both versions exactly at the analytical fixed point (H*, P*) and checks that the state does not change. Both pass. What does this show?"
   options={[
     "Both versions implement the model correctly",
     "Only the simultaneous version is correct, because it passed first",
@@ -191,7 +191,7 @@ Update order comes up wherever a model has more than one state variable:
 ## Common mistakes
 
 - **Updating the members of a state struct in place**, one after the other, as in `sequentialStep`.
-- **Saving some old values but not all.** Line 38 of the host–parasitoid program saves `P` and forgets `H`. Copy the whole state, `const State old = s;`, or use temporaries for every variable.
+- **Saving some old values but not all.** Line 38 of the host-parasitoid program saves `P` and forgets `H`. Copy the whole state, `const State old = s;`, or use temporaries for every variable.
 - **In-place loops over neighbours** in vectors and grids.
 - **Aliasing.** A function `void step(const std::vector<double>& in, std::vector<double>& out)` is safe only if `in` and `out` are different vectors. Calling `step(n, n)` reintroduces the in-place bug.
 - **Copying a large state every step without need.** Keep two vectors and exchange them with `std::swap(current, next)`, which swaps their contents without copying elements.
@@ -201,7 +201,7 @@ Update order comes up wherever a model has more than one state variable:
 <Practice>
 
 1. Rewrite the ring simulation so that it keeps two vectors, `current` and `next`, for the whole run, and exchanges them after each generation instead of allocating a new vector. Check that the output equals the simultaneous line above.
-2. Design a test that the sequential host–parasitoid step fails and the simultaneous step passes. Compute the expected values by hand, or with a calculator, for one step from $H = 20$, $P = 2$.
+2. Design a test that the sequential host-parasitoid step fails and the simultaneous step passes. Compute the expected values by hand, or with a calculator, for one step from $H = 20$, $P = 2$.
 3. A row of 20 habitat sites is either occupied (1) or empty (0). Each year, an empty site becomes occupied if at least one neighbour was occupied the year before; occupied sites stay occupied. Write pseudocode for one synchronous year. Then predict what an in-place left-to-right loop would do to a row with only site 0 occupied.
 
 <details>

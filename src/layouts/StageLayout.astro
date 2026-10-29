@@ -1,0 +1,76 @@
+---
+// The stage: the landing page and the atlas keep their own dark look
+// (src/styles/stage.css), whatever theme the rest of the site is in.
+import '../styles/stage.css';
+import BrandMark from '../components/site/BrandMark.astro';
+import Nautilus from '../components/site/Nautilus.astro';
+import { url } from '../lib/url';
+import { NAV, type Section } from './nav';
+
+interface Props {
+  title: string;
+  description?: string;
+  section?: Section;
+  /** Landing page: transparent header, no companion. */
+  bare?: boolean;
+  bodyClass?: string;
+}
+
+const { title, description = 'Learn C++ and use it to build and understand models of biological systems.', section, bare = false, bodyClass } = Astro.props;
+const fullTitle = title === 'C++ Atlas' ? 'C++ Atlas: Programming and Modelling for Biologists' : `${title} · C++ Atlas`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+<!doctype html>
+<html lang="en-GB" data-theme="dark" data-stage>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0A0B0D" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={url('/favicon.svg')} type="image/svg+xml" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <slot name="head" />
+  </head>
+  <body class={bodyClass}>
+    <a class="skip-link" href="#content">Skip to the content</a>
+    <header class:list={['site-header', { 'is-transparent': bare }]}>
+      <div class="wrap header-in">
+        <a class="brand" href={url('/')} aria-label="C++ Atlas home">
+          <BrandMark />
+          <span class="brand-word">C++ Atlas</span>
+        </a>
+        <nav class="nav" id="site-nav" aria-label="Main">
+          {NAV.map((item) => (
+            <a href={item.href} aria-current={section === item.id ? 'page' : undefined}>{item.label}</a>
+          ))}
+        </nav>
+        <div class="header-tools">
+          <button class="icon-btn menu-btn" type="button" aria-label="Open the menu" aria-expanded="false" aria-controls="site-nav">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="content" tabindex="-1">
+      <slot />
+    </main>
+
+    {!bare && <Nautilus />}
+
+    <script>
+      const menu = document.querySelector<HTMLButtonElement>('.menu-btn');
+      const nav = document.getElementById('site-nav');
+      menu?.addEventListener('click', () => {
+        const open = nav?.classList.toggle('is-open') ?? false;
+        menu.setAttribute('aria-expanded', String(open));
+        menu.setAttribute('aria-label', open ? 'Close the menu' : 'Open the menu');
+      });
+    </script>
+  </body>
+</html>

@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 /** Scroll an island into view and wait until Astro has hydrated it. */
 async function hydrated(target: Locator) {
@@ -9,6 +9,9 @@ async function hydrated(target: Locator) {
   await island.locator('xpath=./*[1]').scrollIntoViewIfNeeded();
   await expect(island).not.toHaveAttribute('ssr', '');
 }
+
+/** The theme the page has resolved to. */
+const theme = (page: Page) => page.evaluate(() => document.documentElement.dataset.theme);
 
 const CITATION = 'C++ for biologists course material, University of Groningen, Faculty of Science and Engineering, Nijenborgh 7, 9747 AG Groningen';
 
@@ -126,6 +129,55 @@ test.describe('lessons, models and laboratories', () => {
     await hydrated(lab);
     await expect(lab.getByText(/Kendall/).first()).toBeVisible();
   });
+});
+
+test.describe('themes', () => {
+  test('the standard pages follow the system theme until a choice is made', async ({ browser }) => {
+    for (const scheme of ['light', 'dark'] as const) {
+      const context = await browser.newContext({ colorScheme: scheme });
+      const page = await context.newPage();
+      await page.goto('curriculum/');
+      expect(await theme(page)).toBe(scheme);
+      await context.close();
+    }
+  });
+
+  test('the toggle switches the theme and the choice survives a reload', async ({ page }) => {
+    await page.goto('about/');
+    const start = await theme(page);
+    const next = start === 'dark' ? 'light' : 'dark';
+    await page.getByRole('button', { name: `Switch to the ${next} theme` }).click();
+    expect(await theme(page)).toBe(next);
+    await page.reload();
+    expect(await theme(page)).toBe(next);
+    await expect(page.getByRole('button', { name: `Switch to the ${start} theme` })).toBeVisible();
+  });
+
+  test('the landing page and the atlas stay dark whatever the saved theme', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('cpp-atlas:theme', 'light'));
+    for (const path of ['./', 'atlas/']) {
+      await page.goto(path);
+      expect(await theme(page)).toBe('dark');
+      await expect(page.locator('html')).toHaveAttribute('data-stage', '');
+    }
+  });
+});
+
+test.describe('accessibility in both themes', () => {
+  for (const colour of ['light', 'dark'] as const) {
+    for (const path of ['curriculum/', 'learn/hello-world/', 'learn/vectors/', 'models/', 'models/stochastic/', 'capstones/capstone-d/', 'pathways/', 'start/', 'progress/', 'about/', 'sources/', 'deep/']) {
+      test(`no serious accessibility violations on ${path} in the ${colour} theme`, async ({ page }) => {
+        test.setTimeout(120_000);
+        await page.addInitScript((c) => localStorage.setItem('cpp-atlas:theme', c), colour);
+        await page.goto(path);
+        await page.waitForLoadState('networkidle');
+        expect(await theme(page)).toBe(colour);
+        const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+        const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+        expect(serious.map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
+      });
+    }
+  }
 });
 
 test.describe('accessibility', () => {

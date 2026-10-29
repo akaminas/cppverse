@@ -236,4 +236,26 @@ const tentacles = [
   @media (max-width: 620px) {
     .nautilus-bubble { right: 16px; bottom: 236px; border-radius: 16px; }
   }
+
+  /* On the standard pages (light or dark theme) the bubble is a plain card; the
+     stage pages (landing, atlas) keep the glowing dark one above. */
+  :global(html:not([data-stage])) .nautilus-root:not(.is-present) .nautilus-layer { visibility: hidden; }
+  :global(html:not([data-stage])) .nautilus-trail polyline { stroke: var(--accent); stroke-opacity: 0.18; }
+  :global(html:not([data-stage])) .nautilus-root.is-present .nautilus { filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.3)); }
+  :global(html:not([data-stage])) .nautilus-bubble {
+    background: var(--bg); color: var(--v-ink); border: 1px solid var(--frame); border-radius: 4px;
+    box-shadow: var(--shadow-float); backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  :global(html:not([data-stage])) .nb-kind { font-family: var(--v-font-body); font-size: 0.85rem; letter-spacing: 0; text-transform: none; font-weight: 700; color: var(--accent-strong); }
+  :global(html:not([data-stage])) .nautilus-bubble[data-kind='cheer'] .nb-kind,
+  :global(html:not([data-stage])) .nautilus-bubble[data-kind='spur'] .nb-kind,
+  :global(html:not([data-stage])) .nautilus-bubble[data-voice='field'] .nb-kind { color: var(--v-moss-deep); }
+  :global(html:not([data-stage])) .nautilus-bubble[data-kind='break'] .nb-kind,
+  :global(html:not([data-stage])) .nautilus-bubble[data-kind='quest'] .nb-kind,
+  :global(html:not([data-stage])) .nautilus-bubble[data-voice='shortcut'] .nb-kind { color: var(--v-ochre-deep); }
+  :global(html:not([data-stage])) .nautilus-bubble[data-kind='pointer'] .nb-kind,
+  :global(html:not([data-stage])) .nautilus-bubble[data-voice='deep'] .nb-kind { color: var(--v-indigo-deep); }
+  :global(html:not([data-stage])) .nautilus-bubble[data-voice='disaster'] .nb-kind { color: var(--v-terracotta-deep); }
+  :global(html:not([data-stage])) .nautilus-bubble[data-voice='style'] .nb-kind { color: var(--v-mauve-deep); }
+  :global(html:not([data-stage])) .nb-text { text-align: left; }
 </style>

@@ -10,7 +10,6 @@ import { lessonContext } from '../lib/lesson-context';
 import { lessonCheckCounts } from '../lib/atlas-data';
 import { url } from '../lib/url';
 import { CITATION } from '../data/citation';
-import { domainPastel } from '../lib/pastel';
 
 interface Props {
   entry: CollectionEntry<'lessons'>;
@@ -25,54 +24,30 @@ const LEVEL = { beginner: 'Beginner', intermediate: 'Intermediate', seasoned: 'S
 const toc = headings.filter((h) => h.depth === 2);
 const kindNote = (k: string) => (k === 'landmark' ? 'destination' : k === 'capstone' ? 'capstone' : '');
 const checks = checkCounts[slug] ?? 0;
-// Stat bars for the field-guide entry (value, scale maximum).
-const stats = [
-  { label: 'Minutes', value: d.minutes, max: 60 },
-  { label: 'Builds on', value: ctx.needs.length, max: 10 },
-  { label: 'Leads to', value: ctx.leads.length, max: 12 },
-  { label: 'Checks', value: checks, max: 6 },
-];
-const hue = domainPastel(ctx.domain.id);
 ---
 <BaseLayout title={d.title} section="learn" description={d.summary} bodyClass="lesson-page">
-  <article class="lesson" style={`--hue: ${hue}`} data-domain={ctx.domain.id} data-slug={slug} data-checks={checks} data-title={d.title} data-minutes={d.minutes}>
+  <article class="lesson" data-domain={ctx.domain.id} data-slug={slug} data-checks={checks} data-title={d.title} data-minutes={d.minutes}>
     <header class="lesson-head wrap">
-      <div class="entry">
-        <p class="eyebrow entry-crumbs">
-          <a href={url(`/atlas/?domain=${ctx.domain.id}`)}>{ctx.domain.title}</a>
-          <span aria-hidden="true"> · </span>
-          {d.optional ? 'Optional branch' : 'Field-guide entry'}
-          <span class="entry-no">No. {String(ctx.entryNo).padStart(3, '0')} of {ctx.entryCount}</span>
+      <p class="eyebrow lesson-crumbs">
+        <a href={url(`/atlas/?domain=${ctx.domain.id}`)}>{ctx.domain.title}</a>
+        <span aria-hidden="true"> › </span>
+        {d.optional ? 'Optional lesson' : 'Lesson'} {ctx.entryNo} of {ctx.entryCount}
+      </p>
+      <h1>{d.title}</h1>
+      <p class="lead">{d.summary}</p>
+      <p class="lesson-facts">
+        <span>{LEVEL[d.level]}</span>
+        <span aria-hidden="true">·</span>
+        <span>{d.minutes} minutes</span>
+        <span aria-hidden="true">·</span>
+        <span class:list={['std-badge', { 'is-new': d.standard !== 'c++17' }]}>{d.standard.toUpperCase()}</span>
+        {checks > 0 && (<><span aria-hidden="true">·</span><span>{checks} {checks === 1 ? 'knowledge check' : 'knowledge checks'}</span></>)}
+      </p>
+      {ctx.destinations.length > 0 && ctx.destinations.length < 5 && (
+        <p class="lesson-dests">
+          Leads to {ctx.destinations.map((l, i) => (<>{i > 0 && ', '}<a href={l.href}>{l.title}</a></>))}
         </p>
-        <div class="entry-body">
-          <div class="entry-main">
-            <h1>{d.title}</h1>
-            <p class="lead entry-desc">{d.summary}</p>
-            <p class="entry-facts">
-              <span>{LEVEL[d.level]}</span>
-              <span aria-hidden="true">·</span>
-              <span class:list={['std-badge', { 'is-new': d.standard !== 'c++17' }]}>{d.standard.toUpperCase()}</span>
-              {d.optional && (<><span aria-hidden="true">·</span><span>Optional</span></>)}
-            </p>
-            {ctx.destinations.length > 0 && ctx.destinations.length < 5 && (
-              <p class="lesson-dests">
-                Leads to {ctx.destinations.map((l, i) => (<>{i > 0 && ', '}<a href={l.href}>{l.title}</a></>))}
-              </p>
-            )}
-          </div>
-          <dl class="entry-stats" aria-label="Entry data">
-            {stats.map((s) => (
-              <div class="entry-stat">
-                <dt>{s.label}</dt>
-                <dd>
-                  <span class="entry-meter" aria-hidden="true"><span style={`--v: ${Math.min(1, s.value / s.max).toFixed(3)}`}></span></span>
-                  <span class="entry-num">{s.value}</span>
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </div>
+      )}
     </header>
 
     <div class="wrap lesson-grid">

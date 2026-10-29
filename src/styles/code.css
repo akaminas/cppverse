@@ -61,13 +61,13 @@ pre code { background: none; padding: 0; white-space: pre; font-size: inherit; }
 .code-head .code-name { font-family: var(--v-font-mono); color: var(--v-secondary); }
 .code-head .code-actions { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; }
 .code-head .code-actions button, .code-head .code-actions a {
-  font: inherit; font-size: 0.74rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-secondary);
-  background: transparent; border: 0; border-radius: 6px; padding: 5px 8px; cursor: pointer; text-decoration: none;
+  font: inherit; font-size: 0.88rem; color: var(--v-secondary);
+  background: transparent; border: 0; border-radius: 3px; padding: 4px 8px; cursor: pointer; text-decoration: none;
 }
 .code-head .code-actions button:hover, .code-head .code-actions a:hover { color: var(--accent); background: var(--soft); }
 .code-foot { padding: 10px 20px 14px; border-top: 1px solid var(--line); font-size: 0.82rem; color: var(--v-secondary); }
 .code-foot pre { background: var(--bg) !important; border-radius: 8px; padding: 10px 14px; margin: 6px 0 0; font-size: 0.8rem; }
-.code-foot .label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-secondary); }
+.code-foot .label { font-size: 0.85rem; font-weight: 700; color: var(--v-secondary); }
 
 /* Line numbers, generated as data-line on .line spans. */
 .code-lines .line { display: inline-block; width: 100%; }
@@ -75,7 +75,7 @@ pre code { background: none; padding: 0; white-space: pre; font-size: inherit; }
   content: attr(data-line); display: inline-block; width: 2.2em; margin-right: 1.1em;
   text-align: right; color: var(--v-secondary); user-select: none; opacity: 0.8;
 }
-.line.is-marked { background: rgba(111, 227, 238, 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+.line.is-marked { background: color-mix(in srgb, var(--accent) 9%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
 .line.is-dim, .line.is-dim span { color: var(--v-muted) !important; }
 
 .std-badge {

@@ -7,7 +7,6 @@ import { url } from '../lib/url';
 <BaseLayout title="About" section="about" description="What C++ Atlas is, who it is for, and how it is built.">
   <div class="wrap-narrow about">
     <header class="page-head">
-      <p class="eyebrow">About</p>
       <h1>A course in scientific modelling through C++</h1>
     </header>
     <p>
@@ -39,7 +38,9 @@ import { url } from '../lib/url';
     </p>
     <h2>Design</h2>
     <p>
-      Colour, typography and scientific figures follow the <a href="https://akaminas.github.io/vellum/">Vellum</a> design system.
+      Scientific figures and the colours of the code follow the <a href="https://akaminas.github.io/vellum/">Vellum</a> design system.
+      The pages are set in Source Sans Pro and Source Code Pro, and come in a light and a dark theme: the button in the header
+      switches between them, and the first visit follows your system setting.
     </p>
     <h2>Your data</h2>
     <p>
@@ -49,6 +50,6 @@ import { url } from '../lib/url';
   </div>
 </BaseLayout>
 <style>
-  .about h2 { font-size: 1.6rem; margin-top: 1.8em; }
+  .about h2 { margin-top: 1.8em; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
   .about p { max-width: 68ch; }
 </style>

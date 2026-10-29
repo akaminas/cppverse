@@ -1,10 +1,10 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
+import StageLayout from '../layouts/StageLayout.astro';
 import Topography from '../components/landing/Topography.astro';
 import Attribution from '../components/site/Attribution.astro';
 import { url } from '../lib/url';
 ---
-<BaseLayout title="C++ Atlas" bare>
+<StageLayout title="C++ Atlas" bare>
   <section class="landing">
     <Topography />
     <div class="landing-in">
@@ -23,7 +23,7 @@ import { url } from '../lib/url';
       <a href={url('/about/')}>Independent project · About</a>
     </div>
   </section>
-</BaseLayout>
+</StageLayout>
 
 <script>
   import { load } from '../lib/persistence/store';

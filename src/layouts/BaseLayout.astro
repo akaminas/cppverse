@@ -4,39 +4,27 @@ import BrandMark from '../components/site/BrandMark.astro';
 import Attribution from '../components/site/Attribution.astro';
 import Nautilus from '../components/site/Nautilus.astro';
 import { url } from '../lib/url';
+import { NAV, type Section } from './nav';
 
 interface Props {
   title: string;
   description?: string;
   /** Section of the site for aria-current in the navigation. */
-  section?: 'atlas' | 'curriculum' | 'models' | 'pathways' | 'progress' | 'about' | 'learn' | 'start' | 'capstones';
-  /** Landing page: transparent header, no footer chrome. */
-  bare?: boolean;
-  /** Full-viewport application pages (the atlas): no footer. */
-  app?: boolean;
+  section?: Section;
   bodyClass?: string;
 }
 
-const { title, description = 'Learn C++ and use it to build and understand models of biological systems.', section, bare = false, app = false, bodyClass } = Astro.props;
-const fullTitle = title === 'C++ Atlas' ? 'C++ Atlas: Programming and Modelling for Biologists' : `${title} · C++ Atlas`;
+const { title, description = 'Learn C++ and use it to build and understand models of biological systems.', section, bodyClass } = Astro.props;
+const fullTitle = `${title} · C++ Atlas`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
-
-const nav = [
-  { id: 'atlas', href: url('/atlas/'), label: 'Atlas' },
-  { id: 'curriculum', href: url('/curriculum/'), label: 'Curriculum' },
-  { id: 'models', href: url('/models/'), label: 'Destinations' },
-  { id: 'pathways', href: url('/pathways/'), label: 'Pathways' },
-  { id: 'progress', href: url('/progress/'), label: 'Progress' },
-  { id: 'about', href: url('/about/'), label: 'About' },
-] as const;
 ---
 <!doctype html>
-<html lang="en-GB" data-theme="dark">
+<html lang="en-GB" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#0A0B0D" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -44,22 +32,44 @@ const nav = [
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
+    <!-- Set the theme before the first paint: the saved choice, else the system setting. -->
+    <script is:inline>
+      (function () {
+        var theme = 'light';
+        try {
+          theme = localStorage.getItem('cpp-atlas:theme');
+        } catch (e) {}
+        if (theme !== 'light' && theme !== 'dark') {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', theme === 'dark' ? '#15181d' : '#ffffff');
+      })();
+    </script>
     <slot name="head" />
   </head>
   <body class={bodyClass}>
     <a class="skip-link" href="#content">Skip to the content</a>
-    <header class:list={['site-header', { 'is-transparent': bare }]}>
+    <header class="site-header">
       <div class="wrap header-in">
         <a class="brand" href={url('/')} aria-label="C++ Atlas home">
           <BrandMark />
           <span class="brand-word">C++ Atlas</span>
         </a>
         <nav class="nav" id="site-nav" aria-label="Main">
-          {nav.map((item) => (
+          {NAV.map((item) => (
             <a href={item.href} aria-current={section === item.id ? 'page' : undefined}>{item.label}</a>
           ))}
         </nav>
         <div class="header-tools">
+          <button class="icon-btn theme-btn" type="button" aria-label="Switch to the dark theme" title="Switch to the dark theme">
+            <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2z" /></svg>
+            <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" />
+            </svg>
+          </button>
           <button class="icon-btn menu-btn" type="button" aria-label="Open the menu" aria-expanded="false" aria-controls="site-nav">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
           </button>
@@ -71,31 +81,62 @@ const nav = [
       <slot />
     </main>
 
-    {!bare && <Nautilus />}
+    <Nautilus />
 
-    {!bare && !app && (
-      <footer class="site-footer">
-        <div class="wrap">
-          <div>
-            <Attribution />
-            <p>
-              C++ Atlas is an independent educational project. It is not an official University of Groningen course and is
-              not endorsed by the University. Assignments, exercise solutions and graded projects from the course manual are
-              not reproduced.
-            </p>
-            <p>Figures and colour follow the <a href="https://akaminas.github.io/vellum/">Vellum</a> design system.</p>
-          </div>
-          <div class="footer-links">
-            <a href={url('/sources/')}>Sources</a>
-            <a href={url('/about/')}>About</a>
-            <a href={url('/curriculum/')}>Curriculum outline</a>
-            <a href={url('/capstones/')}>Capstones</a>
-          </div>
+    <footer class="site-footer">
+      <div class="wrap">
+        <div>
+          <Attribution />
+          <p>
+            C++ Atlas is an independent educational project. It is not an official University of Groningen course and is
+            not endorsed by the University. Assignments, exercise solutions and graded projects from the course manual are
+            not reproduced.
+          </p>
+          <p>Scientific figures follow the <a href="https://akaminas.github.io/vellum/">Vellum</a> design system.</p>
         </div>
-      </footer>
-    )}
+        <div class="footer-links">
+          <a href={url('/sources/')}>Sources</a>
+          <a href={url('/about/')}>About</a>
+          <a href={url('/curriculum/')}>Curriculum outline</a>
+          <a href={url('/capstones/')}>Capstones</a>
+        </div>
+      </div>
+    </footer>
 
     <script>
+      const root = document.documentElement;
+      const KEY = 'cpp-atlas:theme';
+      const themeBtn = document.querySelector<HTMLButtonElement>('.theme-btn');
+      const stored = () => {
+        try {
+          const t = localStorage.getItem(KEY);
+          return t === 'light' || t === 'dark' ? t : null;
+        } catch {
+          return null;
+        }
+      };
+      const apply = (theme: 'light' | 'dark') => {
+        root.setAttribute('data-theme', theme);
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#15181d' : '#ffffff');
+        const next = theme === 'dark' ? 'light' : 'dark';
+        themeBtn?.setAttribute('aria-label', `Switch to the ${next} theme`);
+        themeBtn?.setAttribute('title', `Switch to the ${next} theme`);
+      };
+      apply(root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+      themeBtn?.addEventListener('click', () => {
+        const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        try {
+          localStorage.setItem(KEY, next);
+        } catch {
+          /* private mode: the choice lasts for this page only */
+        }
+        apply(next);
+      });
+      // Without a saved choice the page follows the system setting as it changes.
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!stored()) apply(e.matches ? 'dark' : 'light');
+      });
+
       const menu = document.querySelector<HTMLButtonElement>('.menu-btn');
       const nav = document.getElementById('site-nav');
       menu?.addEventListener('click', () => {

@@ -1,8 +1,16 @@
-/* C++ Atlas — global styles.
-   Colour tokens come verbatim from Vellum (src/styles/vellum/vellum.css, MIT).
-   The site-chrome tokens below follow Vellum's own site ("sleek layer"):
-   page = surface, panels a faint tone of the page, no borders, small spaced
-   capitals for navigation and labels, indigo-deep accent. */
+/* C++ Atlas, the standard pages. A plain reference-site look after the R
+   education site (education.rstudio.com/learn): white page, thin shadowed
+   header, Source Sans Pro, blue links, a content column with a sidebar, list
+   rows instead of cards, a flat blue footer band. There is a light theme and a
+   dark one; data-theme on <html> picks between them (see BaseLayout).
+
+   The landing page and the atlas do not use this file: they keep their own
+   dark look (stage.css).
+
+   The --v-* neutrals and fonts are overridden here; the Vellum family colours
+   (teal, terracotta, indigo, ochre, mauve, moss, status) come from Vellum's own
+   light and dark twins (src/styles/vellum/vellum.css, MIT) and colour the
+   figures and the code. */
 
 @import './vellum/vellum.css';
 @import './code.css';
@@ -11,75 +19,145 @@
 @import './models.css';
 
 @font-face {
-  font-family: 'TeX Gyre Pagella';
-  src: url('../assets/fonts/texgyrepagella-regular.woff2') format('woff2');
+  font-family: 'Source Sans Pro';
+  src: url('../assets/fonts/source-sans-pro-300.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Source Sans Pro';
+  src: url('../assets/fonts/source-sans-pro-400.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
-  font-family: 'Lato';
-  src: url('../assets/fonts/lato-400.woff2') format('woff2');
+  font-family: 'Source Sans Pro';
+  src: url('../assets/fonts/source-sans-pro-400italic.woff2') format('woff2');
   font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Source Sans Pro';
+  src: url('../assets/fonts/source-sans-pro-600.woff2') format('woff2');
+  font-weight: 600;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
-  font-family: 'Lato';
-  src: url('../assets/fonts/lato-700.woff2') format('woff2');
+  font-family: 'Source Sans Pro';
+  src: url('../assets/fonts/source-sans-pro-700.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
+@font-face {
+  font-family: 'Source Sans Pro';
+  src: url('../assets/fonts/source-sans-pro-700italic.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Source Code Pro';
+  src: url('../assets/fonts/source-code-pro-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
-/* The site is dark only: a true near-black page with neutral greys (no warm
-   tint). Vellum's dark twin supplies the family colours; its warm neutrals
-   are replaced here with cool greys. */
-:root, :root[data-theme='dark'] {
-  color-scheme: dark;
-  --v-surface: #0A0B0D;
-  --v-card: #121418;
-  --v-grid: #24272D;
-  --v-rule: #3B3F47;
-  --v-muted: #8E939C;
-  --v-secondary: #B7BCC4;
-  --v-ink: #EDEFF2;
+/* ── Tokens: light ────────────────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+  --v-surface: #ffffff;
+  --v-card: #f6f8fb;
+  --v-grid: #e3e8ef;
+  --v-rule: #c3ccd8;
+  --v-muted: #5f6977;
+  --v-secondary: #4a5461;
+  --v-ink: #2b2f36;
+  --v-font-body: 'Source Sans Pro', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --v-font-title: var(--v-font-body);
+  --v-font-mono: 'Source Code Pro', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace;
 
-  --bg: #0A0B0D;
-  --panel: #121418;
-  --soft: #181B20;
-  --line: #1F2228;
-  --frame: #2D3139;
-  --accent: #6FE3EE;
-  --accent-soft: #12303A;
+  --bg: #ffffff;
+  --panel: #f6f8fb;
+  --soft: #edf2f8;
+  --line: #e3e8ef;
+  --frame: #d3dce8;
+  --rule-heavy: #dae8f6;
+  --accent: #2f6496;
+  --accent-strong: #1f4d7a;
+  --accent-soft: #dae8f6;
   --link: var(--accent);
-  --v-font-mono: Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace;
+  --btn-bg: #2f6496;
+  --btn-fg: #ffffff;
+  --band-bg: #75aadb;
+  --band-fg: #0f2236;
+  --shadow-header: 0 1px 3px rgba(0, 0, 0, 0.09);
+  --shadow-float: 0 12px 28px -12px rgba(15, 34, 54, 0.35);
 
-  --measure: 68ch;
-  --page: 1180px;
+  --measure: 72ch;
+  --page: 1100px;
   --gutter: 24px;
-  --radius: 12px;
+  --radius: 4px;
   --step: 8px;
 
-  --t-hero: clamp(2.3rem, 1.6rem + 3vw, 3.6rem);
-  --t-h1: clamp(2rem, 1.5rem + 2vw, 2.8rem);
-  --t-h2: clamp(1.55rem, 1.3rem + 1vw, 2rem);
-  --t-h3: 1.15rem;
+  --t-hero: 2.6rem;
+  --t-h1: clamp(1.9rem, 1.5rem + 1.6vw, 2.35rem);
+  --t-h2: clamp(1.45rem, 1.3rem + 0.6vw, 1.7rem);
+  --t-h3: 1.25rem;
   --t-body: 1.0625rem;
-  --t-small: 0.9rem;
-  --t-tiny: 0.8rem;
+  --t-small: 0.92rem;
+  --t-tiny: 0.85rem;
 
-  /* Pastels: the tint steps of Vellum's light palette. On the dark page they
-     read as soft, low-contrast accents for the curriculum. */
-  --p-teal: #A5D5D7;
-  --p-terracotta: #E8C0B2;
-  --p-indigo: #BBCBEC;
-  --p-ochre: #DAC9A6;
-  --p-mauve: #E0BFD8;
-  --p-moss: #BAD3B4;
+  /* Accents for the companion's labels and the like: Vellum's base colours. */
+  --p-teal: var(--v-teal);
+  --p-terracotta: var(--v-terracotta);
+  --p-indigo: var(--v-indigo);
+  --p-ochre: var(--v-ochre);
+  --p-mauve: var(--v-mauve);
+  --p-moss: var(--v-moss);
 
-  --header-h: 64px;
-  --shadow-float: 0 28px 56px -30px rgba(0, 0, 0, 0.9);
+  --header-h: 60px;
+}
+
+/* ── Tokens: dark ─────────────────────────────────────────────────────── */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --v-surface: #15181d;
+  --v-card: #1c2027;
+  --v-grid: #2a303a;
+  --v-rule: #4a5260;
+  --v-muted: #98a2b0;
+  --v-secondary: #bac2cd;
+  --v-ink: #e6e9ee;
+
+  --bg: #15181d;
+  --panel: #1c2027;
+  --soft: #242932;
+  --line: #2a303a;
+  --frame: #353d49;
+  --rule-heavy: #22394f;
+  --accent: #7fb2e3;
+  --accent-strong: #a6cbf0;
+  --accent-soft: #22394f;
+  --btn-bg: #7fb2e3;
+  --btn-fg: #0d1722;
+  --band-bg: #22394f;
+  --band-fg: #e6eef7;
+  --shadow-header: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-float: 0 16px 32px -14px rgba(0, 0, 0, 0.8);
+
+  /* The tint steps of Vellum's light palette read well on the dark page. */
+  --p-teal: #a5d5d7;
+  --p-terracotta: #e8c0b2;
+  --p-indigo: #bbcbec;
+  --p-ochre: #dac9a6;
+  --p-mauve: #e0bfd8;
+  --p-moss: #bad3b4;
 }
 @media (max-width: 620px) {
   :root { --gutter: 16px; }
@@ -95,41 +173,40 @@ body {
   font-family: var(--v-font-body);
   font-size: var(--t-body);
   line-height: 1.6;
-  font-variant-numeric: lining-nums;
   -webkit-font-smoothing: antialiased;
 }
 img, svg, video { max-width: 100%; }
-h1, h2 {
-  font-family: var(--v-font-title);
-  font-weight: 400;
-  letter-spacing: -0.005em;
-  line-height: 1.15;
-  text-wrap: balance;
+h1, h2, h3, h4 {
+  font-family: var(--v-font-body);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--v-ink);
   margin: 0 0 0.5em;
 }
 h1 { font-size: var(--t-h1); }
 h2 { font-size: var(--t-h2); }
-h3, h4 { font-family: var(--v-font-body); font-weight: 700; line-height: 1.3; margin: 0 0 0.4em; }
 h3 { font-size: var(--t-h3); }
-h4 { font-size: 1rem; }
+h4 { font-size: 1.05rem; }
 p { margin: 0 0 1em; }
-/* Running text is justified and hyphenated, so paragraphs sit square. Headings, navigation,
-   labels, the nautilus and tips keep their own alignment, and centred blocks stay centred. */
+/* Running text is justified and hyphenated, so paragraphs sit square. Navigation,
+   labels, the companion and the footer keep their own alignment. */
 p, li, dd, blockquote, figcaption { text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
-.landing-in p, .page-head.center p { text-align: center; }
-.nautilus-root p, .nautilus-root li, .atlas-tip p, .site-footer p { text-align: left; }
-a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 3px; }
-a:hover { text-decoration-thickness: 2px; }
+.nautilus-root p, .nautilus-root li, .site-footer p, .item-meta, .side li { text-align: left; }
+a { color: var(--link); text-decoration: none; }
+a:hover { color: var(--accent-strong); text-decoration: underline; }
+/* Links inside running text carry an underline too: colour alone does not mark them. */
+p a, li a, dd a, td a, figcaption a, blockquote a, summary a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+p a:hover, li a:hover, dd a:hover, td a:hover, figcaption a:hover, blockquote a:hover, summary a:hover { text-decoration-thickness: 2px; }
 strong, b { font-weight: 700; }
 small { font-size: var(--t-small); }
-hr { border: 0; border-top: 1px solid var(--line); margin: 48px 0; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 40px 0; }
 ::selection { background: var(--accent-soft); color: var(--v-ink); }
 
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
 summary:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .sr-only {
@@ -138,9 +215,9 @@ summary:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
 }
 .skip-link {
   position: absolute; left: var(--gutter); top: -60px; z-index: 100;
-  background: var(--v-ink); color: var(--bg); padding: 10px 16px; border-radius: 0 0 8px 8px; text-decoration: none;
+  background: var(--btn-bg); color: var(--btn-fg); padding: 10px 16px; border-radius: 0 0 3px 3px; text-decoration: none;
 }
-.skip-link:focus { top: 0; }
+.skip-link:focus { top: 0; color: var(--btn-fg); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
@@ -148,7 +225,7 @@ summary:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
 
 /* ── Layout ───────────────────────────────────────────────────────────── */
 .wrap { width: min(var(--page), 100% - 2 * var(--gutter)); margin-inline: auto; }
-.wrap-narrow { width: min(760px, 100% - 2 * var(--gutter)); margin-inline: auto; }
+.wrap-narrow { width: min(800px, 100% - 2 * var(--gutter)); margin-inline: auto; }
 .measure { max-width: var(--measure); }
 .stack > * + * { margin-top: var(--flow, 1em); }
 .grid { display: grid; gap: var(--gutter); }
@@ -158,123 +235,155 @@ summary:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
 @media (max-width: 900px) { .grid-3, .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 620px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: minmax(0, 1fr); } }
 
+/* A content column with a sidebar, as on the R pages (75 / 25). */
+.split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(200px, 1fr); gap: 56px; align-items: start; }
+.side { position: sticky; top: calc(var(--header-h) + 24px); }
+.side-title { font-size: 1.35rem; font-weight: 300; color: var(--v-secondary); margin: 0 0 0.6em; line-height: 1.3; }
+.side ul { list-style: none; padding: 0; margin: 0 0 28px; display: grid; gap: 8px; font-size: 0.95rem; }
+.side a[aria-current='true'] { font-weight: 700; }
+.side li a { text-decoration: none; }
+.side li a:hover { text-decoration: underline; }
+@media (max-width: 900px) {
+  .split { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .side { position: static; }
+  .side.hide-narrow { display: none; }
+}
+
 /* ── Header and navigation ────────────────────────────────────────────── */
 .site-header {
   position: sticky; top: 0; z-index: 40;
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  backdrop-filter: saturate(1.2) blur(10px);
-  -webkit-backdrop-filter: saturate(1.2) blur(10px);
-  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  box-shadow: var(--shadow-header);
 }
-.site-header.is-transparent { background: transparent; border-bottom-color: transparent; backdrop-filter: none; }
 .header-in { display: flex; align-items: center; gap: 16px; height: var(--header-h); }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--v-ink); text-decoration: none; flex: none; }
-.brand-mark { width: 26px; height: 26px; flex: none; }
-.brand-word { font-family: var(--v-font-title); font-size: 1.28rem; line-height: 1; }
+.brand:hover { color: var(--v-ink); text-decoration: none; }
+.brand-mark { width: 28px; height: 28px; flex: none; }
+.brand-word { font-size: 1.3rem; font-weight: 600; line-height: 1; }
 .nav { display: flex; align-items: center; gap: 2px; margin-left: auto; }
-.nav a, .nav-label {
-  font-size: 0.74rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--v-ink);
-  padding: 10px 12px; text-decoration: none; white-space: nowrap;
+.nav a {
+  font-size: 0.97rem; color: var(--v-ink); padding: 5px 14px; border-radius: 3px; text-decoration: none; white-space: nowrap;
 }
-.nav a:hover { color: var(--accent); }
-.nav a[aria-current='page'] { box-shadow: inset 0 -2px 0 var(--accent); }
+.nav a:hover { background: var(--soft); color: var(--v-ink); text-decoration: none; }
+.nav a[aria-current='page'] { background: var(--accent-soft); color: var(--accent-strong); text-decoration: underline; text-underline-offset: 4px; }
 .header-tools { display: flex; align-items: center; gap: 4px; }
 .icon-btn {
-  display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 8px;
+  display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 3px;
   border: 0; background: transparent; color: var(--v-ink); cursor: pointer;
 }
-.icon-btn:hover { background: var(--panel); color: var(--accent); }
-.icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn:hover { background: var(--soft); color: var(--accent); }
+.icon-btn svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .menu-btn { display: none; }
+/* The theme button shows the theme it would switch to. */
+.theme-btn .icon-sun { display: none; }
+:root[data-theme='dark'] .theme-btn .icon-sun { display: block; }
+:root[data-theme='dark'] .theme-btn .icon-moon { display: none; }
 @media (max-width: 860px) {
   .menu-btn { display: inline-grid; }
+  .header-tools { margin-left: auto; }
   .nav {
-    display: none; position: absolute; top: var(--header-h); left: 0; right: 0; flex-direction: column; align-items: stretch;
-    background: var(--bg); border-bottom: 1px solid var(--line); padding: 8px var(--gutter) 16px;
+    display: none; position: absolute; top: var(--header-h); left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 0;
+    background: var(--bg); box-shadow: var(--shadow-header); padding: 4px var(--gutter) 12px; margin-left: 0;
   }
   .nav.is-open { display: flex; }
-  .nav a { padding: 14px 4px; border-bottom: 1px solid var(--line); }
-  .nav a[aria-current='page'] { box-shadow: inset 3px 0 0 var(--accent); padding-left: 12px; }
+  .nav a { padding: 12px 8px; border-radius: 0; border-bottom: 1px solid var(--line); }
+  .nav a[aria-current='page'] { text-decoration: none; font-weight: 700; }
 }
 
 /* ── Footer ───────────────────────────────────────────────────────────── */
-.site-footer { border-top: 1px solid var(--line); margin-top: 96px; padding: 36px 0 48px; color: var(--v-secondary); font-size: var(--t-tiny); }
+.site-footer { margin-top: 80px; background: var(--band-bg); color: var(--band-fg); padding: 28px 0 32px; font-size: var(--t-tiny); line-height: 1.5; }
 .site-footer .wrap { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--gutter); }
-.site-footer p { margin: 0 0 6px; max-width: 72ch; }
-.site-footer a { color: var(--v-secondary); }
-.footer-links { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: flex-end; align-content: start; }
+.site-footer p { margin: 0 0 6px; max-width: 76ch; }
+.site-footer a { color: var(--band-fg); text-decoration: underline; text-underline-offset: 2px; }
+.site-footer a:hover { color: var(--band-fg); text-decoration-thickness: 2px; }
+.site-footer .attribution .attribution-label { color: inherit; font-weight: 700; }
+.footer-links { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: flex-end; align-content: start; }
 @media (max-width: 760px) { .site-footer .wrap { grid-template-columns: minmax(0, 1fr); } .footer-links { justify-content: flex-start; } }
 
 /* ── Type helpers ─────────────────────────────────────────────────────── */
-.eyebrow, .mono-label {
-  font-family: var(--v-font-mono); font-size: 0.76rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v-secondary);
-}
-.lead { font-size: 1.18rem; color: var(--v-secondary); max-width: 60ch; }
+.eyebrow, .mono-label { font-size: var(--t-small); color: var(--v-secondary); margin: 0 0 6px; }
+.eyebrow a { color: var(--link); }
+.lead { font-size: 1.2rem; font-weight: 300; color: var(--v-secondary); max-width: 62ch; line-height: 1.55; }
 .muted { color: var(--v-secondary); }
 .secondary { color: var(--v-secondary); }
 .serif { font-family: var(--v-font-title); }
-.tabular { font-variant-numeric: lining-nums tabular-nums; }
-.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--v-ink); padding-bottom: 10px; margin: 0 0 28px; }
-.sec-head h2, .sec-head h3 { font-family: var(--v-font-body); font-weight: 700; font-size: 0.82rem; letter-spacing: 0.2em; text-transform: uppercase; margin: 0; }
-.sec-head a { font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none; color: var(--v-ink); }
-.sec-head a:hover { color: var(--accent); }
-.page-head { padding: 72px 0 36px; }
-.page-head h1 { margin-bottom: 14px; }
-.page-head h1::after { content: ''; display: block; width: 56px; height: 2px; background: var(--accent); margin-top: 22px; }
+.tabular { font-variant-numeric: tabular-nums; }
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--frame); padding-bottom: 8px; margin: 0 0 24px; }
+.sec-head h2, .sec-head h3 { font-size: var(--t-h2); margin: 0; }
+.sec-head a { font-size: var(--t-small); }
+.page-head { padding: 44px 0 20px; }
+.page-head h1 { margin-bottom: 12px; }
+.page-head > :last-child { margin-bottom: 0; }
 .page-head.center { text-align: center; }
-.page-head.center h1::after { margin-inline: auto; }
 .page-head.center .lead { margin-inline: auto; }
 
 /* ── Controls ─────────────────────────────────────────────────────────── */
 .btn, .chip {
   display: inline-flex; align-items: center; gap: 8px;
-  font: inherit; font-size: 0.92rem; line-height: 1.3; color: var(--v-ink);
-  background: var(--panel); border: 1px solid transparent; border-radius: 999px; padding: 7px 15px;
+  font: inherit; font-size: 0.95rem; line-height: 1.3; color: var(--v-ink);
+  background: var(--bg); border: 1px solid var(--v-rule); border-radius: 3px; padding: 6px 14px;
   text-decoration: none; cursor: pointer;
 }
-.btn:hover, .chip:hover { border-color: var(--v-rule); }
-.btn[aria-pressed='true'], .chip[aria-pressed='true'] { background: var(--v-ink); border-color: var(--v-ink); color: var(--bg); }
-.btn:disabled, .chip:disabled { opacity: 0.4; cursor: default; }
-.btn-ghost { background: transparent; border-color: var(--v-grid); }
+.btn:hover, .chip:hover { border-color: var(--accent); color: var(--accent-strong); text-decoration: none; }
+.btn[aria-pressed='true'], .chip[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent); color: var(--v-ink); font-weight: 600; }
+.btn:disabled, .chip:disabled { opacity: 0.45; cursor: default; }
+.btn-ghost { background: transparent; }
 .btn-solid, .btn-outline {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-  border-radius: 0; font: inherit; font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase;
-  padding: 14px 22px; text-decoration: none; cursor: pointer;
+  border-radius: 2px; font: inherit; font-size: 0.88rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em;
+  padding: 10px 20px; text-decoration: none; cursor: pointer; transition: background-color 0.15s ease-in-out;
 }
-.btn-solid { background: var(--v-ink); color: var(--bg); border: 1px solid var(--v-ink); }
-.btn-solid:hover { background: var(--accent); border-color: var(--accent); color: var(--bg); }
-.btn-outline { background: transparent; color: var(--v-ink); border: 1px solid var(--v-ink); }
-.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-solid { background: var(--btn-bg); color: var(--btn-fg); border: 1px solid var(--btn-bg); }
+.btn-solid:hover { background: transparent; color: var(--accent-strong); text-decoration: none; }
+.btn-outline { background: transparent; color: var(--accent-strong); border: 1px solid var(--btn-bg); }
+.btn-outline:hover { background: var(--accent-soft); color: var(--accent-strong); text-decoration: none; }
 .cta-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 select, input[type='text'], input[type='search'], input[type='number'] {
-  font: inherit; font-size: 0.92rem; color: var(--v-ink); background: var(--panel);
-  border: 1px solid transparent; border-radius: 8px; padding: 7px 12px; line-height: 1.3;
+  font: inherit; font-size: 0.95rem; color: var(--v-ink); background: var(--bg);
+  border: 1px solid var(--v-rule); border-radius: 3px; padding: 6px 10px; line-height: 1.3;
 }
-select:hover, input:hover { border-color: var(--v-rule); }
+select:hover, input:hover { border-color: var(--accent); }
 input[type='checkbox'], input[type='radio'] { accent-color: var(--accent); width: 18px; height: 18px; }
 input[type='range'] { accent-color: var(--accent); width: 100%; }
-.seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--soft); border-radius: 999px; }
-.seg button { font: inherit; font-size: 0.88rem; padding: 5px 12px; border-radius: 999px; border: 0; background: transparent; color: var(--v-secondary); cursor: pointer; }
-.seg button[aria-pressed='true'] { background: var(--v-surface); color: var(--v-ink); box-shadow: inset 0 0 0 1px var(--v-grid); }
+.seg { display: inline-flex; gap: 0; padding: 0; background: var(--bg); border: 1px solid var(--v-rule); border-radius: 3px; overflow: hidden; }
+.seg button { font: inherit; font-size: 0.92rem; padding: 5px 12px; border: 0; background: transparent; color: var(--v-ink); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--v-rule); }
+.seg button:hover { background: var(--soft); }
+.seg button[aria-pressed='true'] { background: var(--accent-soft); color: var(--v-ink); font-weight: 600; }
 
-/* ── Panels, cards, tables ────────────────────────────────────────────── */
-.card { background: var(--panel); border-radius: var(--radius); padding: 24px; }
-.card-link { display: block; text-decoration: none; color: inherit; border-radius: var(--radius); background: var(--panel); padding: 22px; transition: background 0.2s; }
-.card-link:hover { background: var(--soft); }
-.card-link:hover h3 { color: var(--accent); }
-.key { background: var(--panel); border-left: 2px solid var(--accent); padding: 16px 20px; border-radius: 0 8px 8px 0; }
+/* ── Lists, cards, tables ─────────────────────────────────────────────── */
+/* List rows: a linked title, a short description, a line of facts. */
+.item-list { display: grid; gap: 0; list-style: none; padding: 0; margin: 0; }
+.item { padding: 22px 0; border-bottom: 1px solid var(--line); }
+.item:first-child { padding-top: 6px; }
+.item-title { font-size: 1.45rem; font-weight: 600; line-height: 1.25; margin: 0 0 4px; }
+.item-title a { text-decoration: none; }
+.item-title a:hover { text-decoration: underline; }
+.item-text { margin: 6px 0 0; color: var(--v-secondary); max-width: 70ch; }
+.item-meta { margin: 6px 0 0; font-size: var(--t-small); color: var(--v-muted); }
+
+.card { background: var(--bg); border: 1px solid var(--frame); border-radius: var(--radius); padding: 20px 22px; }
+.card-link { display: block; text-decoration: none; color: inherit; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--frame); padding: 16px 18px; }
+.card-link:hover { border-color: var(--accent); text-decoration: none; color: inherit; }
+.card-link h3 { color: var(--link); }
+.card-link:hover h3 { text-decoration: underline; }
+.key { background: var(--panel); border-left: 4px solid var(--rule-heavy); padding: 14px 18px; border-radius: 0 3px 3px 0; }
 .tag {
-  display: inline-flex; align-items: center; gap: 6px; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--v-secondary); background: var(--soft); border-radius: 999px; padding: 3px 10px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem;
+  color: var(--v-secondary); background: var(--soft); border-radius: 3px; padding: 1px 8px; white-space: nowrap;
 }
 .tag-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dot, var(--v-rule)); flex: none; }
-table { border-collapse: collapse; width: 100%; font-size: 0.92rem; font-variant-numeric: lining-nums tabular-nums; }
-th { text-align: left; font-weight: 700; border-top: 1px solid var(--v-ink); border-bottom: 1px solid var(--v-ink); padding: 8px 10px; vertical-align: bottom; }
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 600; border-bottom: 2px solid var(--frame); padding: 8px 10px; vertical-align: bottom; }
 td { padding: 8px 10px; vertical-align: top; border-bottom: 1px solid var(--line); }
-tbody tr:last-child td { border-bottom: 1px solid var(--v-ink); }
-tbody tr:nth-child(even) td { background: var(--soft); }
+tbody tr:nth-child(even) td { background: var(--panel); }
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 details > summary { cursor: pointer; }
+
+/* Code panels get a hairline so they stay visible on the white page. */
+pre { border: 1px solid var(--line); }
+.code-figure { border: 1px solid var(--line); }
+.code-figure pre, .assembly-code pre { border: 0; }
 
 /* Family helpers: --fam/--fam-tint/--fam-deep for a Vellum family. */
 .fam-teal { --fam: var(--v-teal); --fam-tint: var(--v-teal-tint); --fam-deep: var(--v-teal-deep); }
@@ -286,7 +395,7 @@ details > summary { cursor: pointer; }
 .fam-none { --fam: var(--v-rule); --fam-tint: var(--soft); --fam-deep: var(--v-secondary); }
 
 /* Status: always with a word or icon, never colour alone. */
-.status { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; }
 .status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--s, var(--v-rule)); }
 .status-good { --s: var(--v-status-good); }
 .status-warning { --s: var(--v-status-warning); }

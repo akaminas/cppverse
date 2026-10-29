@@ -4,7 +4,6 @@ import { concepts, conceptById } from '../data/concepts';
 import { domains, regions } from '../data/domains';
 import { dependenciesOf, getGraph, topologicalOrder } from '../lib/graph/graph';
 import { hrefFor } from '../lib/lesson-context';
-import { domainPastel, regionPastel } from '../lib/pastel';
 import { url } from '../lib/url';
 import { getCollection } from 'astro:content';
 
@@ -12,7 +11,6 @@ const g = getGraph();
 const lessons = await getCollection('lessons');
 const written = new Set(lessons.map((l) => l.id));
 const LEVEL = { beginner: 'Beginner', intermediate: 'Intermediate', seasoned: 'Seasoned' } as const;
-const NUMERAL = ['I', 'II', 'III', 'IV', 'V', 'VI'];
 
 const byRegion = regions.map((r) => ({
   r,
@@ -24,120 +22,83 @@ const byRegion = regions.map((r) => ({
 <BaseLayout title="Curriculum" section="curriculum" description="The complete curriculum as text: every domain, concept, lesson and prerequisite.">
   <div class="wrap">
     <header class="page-head">
-      <p class="eyebrow">Curriculum outline</p>
-      <h1>The atlas as text</h1>
+      <h1>Curriculum outline</h1>
+      <p class="lead">
+        Every domain, concept and lesson in the atlas as plain text. Within each domain, a concept comes after the ones it needs.
+      </p>
     </header>
 
-    <nav class="outline-toc" aria-label="Regions">
-      {byRegion.map(({ r }, i) => (
-        <a href={`#${r.id}`} style={`--hue: ${regionPastel(r.id)}`}>
-          <span class="toc-num">{NUMERAL[i]}</span>
-          {r.title}
-        </a>
-      ))}
-    </nav>
-
-    {byRegion.map(({ r, domains: ds }, ri) => (
-      <section class="outline-region" id={r.id} aria-labelledby={`h-${r.id}`} style={`--hue: ${regionPastel(r.id)}`}>
-        <header class="region-head">
-          <span class="region-num" aria-hidden="true">{NUMERAL[ri]}</span>
-          <div>
-            <h2 id={`h-${r.id}`}>{r.title}</h2>
-            <p>{r.summary}</p>
-          </div>
-        </header>
-        {ds.map(({ d, items }) => (
-          <section class="outline-domain" aria-labelledby={`h-${d.id}`} style={`--hue: ${domainPastel(d.id)}`}>
-            <div class="domain-head">
-              <h3 id={`h-${d.id}`}>
-                {d.title}
-                {!d.modules.length && <span class="domain-note"> · original synthesis</span>}
-              </h3>
-              <a class="domain-atlas" href={url(`/atlas/?domain=${d.id}`)}>Show in the atlas</a>
-            </div>
-            <ol class="outline-list">
-              {items.map((c) => {
-                const deps = dependenciesOf(g, c.id).map((id) => conceptById[id]);
-                const available = c.kind === 'landmark' || c.kind === 'capstone' || (c.lesson && written.has(c.lesson));
-                return (
-                  <li class={`kind-${c.kind}`}>
-                    <div class="ol-head">
-                      {available ? <a href={hrefFor(c)}>{c.title}</a> : <span>{c.title}</span>}
-                      <span class="ol-tag">{c.kind === 'concept' ? LEVEL[c.level] : c.kind === 'landmark' ? 'Destination' : c.kind === 'capstone' ? 'Capstone' : 'Integration'}</span>
-                      {c.optional && <span class="ol-tag">Optional</span>}
-                      {!available && <span class="ol-tag">In preparation</span>}
-                    </div>
-                    <p>{c.summary}</p>
-                    <p class="ol-meta">
-                      {deps.length > 0 ? <>Needs {deps.map((dp, i) => (<>{i > 0 && ', '}<a href={hrefFor(dp)}>{dp.title}</a></>))}</> : 'Starting point'}
-                    </p>
-                  </li>
-                );
-              })}
-            </ol>
+    <div class="split">
+      <div class="outline">
+        {byRegion.map(({ r, domains: ds }) => (
+          <section class="outline-region" id={r.id} aria-labelledby={`h-${r.id}`}>
+            <div class="sec-head"><h2 id={`h-${r.id}`}>{r.title}</h2></div>
+            <p class="outline-summary">{r.summary}</p>
+            {ds.map(({ d, items }) => (
+              <section class="outline-domain" aria-labelledby={`h-${d.id}`}>
+                <div class="domain-head">
+                  <h3 id={`h-${d.id}`}>
+                    {d.title}
+                    {!d.modules.length && <span class="domain-note"> (original to this site)</span>}
+                  </h3>
+                  <a href={url(`/atlas/?domain=${d.id}`)}>Show in the atlas</a>
+                </div>
+                <ul class="item-list">
+                  {items.map((c) => {
+                    const deps = dependenciesOf(g, c.id).map((id) => conceptById[id]);
+                    const available = c.kind === 'landmark' || c.kind === 'capstone' || (c.lesson && written.has(c.lesson));
+                    return (
+                      <li class="item">
+                        <h4 class="item-title">
+                          {available ? <a href={hrefFor(c)}>{c.title}</a> : c.title}
+                          <span class="tag">{c.kind === 'concept' ? LEVEL[c.level] : c.kind === 'landmark' ? 'Destination' : c.kind === 'capstone' ? 'Capstone' : 'Integration'}</span>
+                          {c.optional && <span class="tag">Optional</span>}
+                          {!available && <span class="tag">In preparation</span>}
+                        </h4>
+                        <p class="item-text">{c.summary}</p>
+                        <p class="item-meta">
+                          {deps.length > 0 ? <>Needs: {deps.map((dp, i) => (<>{i > 0 && ', '}<a href={hrefFor(dp)}>{dp.title}</a></>))}</> : 'Starting point'}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ))}
           </section>
         ))}
-      </section>
-    ))}
+      </div>
+
+      <aside class="side" aria-label="Contents">
+        <p class="side-title">Regions</p>
+        <ul>
+          {byRegion.map(({ r }) => <li><a href={`#${r.id}`}>{r.title}</a></li>)}
+        </ul>
+        <p class="side-title">Elsewhere</p>
+        <ul>
+          <li><a href={url('/atlas/')}>The atlas, as a map</a></li>
+          <li><a href={url('/pathways/')}>Pathways to a goal</a></li>
+          <li><a href={url('/start/')}>Find your route</a></li>
+        </ul>
+      </aside>
+    </div>
   </div>
 </BaseLayout>
 
 <style>
-  /* Soft pastel per region, low contrast, and strongly separated blocks:
-     each region opens with a numbered, ruled head; each domain is a framed block. */
-  .outline-toc { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
-  .outline-toc a {
-    display: inline-flex; align-items: baseline; gap: 10px; padding: 8px 16px; border: 1px solid var(--frame); border-radius: 999px;
-    color: var(--v-secondary); text-decoration: none; font-size: 0.9rem;
-  }
-  .outline-toc a:hover { border-color: var(--hue); color: var(--hue); }
-  .toc-num { font-family: var(--v-font-title); color: var(--hue); }
-
-  .outline-region { margin: 112px 0 0; scroll-margin-top: calc(var(--header-h) + 24px); }
-  .region-head {
-    display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 24px; align-items: end;
-    padding-bottom: 20px; border-bottom: 2px solid var(--hue); margin-bottom: 8px;
-  }
-  .region-num { font-family: var(--v-font-title); font-size: clamp(3rem, 2.2rem + 3vw, 4.6rem); line-height: 0.85; color: var(--hue); opacity: 0.85; }
-  .region-head h2 { margin: 0 0 6px; color: var(--v-ink); }
-  .region-head p { margin: 0; color: var(--v-muted); max-width: 70ch; }
-
-  .outline-domain {
-    margin: 40px 0 0; border: 1px solid var(--frame); border-left: 3px solid var(--hue); border-radius: 4px;
-    background: linear-gradient(90deg, color-mix(in srgb, var(--hue) 4%, transparent), transparent 40%);
-  }
-  .domain-head {
-    display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px;
-    padding: 18px 24px 16px; border-bottom: 1px solid var(--frame);
-  }
-  .domain-head h3 { font-family: var(--v-font-title); font-weight: 400; font-size: 1.5rem; margin: 0; color: var(--hue); }
-  .domain-note { font-family: var(--v-font-body); font-size: 0.88rem; color: var(--v-muted); }
-  .domain-atlas { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--v-muted); text-decoration: none; }
-  .domain-atlas:hover { color: var(--hue); }
-
-  .outline-list { list-style: none; padding: 0 24px; margin: 0; counter-reset: c; }
-  .outline-list li { padding: 16px 0 16px 44px; position: relative; counter-increment: c; }
-  .outline-list li + li { border-top: 1px solid var(--line); }
-  .outline-list li::before {
-    content: counter(c, decimal-leading-zero); position: absolute; left: 0; top: 18px; width: 28px;
-    font-family: var(--v-font-mono); font-size: 0.74rem; color: var(--v-muted); text-align: right;
-  }
-  .outline-list li.kind-landmark::before, .outline-list li.kind-capstone::before { color: var(--hue); }
-  .ol-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
-  .ol-head a, .ol-head > span:first-child { color: var(--v-ink); font-weight: 700; text-decoration: none; }
-  .ol-head a:hover { color: var(--hue); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
-  .kind-landmark .ol-head a { font-family: var(--v-font-title); font-weight: 400; font-size: 1.2rem; color: var(--hue); }
-  .ol-tag { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--v-muted); }
-  .outline-list p { margin: 5px 0 0; max-width: 80ch; font-size: 0.94rem; color: var(--v-secondary); }
-  .ol-meta { font-size: 0.84rem !important; color: var(--v-muted) !important; }
-  .ol-meta a { color: var(--v-secondary); text-decoration-color: color-mix(in srgb, var(--hue) 45%, transparent); text-underline-offset: 3px; }
-  .ol-meta a:hover { color: var(--hue); }
-
-  @media (max-width: 620px) {
-    .outline-region { margin-top: 80px; }
-    .domain-head { padding: 14px 16px 12px; }
-    .outline-list { padding: 0 16px; }
-    .outline-list li { padding-left: 34px; }
-    .outline-list li::before { width: 22px; }
-  }
+  .outline-region { scroll-margin-top: calc(var(--header-h) + 16px); }
+  .outline-region + .outline-region { margin-top: 64px; }
+  .outline-summary { color: var(--v-secondary); max-width: 70ch; }
+  .outline-domain { margin-top: 36px; }
+  .domain-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 20px; margin-bottom: 4px; }
+  .domain-head h3 { margin: 0; }
+  .domain-head a { font-size: var(--t-small); }
+  .domain-note { font-size: var(--t-small); font-weight: 400; color: var(--v-muted); }
+  .outline .item { padding: 16px 0; }
+  .outline .item:first-child { padding-top: 12px; }
+  .outline .item-title { font-size: 1.15rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+  .outline .item-title .tag { font-weight: 400; }
+  .outline .item-text { margin-top: 2px; font-size: 1rem; }
+  .outline .item-meta a { color: var(--v-secondary); text-decoration: underline; text-underline-offset: 2px; }
+  .outline .item-meta a:hover { color: var(--accent-strong); }
 </style>

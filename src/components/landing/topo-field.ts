@@ -1,5 +1,6 @@
 // Interactive topographic background for the landing page: a drifting
-// height field drawn as glowing white contour lines on black, with heavier
+// height field drawn as glowing white contour lines on black (dark theme) or
+// ink-dark lines on paper (light theme), with heavier
 // index contours every fifth level and a faint grid of survey crosses.
 // The terrain rises under the pointer, and a click sends a pulse of light
 // outwards through the lines. Plain WebGL 1, no dependencies.
@@ -17,6 +18,7 @@ precision highp float;
 uniform vec2 uRes;
 uniform float uTime;
 uniform float uDpr;
+uniform float uLight;         // 0 = dark theme, 1 = light theme
 uniform vec3 uMouse;          // x, y in pixels, presence 0..1
 uniform vec4 uPulse[4];       // x, y in pixels, age in seconds, strength
 
@@ -104,7 +106,9 @@ void main() {
   float marks = ((abs(g.x) < 0.55 && abs(g.y) < arm) || (abs(g.y) < 0.55 && abs(g.x) < arm)) ? 0.38 : 0.0;
 
   float c = clamp(intensity + marks, 0.0, 1.0);
-  vec3 col = mix(vec3(0.039, 0.043, 0.051), vec3(1.0), c);
+  vec3 paper = mix(vec3(0.039, 0.043, 0.051), vec3(0.969, 0.973, 0.980), uLight);
+  vec3 ink = mix(vec3(1.0), vec3(0.075, 0.106, 0.165), uLight);
+  vec3 col = mix(paper, ink, c);
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -144,6 +148,7 @@ export function startTopoField(canvas: HTMLCanvasElement): (() => void) | null {
     res: gl.getUniformLocation(prog, 'uRes'),
     time: gl.getUniformLocation(prog, 'uTime'),
     dpr: gl.getUniformLocation(prog, 'uDpr'),
+    light: gl.getUniformLocation(prog, 'uLight'),
     mouse: gl.getUniformLocation(prog, 'uMouse'),
     pulse: gl.getUniformLocation(prog, 'uPulse'),
   };
@@ -206,6 +211,7 @@ export function startTopoField(canvas: HTMLCanvasElement): (() => void) | null {
     gl.uniform2f(u.res, canvas.width, canvas.height);
     gl.uniform1f(u.time, t);
     gl.uniform1f(u.dpr, dpr);
+    gl.uniform1f(u.light, document.documentElement.dataset.theme === 'light' ? 1 : 0);
     gl.uniform3f(u.mouse, mouse.x, mouse.y, mouse.z);
     gl.uniform4fv(u.pulse, pu);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -220,6 +226,9 @@ export function startTopoField(canvas: HTMLCanvasElement): (() => void) | null {
     raf = requestAnimationFrame(loop);
   };
 
+  // A change of theme repaints at once (the loop picks it up on its own when it is running).
+  const themeWatch = new MutationObserver(() => still && draw(performance.now()));
+  themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   const ro = new ResizeObserver(resize);
   ro.observe(canvas);
   const io = new IntersectionObserver(([entry]) => (visible = entry.isIntersecting));
@@ -237,6 +246,7 @@ export function startTopoField(canvas: HTMLCanvasElement): (() => void) | null {
     cancelAnimationFrame(raf);
     ro.disconnect();
     io.disconnect();
+    themeWatch.disconnect();
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerdown', onDown);
     document.documentElement.removeEventListener('pointerleave', onLeave);

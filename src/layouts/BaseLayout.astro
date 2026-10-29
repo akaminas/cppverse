@@ -3,6 +3,8 @@ import '../styles/global.css';
 import BrandMark from '../components/site/BrandMark.astro';
 import Attribution from '../components/site/Attribution.astro';
 import Nautilus from '../components/site/Nautilus.astro';
+import ThemeInit from '../components/site/ThemeInit.astro';
+import ThemeToggle from '../components/site/ThemeToggle.astro';
 import { url } from '../lib/url';
 import { NAV, type Section } from './nav';
 
@@ -32,21 +34,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    <!-- Set the theme before the first paint: the saved choice, else the system setting. -->
-    <script is:inline>
-      (function () {
-        var theme = 'light';
-        try {
-          theme = localStorage.getItem('cpp-atlas:theme');
-        } catch (e) {}
-        if (theme !== 'light' && theme !== 'dark') {
-          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-        document.documentElement.setAttribute('data-theme', theme);
-        var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', theme === 'dark' ? '#15181d' : '#ffffff');
-      })();
-    </script>
+    <ThemeInit />
     <slot name="head" />
   </head>
   <body class={bodyClass}>
@@ -63,13 +51,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
           ))}
         </nav>
         <div class="header-tools">
-          <button class="icon-btn theme-btn" type="button" aria-label="Switch to the dark theme" title="Switch to the dark theme">
-            <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2z" /></svg>
-            <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="4" />
-              <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" />
-            </svg>
-          </button>
+          <ThemeToggle />
           <button class="icon-btn menu-btn" type="button" aria-label="Open the menu" aria-expanded="false" aria-controls="site-nav">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
           </button>
@@ -104,39 +86,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     </footer>
 
     <script>
-      const root = document.documentElement;
-      const KEY = 'cpp-atlas:theme';
-      const themeBtn = document.querySelector<HTMLButtonElement>('.theme-btn');
-      const stored = () => {
-        try {
-          const t = localStorage.getItem(KEY);
-          return t === 'light' || t === 'dark' ? t : null;
-        } catch {
-          return null;
-        }
-      };
-      const apply = (theme: 'light' | 'dark') => {
-        root.setAttribute('data-theme', theme);
-        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#15181d' : '#ffffff');
-        const next = theme === 'dark' ? 'light' : 'dark';
-        themeBtn?.setAttribute('aria-label', `Switch to the ${next} theme`);
-        themeBtn?.setAttribute('title', `Switch to the ${next} theme`);
-      };
-      apply(root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
-      themeBtn?.addEventListener('click', () => {
-        const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        try {
-          localStorage.setItem(KEY, next);
-        } catch {
-          /* private mode: the choice lasts for this page only */
-        }
-        apply(next);
-      });
-      // Without a saved choice the page follows the system setting as it changes.
-      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-        if (!stored()) apply(e.matches ? 'dark' : 'light');
-      });
-
       const menu = document.querySelector<HTMLButtonElement>('.menu-btn');
       const nav = document.getElementById('site-nav');
       menu?.addEventListener('click', () => {

@@ -274,10 +274,6 @@ summary:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
 .icon-btn:hover { background: var(--soft); color: var(--accent); }
 .icon-btn svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .menu-btn { display: none; }
-/* The theme button shows the theme it would switch to. */
-.theme-btn .icon-sun { display: none; }
-:root[data-theme='dark'] .theme-btn .icon-sun { display: block; }
-:root[data-theme='dark'] .theme-btn .icon-moon { display: none; }
 @media (max-width: 860px) {
   .menu-btn { display: inline-grid; }
   .header-tools { margin-left: auto; }

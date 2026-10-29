@@ -325,8 +325,7 @@ export default function AtlasPanel(props: Props) {
               </ul>
               <p>
                 Zoom with the wheel, pinch or the buttons; drag to pan. The scale control at the bottom left moves between the landscape,
-                one domain and every concept. The layout is fixed and deterministic: concepts never move.{' '}
-                <a href={`${base.replace(/\/$/, '')}/curriculum/`}>A text outline</a> lists the same structure.
+                one domain and every concept.
               </p>
               <p className="atlas-keys">
                 <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>Enter</kbd> open · <kbd>Esc</kbd> clear · <kbd>+</kbd> <kbd>−</kbd> zoom ·{' '}

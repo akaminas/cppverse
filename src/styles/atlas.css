@@ -18,6 +18,15 @@
   --atlas-edge: #363B44;
   --atlas-panel-w: 400px;
   --atlas-bg: #0A0B0D;
+  --atlas-bg-lift: #111419;
+  --atlas-hud: rgba(14, 16, 20, 0.86);
+  --atlas-hud-solid: rgba(14, 16, 20, 0.94);
+  --atlas-title: #EEF1F5;
+  --atlas-label: #C3C8D1;
+  --atlas-label-big: #F2F4F7;
+  --atlas-strong: #FFFFFF;
+  --atlas-halo-k: 1;
+  --atlas-hover: brightness(1.2);
   display: grid; grid-template-columns: minmax(0, 1fr) var(--atlas-panel-w);
   height: calc(100svh - var(--header-h)); min-height: 520px; overflow: hidden;
   background: var(--atlas-bg);
@@ -25,10 +34,34 @@
 .atlas.is-collapsed { --atlas-panel-w: 0px; }
 .atlas.is-collapsed .atlas-panel { display: none; }
 
+/* Light: the same map on paper. Domain colours come from Vellum's light twin; text in a
+   family colour is darkened so it stays readable on the page. */
+:root[data-theme='light'] .atlas {
+  --atlas-node: #6B7380;
+  --atlas-edge: #C9D0DA;
+  --atlas-bg: #F7F8FA;
+  --atlas-bg-lift: #FFFFFF;
+  --atlas-hud: rgba(255, 255, 255, 0.9);
+  --atlas-hud-solid: rgba(255, 255, 255, 0.96);
+  --atlas-title: #151B24;
+  --atlas-label: #3B4452;
+  --atlas-label-big: #0F141B;
+  --atlas-strong: #0B1018;
+  --atlas-halo-k: 2.4;
+  --atlas-hover: brightness(0.82);
+}
+:root[data-theme='light'] .atlas-tip-head,
+:root[data-theme='light'] .atlas-crumb,
+:root[data-theme='light'] .atlas-domain.kind-destination:not(.is-hover) .atlas-domain-title,
+:root[data-theme='light'] .atlas-domain.kind-synthesis:not(.is-hover) .atlas-domain-title {
+  color: color-mix(in srgb, var(--tip-hue, var(--crumb-hue, var(--hue, var(--v-secondary)))) 55%, #000);
+  fill: color-mix(in srgb, var(--hue, var(--v-secondary)) 55%, #000);
+}
+
 /* ── Map ─────────────────────────────────────────────────────────────── */
 .atlas-map {
   position: relative; min-width: 0; min-height: 0; overflow: hidden;
-  background: radial-gradient(ellipse 70% 60% at 50% 42%, #111419 0%, var(--atlas-bg) 100%);
+  background: radial-gradient(ellipse 70% 60% at 50% 42%, var(--atlas-bg-lift) 0%, var(--atlas-bg) 100%);
 }
 .atlas-svg { display: block; width: 100%; height: 100%; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
 .atlas-svg:active { cursor: grabbing; }
@@ -37,11 +70,11 @@
 
 /* Domains: soft rounded fields tinted by the domain's colour. */
 .atlas-halo {
-  fill: var(--hue); fill-opacity: 0.035; stroke: var(--hue); stroke-opacity: 0.14; stroke-width: 1;
+  fill: var(--hue); fill-opacity: calc(0.035 * var(--atlas-halo-k)); stroke: var(--hue); stroke-opacity: calc(0.14 * var(--atlas-halo-k)); stroke-width: 1;
   transition: fill-opacity 0.35s, stroke-opacity 0.35s;
 }
-.atlas-domain.kind-destination .atlas-halo, .atlas-domain.kind-synthesis .atlas-halo { fill-opacity: 0.055; stroke-opacity: 0.26; }
-.atlas-domain.is-hover .atlas-halo { fill-opacity: 0.085; stroke-opacity: 0.5; }
+.atlas-domain.kind-destination .atlas-halo, .atlas-domain.kind-synthesis .atlas-halo { fill-opacity: calc(0.055 * var(--atlas-halo-k)); stroke-opacity: calc(0.26 * var(--atlas-halo-k)); }
+.atlas-domain.is-hover .atlas-halo { fill-opacity: calc(0.085 * var(--atlas-halo-k)); stroke-opacity: calc(0.5 * var(--atlas-halo-k)); }
 .atlas-domain.is-faded { opacity: 0.3; }
 .atlas-domain { transition: opacity 0.35s; }
 .atlas-domain-label { cursor: pointer; }
@@ -51,7 +84,7 @@
    they fade below 7 px on screen. */
 .atlas-domain-title {
   --s: 19;
-  font-family: var(--v-font-title); fill: #EEF1F5;
+  font-family: var(--v-font-title); fill: var(--atlas-title);
   font-size: calc(min(var(--s), var(--fit) * var(--k)) / var(--k) * 1px);
   opacity: clamp(0, calc((min(var(--s), var(--fit) * var(--k)) - 7) / 4), 1);
   transition: fill 0.2s;
@@ -90,10 +123,10 @@
 .atlas-glow { opacity: 0; pointer-events: none; transition: opacity 0.3s; }
 .atlas-node.kind-landmark .atlas-glow { opacity: 0.8; }
 .atlas-node:hover .atlas-glow, .atlas-node.is-selected .atlas-glow, .atlas-node.is-kbd .atlas-glow { opacity: 1; }
-.atlas-node:hover .atlas-dot { filter: brightness(1.2); }
+.atlas-node:hover .atlas-dot { filter: var(--atlas-hover); }
 .atlas-inner { fill: var(--atlas-bg); }
 .atlas-landmark-ring { fill: none; stroke: currentColor; stroke-opacity: 0.55; stroke-width: 1.2; }
-.atlas-node.is-selected .atlas-select-ring { fill: none; stroke: #fff; stroke-width: 1.5; }
+.atlas-node.is-selected .atlas-select-ring { fill: none; stroke: var(--atlas-strong); stroke-width: 1.5; }
 .atlas-node.is-faded { opacity: 0.14; }
 .atlas-check { fill: none; stroke: var(--atlas-bg); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .atlas-visited { fill: var(--atlas-bg); }
@@ -103,18 +136,18 @@
 .atlas-node.route-assumed .atlas-route-ring { stroke: var(--v-rule); stroke-dasharray: 2 3; }
 .atlas-node.route-done .atlas-route-ring { stroke-opacity: 0.45; }
 .atlas-next-ring { fill: none; stroke: var(--accent); stroke-width: 2.4; }
-.atlas-kbd-ring { fill: none; stroke: #fff; stroke-width: 2; }
+.atlas-kbd-ring { fill: none; stroke: var(--atlas-strong); stroke-width: 2; }
 
 .atlas-label {
-  font-family: var(--v-font-body); font-size: calc(12.5px / var(--k)); fill: #C3C8D1; pointer-events: none;
+  font-family: var(--v-font-body); font-size: calc(12.5px / var(--k)); fill: var(--atlas-label); pointer-events: none;
   paint-order: stroke; stroke: var(--atlas-bg); stroke-width: calc(3.5px / var(--k)); stroke-linejoin: round; stroke-opacity: 0.92;
   transition: opacity 0.3s, fill 0.2s;
   animation: atlas-label-in 0.35s ease-out both;
 }
 @keyframes atlas-label-in { from { opacity: 0; } }
-.atlas-label.kind-landmark { font-family: var(--v-font-title); font-size: calc(17px / var(--k)); fill: #F2F4F7; }
+.atlas-label.kind-landmark { font-family: var(--v-font-title); font-size: calc(17px / var(--k)); fill: var(--atlas-label-big); }
 .sem-1 .atlas-label.kind-landmark { font-size: calc(15px / var(--k)); }
-.atlas-label.is-selected, .atlas-label.is-focus { font-weight: 700; fill: #fff; }
+.atlas-label.is-selected, .atlas-label.is-focus { font-weight: 700; fill: var(--atlas-strong); }
 .atlas-label.is-faded { opacity: 0.1; }
 /* Landscape scale: the dots recede so the domain titles and destinations read. */
 .sem-1:not(.has-selection):not(.has-route) .atlas-node:not(.kind-landmark) { opacity: 0.5; }
@@ -128,7 +161,7 @@
 .atlas-hud > * { pointer-events: auto; }
 .atlas-altitude {
   display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px;
-  background: rgba(14, 16, 20, 0.86); border: 1px solid var(--line);
+  background: var(--atlas-hud); border: 1px solid var(--line);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
 }
 .atlas-altitude button {
@@ -139,7 +172,7 @@
 .atlas-altitude button[aria-pressed='true'] { background: var(--v-ink); color: var(--bg); }
 .atlas-zoom {
   display: inline-flex; flex-direction: column; gap: 2px; padding: 3px; border-radius: 12px;
-  background: rgba(14, 16, 20, 0.86); border: 1px solid var(--line);
+  background: var(--atlas-hud); border: 1px solid var(--line);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
 }
 .atlas-zoom .icon-btn { width: 34px; height: 34px; }
@@ -147,7 +180,7 @@
 .atlas-open-panel {
   position: absolute; top: 16px; right: 16px; z-index: 5; display: inline-flex; align-items: center; gap: 8px;
   font: inherit; font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--v-ink);
-  background: rgba(14, 16, 20, 0.86); border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px 9px 12px; cursor: pointer;
+  background: var(--atlas-hud); border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px 9px 12px; cursor: pointer;
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
 }
 .atlas-open-panel:hover { color: var(--accent); border-color: var(--frame); }
@@ -156,7 +189,7 @@
 /* Hover card: follows the pointer and is kept inside the map. */
 .atlas-tip {
   position: absolute; z-index: 6; pointer-events: none; width: max-content; max-width: 280px;
-  background: rgba(14, 16, 20, 0.94); color: var(--v-ink); border: 1px solid var(--frame); border-radius: 10px; padding: 10px 13px 11px;
+  background: var(--atlas-hud-solid); color: var(--v-ink); border: 1px solid var(--frame); border-radius: 10px; padding: 10px 13px 11px;
   font-size: 0.86rem; line-height: 1.45; box-shadow: var(--shadow-float);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   animation: atlas-tip-in 0.18s ease-out both;

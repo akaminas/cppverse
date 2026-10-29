@@ -132,9 +132,12 @@ test.describe('lessons, models and laboratories', () => {
 });
 
 test.describe('themes', () => {
+  // A still contour field: the shader draws one frame, which keeps the landing page cheap in CI.
+  test.use({ reducedMotion: 'reduce' });
+
   test('the standard pages follow the system theme until a choice is made', async ({ browser }) => {
     for (const scheme of ['light', 'dark'] as const) {
-      const context = await browser.newContext({ colorScheme: scheme });
+      const context = await browser.newContext({ colorScheme: scheme, reducedMotion: 'reduce' });
       const page = await context.newPage();
       await page.goto('curriculum/');
       expect(await theme(page)).toBe(scheme);
@@ -153,19 +156,33 @@ test.describe('themes', () => {
     await expect(page.getByRole('button', { name: `Switch to the ${start} theme` })).toBeVisible();
   });
 
-  test('the landing page and the atlas stay dark whatever the saved theme', async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem('cpp-atlas:theme', 'light'));
-    for (const path of ['./', 'atlas/']) {
-      await page.goto(path);
-      expect(await theme(page)).toBe('dark');
-      await expect(page.locator('html')).toHaveAttribute('data-stage', '');
+  test('the landing page and the atlas follow the saved theme and keep their own look', async ({ page }) => {
+    for (const saved of ['light', 'dark'] as const) {
+      await page.addInitScript((t) => localStorage.setItem('cpp-atlas:theme', t), saved);
+      for (const path of ['./', 'atlas/']) {
+        await page.goto(path);
+        expect(await theme(page)).toBe(saved);
+        await expect(page.locator('html')).toHaveAttribute('data-stage', '');
+      }
     }
+  });
+
+  test('the toggle on the landing page switches the contour field and survives into the atlas', async ({ page }) => {
+    await page.addInitScript(() => localStorage.getItem('cpp-atlas:theme') ?? localStorage.setItem('cpp-atlas:theme', 'dark'));
+    await page.goto('./');
+    expect(await theme(page)).toBe('dark');
+    await page.getByRole('button', { name: 'Switch to the light theme' }).click();
+    expect(await theme(page)).toBe('light');
+    await page.goto('atlas/');
+    expect(await theme(page)).toBe('light');
   });
 });
 
 test.describe('accessibility in both themes', () => {
+  test.use({ reducedMotion: 'reduce' });
+
   for (const colour of ['light', 'dark'] as const) {
-    for (const path of ['curriculum/', 'learn/hello-world/', 'learn/vectors/', 'models/', 'models/stochastic/', 'capstones/capstone-d/', 'pathways/', 'start/', 'progress/', 'about/', 'sources/', 'deep/']) {
+    for (const path of ['./', 'atlas/', 'curriculum/', 'learn/hello-world/', 'learn/vectors/', 'models/', 'models/stochastic/', 'capstones/capstone-d/', 'pathways/', 'start/', 'progress/', 'about/', 'sources/', 'deep/']) {
       test(`no serious accessibility violations on ${path} in the ${colour} theme`, async ({ page }) => {
         test.setTimeout(120_000);
         await page.addInitScript((c) => localStorage.setItem('cpp-atlas:theme', c), colour);
@@ -181,6 +198,8 @@ test.describe('accessibility in both themes', () => {
 });
 
 test.describe('accessibility', () => {
+  test.use({ reducedMotion: 'reduce' });
+
   for (const path of ['./', 'atlas/', 'learn/hello-world/', 'models/algorithms/', 'curriculum/', 'start/', 'learn/vectors/', 'learn/gillespie/', 'models/ibm/']) {
     test(`no serious accessibility violations on ${path}`, async ({ page }) => {
       test.setTimeout(120_000); // axe is slow on pages with large DOMs and animated layers

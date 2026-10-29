@@ -34,9 +34,9 @@
   font-display: swap;
 }
 
-/* The site is dark only: a true near-black page with neutral greys (no warm
-   tint). Vellum's dark twin supplies the family colours; its warm neutrals
-   are replaced here with cool greys. */
+/* Dark: a true near-black page with neutral greys (no warm tint). Vellum's dark
+   twin supplies the family colours; its warm neutrals are replaced here with
+   cool greys. The light twin follows below. */
 :root, :root[data-theme='dark'] {
   color-scheme: dark;
   --v-surface: #0A0B0D;
@@ -82,6 +82,41 @@
 
   --header-h: 64px;
   --shadow-float: 0 28px 56px -30px rgba(0, 0, 0, 0.9);
+
+  --landing-title: #FFFFFF;
+  --topo-line: #FFFFFF;
+}
+
+/* Light: a paper-white page with cool greys and a deep teal accent. Vellum's light
+   twin supplies the family colours. */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --v-surface: #F7F8FA;
+  --v-card: #FFFFFF;
+  --v-grid: #E1E5EB;
+  --v-rule: #B7BFCB;
+  --v-muted: #5B6370;
+  --v-secondary: #454D59;
+  --v-ink: #12161C;
+
+  --bg: #F7F8FA;
+  --panel: #FFFFFF;
+  --soft: #EEF1F5;
+  --line: #E1E5EB;
+  --frame: #CDD3DC;
+  --accent: #0B6F7A;
+  --accent-soft: #D4EEF1;
+
+  --p-teal: var(--v-teal);
+  --p-terracotta: var(--v-terracotta);
+  --p-indigo: var(--v-indigo);
+  --p-ochre: var(--v-ochre);
+  --p-mauve: var(--v-mauve);
+  --p-moss: var(--v-moss);
+
+  --shadow-float: 0 18px 36px -18px rgba(15, 25, 40, 0.35);
+  --landing-title: #0B1018;
+  --topo-line: #131B2A;
 }
 @media (max-width: 620px) {
   :root { --gutter: 16px; }

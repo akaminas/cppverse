@@ -1,9 +1,11 @@
 ---
-// The stage: the landing page and the atlas keep their own dark look
-// (src/styles/stage.css), whatever theme the rest of the site is in.
+// The stage: the landing page and the atlas keep their own look (src/styles/stage.css),
+// with a light and a dark theme of their own.
 import '../styles/stage.css';
 import BrandMark from '../components/site/BrandMark.astro';
 import Nautilus from '../components/site/Nautilus.astro';
+import ThemeInit from '../components/site/ThemeInit.astro';
+import ThemeToggle from '../components/site/ThemeToggle.astro';
 import { url } from '../lib/url';
 import { NAV, type Section } from './nav';
 
@@ -25,8 +27,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#0A0B0D" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#0a0b0d" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -34,6 +36,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
+    <ThemeInit />
     <slot name="head" />
   </head>
   <body class={bodyClass}>
@@ -50,6 +53,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
           ))}
         </nav>
         <div class="header-tools">
+          <ThemeToggle />
           <button class="icon-btn menu-btn" type="button" aria-label="Open the menu" aria-expanded="false" aria-controls="site-nav">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
           </button>

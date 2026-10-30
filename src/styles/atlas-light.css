@@ -1,0 +1,45 @@
+/* The atlas in the light theme. atlas.css is unchanged: this file only overrides the
+   colours that atlas.css hard-codes for the dark map, and only when the page is light,
+   so the dark atlas is exactly what it was. The panel and the controls take their
+   colours from the stage tokens (stage.css), which have a light set. */
+
+:root[data-theme='light'] .atlas {
+  --atlas-node: #6B7380;
+  --atlas-edge: #C9D0DA;
+  --atlas-bg: #F7F8FA;
+}
+:root[data-theme='light'] .atlas-map {
+  background: radial-gradient(ellipse 70% 60% at 50% 42%, #FFFFFF 0%, var(--atlas-bg) 100%);
+}
+
+/* Domains: the same soft fields, a little stronger so they read on a pale page. */
+:root[data-theme='light'] .atlas-halo { fill-opacity: 0.06; stroke-opacity: 0.3; }
+:root[data-theme='light'] .atlas-domain.kind-destination .atlas-halo,
+:root[data-theme='light'] .atlas-domain.kind-synthesis .atlas-halo { fill-opacity: 0.09; stroke-opacity: 0.5; }
+:root[data-theme='light'] .atlas-domain.is-hover .atlas-halo { fill-opacity: 0.14; stroke-opacity: 0.8; }
+
+/* Titles and labels: dark ink instead of near-white. Destination titles keep their
+   family colour, darkened so it stays readable on the page. */
+:root[data-theme='light'] .atlas-domain:not(.is-hover) .atlas-domain-title { fill: #151B24; }
+:root[data-theme='light'] .atlas-domain.kind-destination:not(.is-hover) .atlas-domain-title,
+:root[data-theme='light'] .atlas-domain.kind-synthesis:not(.is-hover) .atlas-domain-title { fill: color-mix(in srgb, var(--hue) 55%, #000); }
+:root[data-theme='light'] .atlas-label { fill: #3B4452; }
+:root[data-theme='light'] .atlas-label.kind-landmark { fill: #0F141B; }
+:root[data-theme='light'] .atlas-label.is-selected,
+:root[data-theme='light'] .atlas-label.is-focus { fill: #0B1018; }
+
+/* Nodes: the white selection and keyboard rings become dark, the hover brightens the other way. */
+:root[data-theme='light'] .atlas-node:hover .atlas-dot { filter: brightness(0.85); }
+:root[data-theme='light'] .atlas-node.is-selected .atlas-select-ring,
+:root[data-theme='light'] .atlas-kbd-ring { stroke: #0B1018; }
+
+/* Controls and the hover card sit on the map in a translucent pale surface. */
+:root[data-theme='light'] .atlas-altitude,
+:root[data-theme='light'] .atlas-zoom,
+:root[data-theme='light'] .atlas-open-panel { background: rgba(255, 255, 255, 0.9); }
+:root[data-theme='light'] .atlas-tip { background: rgba(255, 255, 255, 0.96); }
+
+/* Text in a family colour (the card heading, the panel breadcrumb) is darkened for contrast. */
+:root[data-theme='light'] .atlas-tip-head { color: color-mix(in srgb, var(--tip-hue, var(--v-secondary)) 55%, #000); }
+:root[data-theme='light'] .atlas-crumb { color: color-mix(in srgb, var(--crumb-hue, var(--v-secondary)) 55%, #000); }
+:root[data-theme='light'] .atlas-crumb:hover { color: var(--accent); }

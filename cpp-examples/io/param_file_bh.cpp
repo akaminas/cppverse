@@ -1,5 +1,5 @@
 // Title: Model parameters from a key-value file
-// Standard: C++17
+// Standard: C++23
 // Usage: param_file_bh [parameter file]   (default: bh_params.txt)
 // Every key must be known and appear exactly once; '#' starts a comment.
 

@@ -20,26 +20,26 @@ references:
 
 A *bug* is any difference between what a program does and what you meant it to do. *Debugging* is finding and removing bugs, and it is easier when you know which kind you are dealing with:
 
-- **Compile-time errors.** The code is not valid C++: a missing semicolon, a misspelt name, a type mismatch. The compiler stops and reports roughly where (see <Concept id="compiler-diagnostics" />).
-- **Link errors.** Every file compiles, but the linker cannot assemble the program: a function was declared but never defined, a library was not linked, or something was defined twice. The message names the missing or duplicated symbol (see <Concept id="compilation" />).
-- **Run-time errors.** The program builds, then crashes, aborts, throws an exception that nobody catches, or never finishes. The symptom is obvious; its cause can be far away from where the program stops.
-- **Silent errors.** The program runs to completion and produces output, and the output is wrong. Nothing tells you so.
+- Compile-time errors. The code is not valid C++: a missing semicolon, a misspelt name, a type mismatch. The compiler stops and reports roughly where (see <Concept id="compiler-diagnostics" />).
+- Link errors. Every file compiles, but the linker cannot assemble the program: a function was declared but never defined, a library was not linked, or something was defined twice. The message names the missing or duplicated symbol (see <Concept id="compilation" />).
+- Run-time errors. The program builds, then crashes, aborts, throws an exception that nobody catches, or never finishes. The symptom is obvious; its cause can be far away from where the program stops.
+- Silent errors. The program runs to completion and produces output, and the output is wrong. Nothing tells you so.
 
-For a scientist the last kind is the most dangerous. A crash costs an afternoon; a silent error can end up in a figure, a thesis or a paper.
+The last kind is the most dangerous in research. A crash costs an afternoon, but a silent error can end up in a figure, a thesis or a paper.
 
 ## Why it matters
 
-Even experienced programmers introduce roughly one bug for every few hundred lines of new code. A model of a few hundred lines therefore very probably contains at least one when it first runs, and the program cannot tell you which of its numbers are wrong. Error checking has to be designed in, alongside the algorithm, rather than added once something looks odd.
+Even experienced programmers introduce roughly one bug for every few hundred lines of new code. A model of a few hundred lines therefore probably contains at least one when it first runs, and the program cannot tell you which of its numbers are wrong. Error checking has to be designed in alongside the algorithm, not added once something looks odd.
 
-Here is a silent error in four lines. Both survival estimates compile without a warning:
+The following program contains a silent error in four lines. Both survival estimates compile without a warning:
 
 <Example file="algorithms/silent_survival_bug.cpp" mark="14-15" />
 
-`recaptured / ringed` divides two `int`s, so the result is truncated to 0 *before* it is stored in a `double` (see <Concept id="integer-division" />). The program then predicts that the whole colony dies over winter. Here the number is absurd enough to notice; in a model with fifty parameters, a truncated survival rate in one stage of the life cycle need not be.
+`recaptured / ringed` divides two `int`s, so the result is truncated to 0 *before* it is stored in a `double` (see <Concept id="integer-division" />). The program then predicts that the whole colony dies over winter. Here the number is absurd enough to notice, but in a model with fifty parameters a truncated survival rate in one stage of the life cycle may not be.
 
 ## How it works in C++
 
-The tools below catch different kinds of error at different times. Use them together.
+The tools below catch different kinds of error at different times, and they work best together.
 
 ### assert: checking invariants while you develop
 
@@ -62,10 +62,10 @@ Assertion `m >= 0.0 && m <= 1.0 && "the dispersal fraction must be a probability
 Aborted (core dumped)
 ```
 
-The exact wording differs between compilers and systems, but it always gives the location. Two details of the example are worth copying:
+The exact wording differs between compilers and systems, but it always gives the location. Two details of the example are worth copying.
 
-- **`&& "message"`.** A string literal is always true, so adding it to the condition does not change the test; it only makes the message readable.
-- **A tolerance in the conservation check.** Floating-point arithmetic rounds, so `total(next) == total(n)` might fail for a correct program. Line 23 allows a relative difference of $10^{-12}$, many times the rounding error of one step and far smaller than any real bug would produce.
+- `&& "message"`: a string literal is always true, so adding it to the condition does not change the test. It only makes the message readable.
+- A tolerance in the conservation check: floating-point arithmetic rounds, so `total(next) == total(n)` might fail for a correct program. Line 23 allows a relative difference of $10^{-12}$, many times the rounding error of one step and far smaller than any real bug would produce.
 
 Assertions are a development tool. Defining the macro `NDEBUG`, by compiling with `-DNDEBUG` or writing `#define NDEBUG` before `#include <cassert>`, removes every `assert` from the program: the conditions are not even evaluated. Release builds usually define it (CMake's Release configuration does). Two rules follow:
 
@@ -82,7 +82,7 @@ A model was extended from three to four stages, but the list of labels was not u
 
 ### Printing the state
 
-The quickest way to look inside a running model is still to print its state. A few habits make this far more useful:
+The quickest way to look inside a running model is still to print its state. A few habits make this more useful:
 
 - Print to `std::cerr`, so that diagnostic lines do not mix with the data written to `std::cout` or to a file.
 - Print enough digits. `std::setprecision(17)` shows a `double` in full; the default six significant digits can hide the difference you are looking for.
@@ -94,7 +94,7 @@ The quickest way to look inside a running model is still to print its state. A f
 A *debugger* runs your program under its control. It can stop the program at a chosen line, show every variable at that moment, and continue one line at a time. For C++ the common debuggers are gdb (with GCC, mostly on Linux and Windows) and lldb (with Clang, the default on macOS). Compile with debugging information and without optimisation, so that every variable is still there to inspect:
 
 ```text
-g++ -std=c++17 -g -O0 dispersal_invariants.cpp -o dispersal_invariants
+g++ -std=c++23 -g -O0 dispersal_invariants.cpp -o dispersal_invariants
 ```
 
 The essential operations are the same in every debugger:
@@ -134,12 +134,12 @@ In Visual Studio Code the same operations are buttons. With the C/C++ extension 
 On macOS, use `"MIMode": "lldb"`.
 
 <Callout kind="manual" title="Other debuggers">
-The course manual describes the debugger of Visual Studio on Windows. Its Step Into, Step Over and Step Out, breakpoints and variable panels are the operations in the table above under different names. This site uses gdb, lldb and VS Code because they work on every platform.
+Older teaching material often describes only the debugger built into Visual Studio on Windows. Its Step Into, Step Over and Step Out, breakpoints and variable panels are the operations in the table above under different names. This site uses gdb, lldb and VS Code because they work on every platform.
 </Callout>
 
 ### Sanitizers
 
-Some of the worst run-time errors are *undefined behaviour*: reading past the end of a vector with `[]`, using memory after it has been freed, or overflowing a signed integer. The C++ standard places no requirement at all on what such a program does. It may crash, it may print plausible numbers, or it may behave differently with another compiler. Typical examples in model code:
+Some of the worst run-time errors are *undefined behaviour*: reading past the end of a vector with `[]`, using memory after it has been freed, or overflowing a signed integer. The C++ standard places no requirement at all on what such a program does. It may crash, print plausible numbers, or behave differently with another compiler. A typical example in model code:
 
 ```cpp
 for (std::size_t t = 0; t <= trajectory.size(); ++t) {  // <= reads one element too many
@@ -150,16 +150,16 @@ for (std::size_t t = 0; t <= trajectory.size(); ++t) {  // <= reads one element 
 GCC and Clang can build the program with *sanitizers* that check for such errors as it runs:
 
 ```text
-g++ -std=c++17 -g -fsanitize=address,undefined model.cpp -o model
+g++ -std=c++23 -g -fsanitize=address,undefined model.cpp -o model
 ```
 
-AddressSanitizer stops the program at the first out-of-bounds access and reports the offending line, the size of the memory block that was overrun and where it was allocated. UndefinedBehaviorSanitizer reports signed overflow, invalid shifts, division by zero in integers and similar errors. The program runs two to three times more slowly, which is perfectly acceptable while testing. Sanitizers are available with GCC and Clang on Linux and macOS; on Windows, MSVC offers AddressSanitizer with `/fsanitize=address`.
+AddressSanitizer stops the program at the first out-of-bounds access and reports the offending line, the size of the memory block that was overrun and where it was allocated. UndefinedBehaviorSanitizer reports signed overflow, invalid shifts, division by zero in integers and similar errors. The program runs two to three times more slowly, which is acceptable while testing. Sanitizers are available with GCC and Clang on Linux and macOS; on Windows, MSVC offers AddressSanitizer with `/fsanitize=address`.
 
 Two cheaper alternatives catch the commonest case, an index out of range: `v.at(i)` checks the index and throws `std::out_of_range`, and with GCC's standard library, compiling with `-D_GLIBCXX_ASSERTIONS` makes `operator[]` check its index too.
 
 ### Warnings come first
 
-Before any of these tools, let the compiler help. Build with `-Wall -Wextra -Wpedantic`, read every warning, and fix it. Warnings point at code that is legal but probably wrong: an unused variable that was meant to be used, a comparison between signed and unsigned values, a variable used before it is initialised. Every program on this site compiles with `-Werror`, which turns each warning into an error.
+Before any of these tools, let the compiler help. Build with `-Wall -Wextra -Wpedantic`, read every warning, and fix it. Warnings point at code that is legal but probably wrong: an unused variable that was meant to be used, a comparison between signed and unsigned values, a variable used before it is initialised. (From C++26 <Std v="c++26" /> reading an uninitialised local variable is no longer undefined behaviour but "erroneous behaviour": it is still a bug, but the value read is defined by the implementation, and compilers may diagnose it.) Every program on this site compiles with `-Werror`, which turns each warning into an error.
 
 ## Explore it
 
@@ -246,20 +246,20 @@ while (N > 1.0) {
 
 ## In biological modelling
 
-Write the invariants of a model down when you design it, and put them into the code as assertions while you develop it. They document the assumptions, and they catch the update-order mistakes, sign errors and unit slips that otherwise produce silent errors. Good candidates include non-negativity, probabilities in $[0, 1]$, conservation in closed systems, and totals that must match, such as the sum of the stages and the population size.
+Write the invariants of a model down when you design it, and put them into the code as assertions while you develop it. They document the assumptions and catch the update-order mistakes, sign errors and unit slips that otherwise produce silent errors. Good candidates are non-negativity, probabilities in $[0, 1]$, conservation in closed systems, and totals that must match, such as the sum of the stages and the population size.
 
-A model that passes its assertions can still be wrong; assertions only check what you thought of. Combine them with verification against known results, such as closed-form solutions and equilibria (see <Concept id="verification" />), and turn every bug you find into a test that would have caught it (see <Concept id="testing-reproducibility" />).
+A model that passes its assertions can still be wrong, because assertions only check what you thought of. Combine them with verification against known results, such as closed-form solutions and equilibria (see <Concept id="verification" />), and turn every bug you find into a test that would have caught it (see <Concept id="testing-reproducibility" />).
 
-When something goes wrong, debug like an experimentalist. Reproduce the error with the smallest input that shows it; form a hypothesis about the cause; test it with a breakpoint, a print or an assertion; change one thing at a time; and keep a record of what you tried.
+When something goes wrong, debug as you would run an experiment. Reproduce the error with the smallest input that shows it, form a hypothesis about the cause, test it with a breakpoint, a print or an assertion, change one thing at a time, and keep a record of what you tried.
 
 ## Common mistakes
 
-- **Trusting a program because it does not crash.** Absence of a crash is not evidence of correctness.
-- **Side effects inside `assert`.** They disappear with `NDEBUG`.
-- **Asserting exact floating-point equality.** Rounding makes `==` fail for correct code; use a tolerance scaled to the magnitude of the values.
-- **Using `assert` for input validation.** Parameter files and command-line arguments must be checked in every build; throw an exception instead.
-- **Debugging an optimised build.** With `-O2`, variables are often "optimised out" and lines execute out of order. Debug with `-g -O0`.
-- **Changing several things at once.** If the bug disappears, you do not know which change fixed it, or whether it is merely hidden.
+- Trusting a program because it does not crash. Absence of a crash is not evidence of correctness.
+- Side effects inside `assert`. They disappear with `NDEBUG`.
+- Asserting exact floating-point equality. Rounding makes `==` fail for correct code; use a tolerance scaled to the magnitude of the values.
+- Using `assert` for input validation. Parameter files and command-line arguments must be checked in every build; throw an exception instead.
+- Debugging an optimised build. With `-O2`, variables are often "optimised out" and lines execute out of order. Debug with `-g -O0`.
+- Changing several things at once. If the bug disappears, you do not know which change fixed it, or whether it is merely hidden.
 
 ## Practice
 

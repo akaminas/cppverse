@@ -1,5 +1,5 @@
 // Title: Fixed-size containers: std::array and std::bitset
-// Standard: C++17
+// Standard: C++23
 // An SIR state has exactly three compartments, so it fits a std::array.
 // Occupancy of ten habitat patches is a set of yes/no flags: a std::bitset.
 

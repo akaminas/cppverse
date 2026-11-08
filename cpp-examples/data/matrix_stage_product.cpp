@@ -1,5 +1,5 @@
 // Title: Multiplying a stage matrix by a population vector
-// Standard: C++17
+// Standard: C++23
 // Three years of a three-stage model, n(t+1) = A n(t). Element i of the new
 // vector is the sum over j of A[i][j] * n[j].
 

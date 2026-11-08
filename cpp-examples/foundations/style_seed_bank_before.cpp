@@ -1,5 +1,5 @@
 // Title: A seed-bank calculation, before tidying
-// Standard: C++17
+// Standard: C++23
 // Correct, but hard to check against the model: cryptic names, unexplained
 // numbers, inconsistent layout and one opaque expression.
 

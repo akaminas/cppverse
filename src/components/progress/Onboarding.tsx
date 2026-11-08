@@ -60,9 +60,9 @@ export default function Onboarding({ base }: { base: string }) {
         </legend>
         <div className="ob-levels">
           {LEVELS.map((l) => (
-            <label key={l.id} className={`ob-card${level === l.id ? ' is-on' : ''}`}>
+            <label key={l.id} className={`ob-card lvl-${l.id}${level === l.id ? ' is-on' : ''}`}>
               <input type="radio" name="level" checked={level === l.id} onChange={() => pickLevel(l.id)} />
-              <span className="ob-title">{l.title}</span>
+              <span className="ob-title"><span className="lvl-text">{l.title}</span></span>
               <span className="ob-text">{l.text}</span>
             </label>
           ))}

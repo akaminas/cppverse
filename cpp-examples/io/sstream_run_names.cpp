@@ -1,5 +1,5 @@
 // Title: Building output file names with std::ostringstream
-// Standard: C++17
+// Standard: C++23
 // Formats a growth factor, a replicate number and a seed into one file name per
 // run, using the same << and manipulators as std::cout.
 

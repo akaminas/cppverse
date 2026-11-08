@@ -1,5 +1,5 @@
 // Title: Finding the week in which an outbreak peaks
-// Standard: C++17
+// Standard: C++23
 // Simulates a weekly census of a disease in a closed host population, then
 // finds the peak of the infected count with a single linear scan.
 

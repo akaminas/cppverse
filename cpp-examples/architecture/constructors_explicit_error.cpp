@@ -1,5 +1,5 @@
 // Title: An explicit constructor refuses a silent conversion
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // Individual(double) is explicit, so a bare double is not quietly turned into
 // a newborn when a function expects an Individual.

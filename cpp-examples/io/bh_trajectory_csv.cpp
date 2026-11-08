@@ -1,5 +1,5 @@
 // Title: Writing a Beverton-Holt trajectory to a CSV file
-// Standard: C++17
+// Standard: C++23
 // One run of N(t+1) = R0 N(t) / (1 + N(t)/M), written to beverton_holt_output.csv:
 // '#' metadata lines, a header row, then one row per generation at full precision.
 

@@ -49,13 +49,13 @@ Code that is easy to read is also easier to get right. Most bugs in models are n
 This site follows one convention throughout, which you are welcome to adopt: variables and functions in *camelCase* (lower-case first letter, a capital for each further word: `seedSurvival`, `nextSeedBank`); types in *PascalCase* (`SeedBank`, `Individual`); namespaces short and lower case; file names lower case with underscores (`seed_bank.cpp`); and constants named like other variables, with `const` or `constexpr` to say that they do not change. Names never encode the type: a count is `eggCount`, not `iEggCount`. The C++ Core Guidelines recommend the same, because the type is already in the declaration, every editor can show it, and a type prefix becomes a lie when the type changes.
 
 <Callout kind="manual" title="Type prefixes">
-The Groningen manual uses mixed-case names with a prefix for the type of important variables (`d` for double, `i` for int, `vec` for a vector), plus `k` for global constants and `m` for class members. You will meet this Hungarian-style notation in older code. This site does not use it, for the reasons above. The manual's other naming rules, descriptive English words, a verb for functions and `is`/`has` for booleans, are kept.
+A common older convention gives mixed-case names a short prefix: one for the type of a variable (`d` for double, `i` for int, `vec` for a vector), `k` for global constants and `m` for class members. This is Hungarian-style notation, and you will meet it in existing code. This site does not use it, for the reasons above. The other naming advice, descriptive English words, a verb for functions and `is` or `has` for booleans, applies either way.
 </Callout>
 
 ### Layout
 
 - **Indent each block** by the same amount; this site uses four spaces. Indentation is how a reader sees which statements belong to a loop or a branch.
-- **Put braces in one consistent place.** On this site the opening brace ends the line that starts the block (`int main() {`, `for (...) {`) and the closing brace sits on its own line, aligned with the start of that line. Placing the opening brace of a function on a line of its own, as the manual does, is equally common. Choose one and keep to it.
+- **Put braces in one consistent place.** On this site the opening brace ends the line that starts the block (`int main() {`, `for (...) {`) and the closing brace sits on its own line, aligned with the start of that line. Placing the opening brace of a function on a line of its own is equally common. Choose one and keep to it.
 - **One statement per line**, and one declaration per line.
 - **Spaces around binary operators** (`a * b + c`), none between a unary operator and its operand (`-x`, `++i`, `!isFlowering`), and none just inside parentheses.
 - **Keep lines short**, under about 100 characters. Break a long expression after an operator and indent the continuation so that its structure stays visible:
@@ -76,7 +76,7 @@ std::cout << "columns: generation, prey density (per ha), "
              "predator density (per ha)\n";
 ```
 
-- **Write `&` and `*` next to the type** in declarations, as in `const std::vector<double>& masses` and `char* argv[]`. (The manual attaches them to the name instead; with one declaration per line the difference does not matter.)
+- **Write `&` and `*` next to the type** in declarations, as in `const std::vector<double>& masses` and `char* argv[]`. (Some code attaches them to the name instead, as in `char *argv[]`; with one declaration per line the difference does not matter.)
 
 You do not have to do this by hand. `clang-format` reformats a file according to a style written in a `.clang-format` file, and most editors can run it every time you save.
 
@@ -102,7 +102,7 @@ The *interface* of a function is its name, its parameters and its return type: e
 - **Keep functions small and single-purpose.** If you cannot name a function without "and", it probably does two things.
 
 <Callout kind="manual" title="Passing and inlining">
-The manual recommends `const` references as the default way of passing arguments, and `inline` for small, frequently called functions. For `int` and `double`, passing by value is at least as fast and simpler, so this site passes them by value. Compilers decide for themselves which calls to inline; today the keyword `inline` mainly matters for functions defined in header files (see <Concept id="inline-static" />).
+Passing every argument by `const` reference is a habit worth dropping for small types. For `int` and `double`, passing by value is at least as fast and simpler, so this site passes them by value. The keyword `inline` was once used to ask the compiler to expand small, frequently called functions at the call site. Compilers decide for themselves which calls to inline; today the keyword mainly matters for functions defined in header files (see <Concept id="inline-static" />).
 </Callout>
 
 ## Explore it
@@ -210,7 +210,7 @@ The caller now writes `consumptionRate(prey, 0.8, 0.1)`, or better, passes named
 <details>
 <summary>Answers to exercises 2 and 3</summary>
 
-Exercise 2: what the function returns (a probability between 0 and 1), the unit of the argument (degrees Celsius), the range of temperatures for which the relationship is valid, and what happens outside it. For example: `// Probability (0 to 1) that an egg hatches when incubated at a constant temperature (degrees C). Fitted for 24-34 C; outside that range the result is an extrapolation.`
+Exercise 2: what the function returns (a probability between 0 and 1), the unit of the argument (degrees Celsius), the range of temperatures for which the relationship is valid, and what happens outside it. For example: `// Probability (0 to 1) that an egg hatches when incubated at a constant temperature (degrees C). Fitted for 24 to 34 C; outside that range the result is an extrapolation.`
 
 Exercise 3: (a) `void moveAll(std::vector<Individual>& population)`: changing the caller's vector is the whole point, so a non-const reference is appropriate. (b) `double variance(const std::vector<double>& values)`. (c) `double logisticIncrement(double N, double r, double K)`: three cheap values passed by value, the result returned.
 </details>

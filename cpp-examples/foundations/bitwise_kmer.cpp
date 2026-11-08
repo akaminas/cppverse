@@ -1,5 +1,5 @@
 // Title: Packing DNA bases into bits
-// Standard: C++17
+// Standard: C++23
 // A base needs only two bits (A = 00, C = 01, G = 10, T = 11), so a short
 // k-mer fits in one unsigned integer. Shifts and masks pack and unpack it.
 

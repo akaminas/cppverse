@@ -1,5 +1,5 @@
 // Title: A tree whose state can be read freely but changed only by growing
-// Standard: C++17
+// Standard: C++23
 // Read-only accessors are const member functions; the only way to change the
 // diameter is grow(), which keeps the diameter between 0 and the maximum.
 // Static members are shared by all trees: a constant and an identifier counter.

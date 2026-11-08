@@ -1,5 +1,5 @@
 // Title: Private members are out of reach
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // Code outside the class may not touch size_, so it cannot break the
 // invariant. The compiler rejects the assignment in main.

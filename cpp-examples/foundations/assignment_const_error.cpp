@@ -1,5 +1,5 @@
 // Title: A const variable cannot be assigned
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // Line 11 tries to change a constant, and the compiler refuses.
 

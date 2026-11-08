@@ -1,5 +1,5 @@
 // Title: Plants competing with their neighbours (an individual-based model)
-// Standard: C++17
+// Standard: C++23
 // Perennial plants live on a square plot whose edges wrap around (a torus).
 // Each year:
 //   1. Survival: a plant with n neighbours within radius R survives with

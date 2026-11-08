@@ -1,5 +1,5 @@
 // Title: Euler, Heun and RK4 with the same budget of slope evaluations
-// Standard: C++17
+// Standard: C++23
 // The three steppers share one interface, so the driver can swap them.
 // A counting wrapper around the model records how often each method
 // evaluates the right-hand side. Output: error at t = 10 days per budget.

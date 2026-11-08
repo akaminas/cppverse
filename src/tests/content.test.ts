@@ -55,7 +55,7 @@ describe('example programs', () => {
   it.each(files.map((f) => [f.slice(examples.length + 1).split(String.fromCharCode(92)).join('/')]))('%s declares a title and a standard', (rel) => {
     const code = readFileSync(join(examples, rel), 'utf8');
     expect(code).toMatch(/^\/\/\s*Title:/m);
-    expect(code).toMatch(/^\/\/\s*Standard:\s*C\+\+(17|20|23)/m);
+    expect(code).toMatch(/^\/\/\s*Standard:\s*C\+\+(23|26)/m);
     expect(code).not.toMatch(/using namespace std/);
   });
 });

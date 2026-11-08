@@ -1,5 +1,5 @@
 // Title: Choosing a value with the conditional operator
-// Standard: C++17
+// Standard: C++23
 // condition ? a : b is an expression, so it can initialise a const variable
 // and choose between two pieces of text inside an output statement.
 

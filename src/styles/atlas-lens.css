@@ -1,0 +1,49 @@
+/* The atlas: the three views and quieter lines. atlas.css is unchanged; this file only adds to it.
+
+   The buttons at the bottom left no longer zoom. They choose what is highlighted:
+     sem-1  landscape: the modelling destinations (and the regions) stand out;
+     sem-2  domains:   the domain fields and their titles stand out;
+     sem-3  concepts:  the concepts stand out and the domain fields recede.
+   Lines between concepts are not drawn until a concept is selected (see Atlas.tsx). The few that
+   remain are dotted and sit behind the dots. */
+
+/* ── View 1: landscape. Destinations ring brighter and glow. ───────────── */
+.atlas.sem-1 .atlas-node.kind-landmark .atlas-landmark-ring { stroke-opacity: 1; stroke-width: 1.8; }
+.atlas.sem-1 .atlas-node.kind-landmark .atlas-glow { opacity: 1; }
+.atlas.sem-1 .atlas-domain.kind-destination .atlas-halo,
+.atlas.sem-1 .atlas-domain.kind-synthesis .atlas-halo { fill-opacity: 0.09; stroke-opacity: 0.45; }
+
+/* ── View 2: domains. Every field and its title stand out; concepts step back. ── */
+.atlas.sem-2 .atlas-halo { fill-opacity: 0.09; stroke-opacity: 0.5; stroke-width: 1.4; }
+.atlas.sem-2 .atlas-domain-title { font-weight: 700; }
+.atlas.sem-2 .atlas-node:not(.kind-landmark):not(.is-selected):not(.is-faded) { opacity: 0.6; }
+
+/* ── View 3: concepts. Fields recede; every dot is at full strength. ───── */
+.atlas.sem-3 .atlas-halo { fill-opacity: 0.015; stroke-opacity: 0.1; }
+.atlas.sem-3 .atlas-domain-title { opacity: 0.5; }
+.atlas.sem-3 .atlas-node:not(.is-faded) { opacity: 1; }
+
+/* ── A domain that has been lit up (its title was clicked) ─────────────── */
+.atlas.has-domain .atlas-domain:not(.is-faded) .atlas-halo { fill-opacity: 0.12; stroke-opacity: 0.8; stroke-width: 1.8; }
+.atlas.has-domain .atlas-domain:not(.is-faded) .atlas-domain-title { font-weight: 700; opacity: 1; }
+.atlas.has-domain .atlas-node:not(.is-faded) { opacity: 1; }
+.atlas.has-domain .atlas-node.is-faded { opacity: 0.12; }
+
+/* ── Lines: quiet, dotted, behind the dots ─────────────────────────────── */
+/* Lines to and from the selected concept keep their accent colour. Anything else that is drawn
+   (a lit domain's internal links) is dotted and pale. */
+.atlas-edge.is-quiet { stroke-dasharray: 1 6; stroke-linecap: round; stroke-opacity: 0.55; stroke-width: 1.4; }
+.atlas-edge.is-quiet[data-straight='0'] { stroke-opacity: 0.4; }
+/* Links between domains: dotted, shown only for the domain that is lit, selected or hovered. */
+.atlas .atlas-domain-links { opacity: 1; }
+.atlas .atlas-domain-link { stroke-dasharray: 1 8; stroke-opacity: 0.55; stroke-linecap: round; }
+.atlas.has-selection .atlas-domain-links { opacity: 1; }
+
+/* ── Light theme: the same, with the pale page's colours ───────────────── */
+:root[data-theme='light'] .atlas.sem-1 .atlas-domain.kind-destination .atlas-halo,
+:root[data-theme='light'] .atlas.sem-1 .atlas-domain.kind-synthesis .atlas-halo { fill-opacity: 0.13; stroke-opacity: 0.7; }
+:root[data-theme='light'] .atlas.sem-2 .atlas-halo { fill-opacity: 0.12; stroke-opacity: 0.6; }
+:root[data-theme='light'] .atlas.sem-3 .atlas-halo { fill-opacity: 0.02; stroke-opacity: 0.14; }
+:root[data-theme='light'] .atlas.has-domain .atlas-domain:not(.is-faded) .atlas-halo { fill-opacity: 0.16; stroke-opacity: 0.9; }
+:root[data-theme='light'] .atlas-edge.is-quiet { stroke-opacity: 0.7; }
+:root[data-theme='light'] .atlas .atlas-domain-link { stroke-opacity: 0.7; }

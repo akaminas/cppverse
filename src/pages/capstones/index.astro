@@ -14,7 +14,7 @@ const list = Object.values(capstones).map((c) => ({ c, node: conceptById[c.id] }
     <div class="grid grid-2">
       {list.map(({ c, node }) => (
         <a class="card-link" href={capstoneUrl(c.id)}>
-          <span class="eyebrow">{node.label} · {domainById[node.domain].title} · {c.level}</span>
+          <span class="eyebrow">{node.label} · {domainById[node.domain].title} · <span class={`lvl-text lvl-${c.level}`}>{c.level}</span></span>
           <h3>{c.title}</h3>
           <p class="muted">{c.question}</p>
         </a>

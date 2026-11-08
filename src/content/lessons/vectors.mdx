@@ -30,7 +30,7 @@ Three properties define it:
 
 A model with one variable, such as the size of a single population, can live in a single `double`. As soon as you want to keep the *history* of that variable, or describe many things at once (stages, patches, individuals, replicate runs), you need a container. Without one you would have to declare `N0`, `N1`, `N2`… by hand and could not decide at run time how many generations to simulate.
 
-The vector is the container you will use most. A trajectory is a vector; the state of a stage-structured population is a vector; a population of individuals in an individual-based model is a vector of individuals. Other containers exist (see <Concept id="container-choice" />), but the vector should be your default.
+The vector is the container you will use most. A trajectory is a vector, so is the state of a stage-structured population, and so is a population of individuals in an individual-based model. Other containers exist (see <Concept id="container-choice" />), but the vector should be your default.
 
 ## How it works in C++
 
@@ -52,7 +52,7 @@ Round parentheses give a *size* (and optionally a fill value); curly braces give
 A vector can also be created as a copy of another, `std::vector<int> original = clutchSizes;`. The copy is independent: changing one does not change the other.
 
 <Callout kind="manual" title="Sized vectors are filled with zeros">
-The manual says that the elements of `std::vector<int> v(15)` are left uninitialised. That is not the case: a vector created with only a size *value-initialises* its elements, so numbers start at 0 (and `bool`s at `false`). You can rely on `std::vector<double> births(n)` being all zeros. The manual also writes nested types as `std::vector< std::vector<int> >` with a space between the closing brackets; since C++11 `>>` works without the space.
+The elements of `std::vector<int> v(15)` are not left uninitialised, unlike those of a local built-in array such as `int a[15];`. A vector created with only a size *value-initialises* its elements, so numbers start at 0 (and `bool`s at `false`). You can rely on `std::vector<double> births(n)` being all zeros. Older code also writes nested types as `std::vector< std::vector<int> >` with a space between the closing brackets. Since C++11 `>>` works without the space.
 </Callout>
 
 ### Indexing: from 0 to size() − 1
@@ -118,7 +118,7 @@ Two habits prevent most of these errors:
 - Never compute `N.size() - 1` on a vector that might be empty. Because `size()` is unsigned, `0 - 1` does not give −1 but wraps around to the largest possible `std::size_t` (about 1.8 × 10¹⁹ on a 64-bit machine), and a loop up to that value runs off the end at once. `t + 1 < N.size()` has no such problem.
 
 <Callout kind="tip" title="When to use .at()">
-`.at()` costs one comparison per access. In inner loops of large simulations, `[]` with indices that are correct by construction (a loop from 0 to `size()`) is the norm. Use `.at()` where an index comes from outside the loop's control: user input, a file, or a computed position such as `t + lag`. While developing, you can also ask the standard library to check every `[]`: GCC's libstdc++ does this when you compile with `-D_GLIBCXX_ASSERTIONS`.
+`.at()` costs one comparison per access. In inner loops of large simulations, `[]` with indices that are correct by construction (a loop from 0 to `size()`) is the norm. Use `.at()` where an index comes from outside the loop's control: user input, a file, or a computed position such as `t + lag`. While developing, you can also ask the standard library to check every `[]`: GCC's libstdc++ does this when you compile with `-D_GLIBCXX_ASSERTIONS`. C++26 adds a hardened standard library <Std v="c++26" />, which checks preconditions such as a valid index.
 </Callout>
 
 ## Explore it
@@ -144,7 +144,7 @@ std::vector<int> c(3, 1);`}
   feedback={[
     "Parentheses give a size (and a fill value); braces list the elements themselves. A sized vector of int is filled with zeros.",
     "Braces list values: b{3} contains the single value 3. Only parentheses are read as a size.",
-    "Elements of a sized vector are value-initialised, so they are zeros, not indeterminate values (the manual is mistaken on this point).",
+    "Elements of a sized vector are value-initialised, so they are zeros, not indeterminate values.",
     "Parentheses with one number give a size, not a value: a(3) has three elements. c(3, 1) means three copies of 1.",
   ]}
 />
@@ -196,7 +196,7 @@ Almost every simulation on this site stores something in a vector:
 - **Populations of individuals.** In an individual-based model each element describes one individual (<Concept id="individual-representation" />).
 - **Replicates and parameter sweeps.** The final population size of each replicate run, or one result per parameter value, collected for later summary.
 
-Two practical points follow. If you know in advance how many values you will store, create the vector with that size, `std::vector<double> N(T + 1)`, and assign `N[t + 1] = …` inside the loop; this is equivalent to `push_back` but avoids repeated growth (see <Concept id="container-choice" />). And keep the units and the meaning of the index in a comment next to the declaration: `// N[t]: females per hectare in year t`.
+Three practical points follow. If you know in advance how many values you will store, create the vector with that size, `std::vector<double> N(T + 1)`, and assign `N[t + 1] = …` inside the loop; this is equivalent to `push_back` but avoids repeated growth (see <Concept id="container-choice" />). Also keep the units and the meaning of the index in a comment next to the declaration: `// N[t]: females per hectare in year t`. Finally, to pass a vector to a function without copying it, a `const std::vector<double>&` parameter works. Since C++20 a `std::span<const double>` parameter also accepts part of a vector or an array.
 
 ## Common mistakes
 

@@ -1,5 +1,5 @@
 // Title: A pedigree stored as values, with parents referred to by index
-// Standard: C++17
+// Standard: C++23
 // Individuals live by value in one std::vector, and each parent is recorded as
 // an index into that vector. Indices stay valid when the vector grows and
 // reallocates; pointers or references to its elements would not.

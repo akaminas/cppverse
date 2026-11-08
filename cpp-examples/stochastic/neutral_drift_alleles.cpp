@@ -1,5 +1,5 @@
 // Title: Neutral drift of five alleles by multinomial sampling
-// Standard: C++17
+// Standard: C++23
 // A haploid population of N individuals carries five neutral alleles. Each
 // generation, every offspring copies the allele of a randomly chosen
 // parent: a weighted lottery with the current allele counts as weights.

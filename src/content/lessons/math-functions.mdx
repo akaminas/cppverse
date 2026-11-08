@@ -54,27 +54,27 @@ Biological models are full of these functions. Exponential growth and decay, sur
 
 <Example file="foundations/cmath_tour.cpp" mark="18-19" />
 
-Four points to take from that output:
+Four points follow from that output.
 
-- **Angles are in radians.** `std::sin(30.0)` is the sine of 30 radians, −0.988. For 30 degrees, convert first: multiply by π / 180.
-- **`std::log` is the natural logarithm.** Many papers write "log" for ln; others mean log₁₀. Decide which the author means before translating.
-- **Rounding functions differ for negative numbers.** For −2.5, `floor` gives −3, `ceil` −2, `trunc` −2 and `round` −3.
-- **Always write `std::`.** The unqualified `abs` inherited from C works on integers only; `abs(-3.2)` can silently become 3. `std::abs(-3.2)` chooses the version for `double`.
+- Angles are in radians. `std::sin(30.0)` is the sine of 30 radians, −0.988. For 30 degrees, convert first: multiply by π / 180.
+- `std::log` is the natural logarithm. Many papers write "log" for ln; others mean log₁₀. Decide which the author means before translating.
+- Rounding functions differ for negative numbers. For −2.5, `floor` gives −3, `ceil` −2, `trunc` −2 and `round` −3.
+- Always write `std::`. The unqualified `abs` inherited from C works on integers only; `abs(-3.2)` can silently become 3. `std::abs(-3.2)` chooses the version for `double`.
 
 Invalid arguments do not stop the program. `std::sqrt(-1.0)` returns NaN ("not a number"), `std::log(0.0)` returns −∞, and both then propagate through every later calculation. `std::isnan(x)` and `std::isfinite(x)` test for them.
 
 `std::pow(x, 2.0)` and `x * x` give the same result; for small whole powers the product is shorter and at least as clear. Use `pow` for powers that are not small integers, such as the 3/4 power of body mass in metabolic scaling.
 
-C++17 has no standard constant for π. Define one, `constexpr double pi = 3.14159265358979323846;`, or compute it as `std::acos(-1.0)`. The macro `M_PI` is not part of standard C++ and is missing on some compilers.
+Before C++20 the standard library had no constant for π, so code defined one, `constexpr double pi = 3.14159265358979323846;`, or computed it as `std::acos(-1.0)`. The macro `M_PI` is not part of standard C++ and is missing on some compilers.
 
 <Callout kind="modern" title="std::numbers::pi">
-C++20 adds the header `<numbers>` with constants such as `std::numbers::pi`, `std::numbers::e` and `std::numbers::ln2`. <Std v="c++20" />
+The header `<numbers>` (C++20) provides constants such as `std::numbers::pi`, `std::numbers::e` and `std::numbers::ln2`. Prefer them to a hand-typed value of π.
 </Callout>
 
 <Example file="foundations/math_numbers_pi.cpp" />
 
-<Callout kind="manual" title="cmath in the manual">
-The manual's table of mathematical functions uses the names without `std::`, as in C. In C++ use the qualified names, which also select the right version for each argument type. The functions are part of the C++ standard library and are linked automatically by `g++` and `clang++`; no extra library option is needed.
+<Callout kind="manual" title="Qualified names in cmath">
+C code, and older C++ code, calls the mathematical functions without `std::`. In C++ use the qualified names, which also select the right version for each argument type. The functions are part of the C++ standard library and are linked automatically by `g++` and `clang++`; no extra library option is needed.
 </Callout>
 
 <Anchor id="equation-to-code" />

@@ -1,5 +1,5 @@
 // Title: Validating model parameters with exceptions
-// Standard: C++17
+// Standard: C++23
 // Reads Beverton–Holt scenarios (name R0 M N0) from standard input. An
 // impossible parameter value rejects one scenario and the run continues;
 // unreadable input is a fatal error that is reported in main.

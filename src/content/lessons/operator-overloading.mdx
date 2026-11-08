@@ -11,10 +11,9 @@ objectives:
   - Implement compound assignment first and build the binary operator from it
   - Write an output operator that returns std::ostream& and writes to the stream it is given
   - State the rules that overloading cannot change, and overload only with the conventional meaning
-standard: c++17
 references:
   - "cppreference.com: operator overloading (canonical implementations)"
-  - "C++ Core Guidelines: C.160–C.170 (overloading)"
+  - "C++ Core Guidelines: C.160-C.170 (overloading)"
 ---
 
 ## What it is
@@ -48,7 +47,7 @@ The compiler translates the operator syntax into a call:
 | `s += t` | `operator+=(s, t)` | `s.operator+=(t)` |
 | `std::cout << s` | `operator<<(std::cout, s)` | not possible: see below |
 
-You could write the call out in full, `operator+(a, b)`; the operator syntax is simply nicer.
+You could write the call out in full, `operator+(a, b)`; the operator syntax is shorter and closer to the mathematics.
 
 ### Member or non-member?
 
@@ -117,7 +116,7 @@ Three details matter:
 The object is taken by const reference: printing should neither copy nor change it.
 
 <Callout kind="manual" title="Friend or not">
-The manual presents `operator<<` as a friend of the class, because its version reads private members. A non-member needs to be a friend *only* if it must reach private data. For a plain struct such as `State`, whose members are public, or for a class with suitable const getters, an ordinary non-member function is enough and keeps the class's private details private.
+Older code often declares `operator<<` as a friend of the class, because it reads private members. A non-member needs to be a friend only if it must reach private data. For a plain struct such as `State`, whose members are public, or for a class with suitable const getters, an ordinary non-member function is enough and keeps the class's private details private.
 </Callout>
 
 ### What overloading cannot change
@@ -133,8 +132,8 @@ Overloading gives an existing operator a new meaning for new types. It cannot ch
 
 Readers bring assumptions to an operator: that `+` adds without side effects, that `a == b` and `b == a` agree, and that `<<` writes to a stream. Overload an operator only when the operation really behaves like the familiar one. If a pairwise interaction between two individuals changes both of them and returns nothing, `a * b` hides all of that behind a symbol; a named function, `interact(a, b)`, says what happens. The rule of thumb: if you have to explain what the operator means, use a function.
 
-<Callout kind="modern" title="Comparisons in C++20">
-Since C++20 <Std v="c++20" /> the compiler can write comparisons for you: declaring `bool operator==(const State&) const = default;` inside the struct compares the members one by one, and `!=` follows automatically. A defaulted three-way comparison, `auto operator<=>(const State&) const = default;`, generates `<`, `<=`, `>` and `>=` as well. With C++17, write `operator==` by hand.
+<Callout kind="modern" title="Defaulted comparisons">
+The compiler can write comparisons for you: declaring `bool operator==(const State&) const = default;` inside the struct compares the members one by one, and `!=` follows automatically. A defaulted three-way comparison, `auto operator<=>(const State&) const = default;`, generates `<`, `<=`, `>` and `>=` as well. Before C++20 you wrote `operator==` by hand.
 </Callout>
 
 ## A minimal example

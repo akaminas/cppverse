@@ -1,5 +1,5 @@
 // Title: Addresses, pointers, references and an owning smart pointer
-// Standard: C++17
+// Standard: C++23
 // A pointer stores an address; it can be null and can be re-pointed. A reference
 // is a second name for one object. std::unique_ptr owns an object on the heap,
 // deletes it automatically, and can hand ownership on but cannot be copied.

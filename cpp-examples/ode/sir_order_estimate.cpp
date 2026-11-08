@@ -1,5 +1,5 @@
 // Title: Measuring the order of a method without an exact solution
-// Standard: C++17
+// Standard: C++23
 // The SIR model has no closed-form trajectory. Halving the step twice still
 // reveals the order p: successive differences in I(30) shrink by about 2^p.
 // Output: I(30) for each step size, then the observed order of each method.

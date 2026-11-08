@@ -9,7 +9,7 @@ objectives:
   - Store two related values of different types in a std::pair and reach them with first and second
   - Define a struct with named members and initialise it with braces
   - Keep records in a std::vector of pairs or structs and loop over them
-  - Unpack a pair or struct with a structured binding (C++17)
+  - Unpack a pair or struct with a structured binding
   - Represent a parameter set and a model state as structs
 references:
   - "cppreference.com: std::pair"
@@ -21,8 +21,8 @@ references:
 
 A `std::vector` stores many values of *one* type. Often, though, values of *different* types belong together: a year and a population size, a site code and a count, a growth rate and a carrying capacity. C++ offers two ways to bundle them into a single object:
 
-- **`std::pair<A, B>`** from `<utility>` holds exactly two values, called `first` and `second`. It is ready-made and needs no definition.
-- **`struct`** lets you define your own type with as many members as you need, each with its own name and type.
+- `std::pair<A, B>` from `<utility>` holds exactly two values, called `first` and `second`. It is ready-made and needs no definition.
+- `struct` lets you define your own type with as many members as you need, each with its own name and type.
 
 Both are *compound types*: an object made of other objects. The bundle can be stored in a vector, copied, passed to a function and returned from one as a single value.
 
@@ -56,7 +56,7 @@ A vector of pairs is a convenient table of samples. The program below stores eve
 
 ### Structured bindings
 
-`first` and `second` say nothing about what the values mean. A *structured binding* (C++17) unpacks a pair, or a struct, into named variables in one declaration:
+`first` and `second` say nothing about what the values mean. A *structured binding* unpacks a pair, or a struct, into named variables in one declaration:
 
 ```cpp
 const auto [year, density] = samples.back();
@@ -91,12 +91,12 @@ State s{};                        // empty braces: every member zero
 State t;                          // no braces: members are uninitialised
 ```
 
-The last line is a trap. Members of built-in type (`int`, `double`) in an object created without an initialiser hold indeterminate values, and reading them is undefined behaviour. Always use braces. (Default values written into the struct definition itself, `double N = 0.0;`, are shown in <Concept id="classes" />.)
+The last line is a trap. Members of built-in type (`int`, `double`) in an object created without an initialiser hold indeterminate values, and reading them is undefined behaviour. Always use braces. From C++26 on, reading such an uninitialised local is no longer undefined behaviour but *erroneous behaviour*: the implementation defines the value that is read, and compilers may diagnose it. <Std v="c++26" /> It remains a bug. (Default values written into the struct definition itself, `double N = 0.0;`, are shown in <Concept id="classes" />.)
 
 Brace initialisation also prevents *narrowing*: `State u{0.5, 20.0};` does not compile, because 0.5 cannot be stored in the `int` member `year` without loss.
 
-<Callout kind="modern" title="Designated initialisers (C++20)">
-<Std v="c++20" /> C++20 lets you name the members in the initialiser: `Parameters p{.r = 0.8, .K = 500.0};`. The names must appear in declaration order, but they make long parameter lists much harder to get wrong.
+<Callout kind="modern" title="Designated initialisers">
+You can name the members in the initialiser: `Parameters p{.r = 0.8, .K = 500.0};`. The names must appear in declaration order, but they make long parameter lists much harder to get wrong.
 </Callout>
 
 ## A minimal example
@@ -167,10 +167,10 @@ int main() {`}
 
 ## In biological modelling
 
-- **Samples.** (time, value) pairs are the natural record of a trajectory sampled at irregular times, and a `std::vector<std::pair<double, double>>` sorts by time automatically.
-- **Parameter sets.** One struct holds every parameter of a model, each member commented with its meaning and unit. Functions that need the parameters take one `const Parameters&` argument instead of a long list (see <Concept id="const-reference" />). A parameter sweep becomes a vector of `Parameters`.
-- **States.** A struct `State { double S, I, R; };` makes the compartments of an epidemic model explicit; a struct per individual (`struct Plant { double height; int age; bool flowering; };`) is the starting point of an individual-based model (<Concept id="individual-representation" />).
-- **Return values.** A function can return a struct, which is the clean way to return several results at once (a peak value *and* its time, an estimate *and* its standard error).
+- Samples. (time, value) pairs are the natural record of a trajectory sampled at irregular times, and a `std::vector<std::pair<double, double>>` sorts by time automatically.
+- Parameter sets. One struct holds every parameter of a model, each member commented with its meaning and unit. Functions that need the parameters take one `const Parameters&` argument instead of a long list (see <Concept id="const-reference" />). A parameter sweep becomes a vector of `Parameters`.
+- States. A struct `State { double S, I, R; };` makes the compartments of an epidemic model explicit; a struct per individual (`struct Plant { double height; int age; bool flowering; };`) is the starting point of an individual-based model (<Concept id="individual-representation" />).
+- Return values. A function can return a struct, which is the clean way to return several results at once (a peak value *and* its time, an estimate *and* its standard error).
 
 When a type needs rules (a population that may never become negative, a probability that must stay between 0 and 1), a struct with public members cannot enforce them. That is the job of a class, the subject of <Concept id="classes" />.
 
@@ -178,9 +178,9 @@ When a type needs rules (a population that may never become negative, a probabil
 
 - **Forgetting the semicolon** after the closing brace of a struct definition.
 - **Uninitialised members.** `State s;` leaves `int` and `double` members indeterminate. Write `State s{};` or give every member a value.
-- **Wrong order in brace initialisation.** `Parameters{500.0, 0.8}` silently sets `r = 500` and `K = 0.8` when both are `double`. Comment the order next to the definition, or use designated initialisers in C++20.
+- **Wrong order in brace initialisation.** `Parameters{500.0, 0.8}` silently sets `r = 500` and `K = 0.8` when both are `double`. Comment the order next to the definition, or use designated initialisers.
 - **`first` and `second` everywhere.** Once a pair is used in more than a few lines, a struct with meaningful member names (or a structured binding) makes the code checkable against the model.
-- **Writing `> >`.** `std::vector<std::pair<int, double>>` needs no space between the closing brackets since C++11; old code (and the manual) still writes one.
+- **Writing `> >`.** `std::vector<std::pair<int, double>>` needs no space between the closing brackets since C++11; older code still writes one.
 
 ## Practice
 

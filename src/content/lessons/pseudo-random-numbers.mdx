@@ -10,10 +10,9 @@ objectives:
   - Explain why a pseudo-random generator produces a deterministic sequence
   - Seed std::mt19937_64 with a fixed or a fresh seed and record the seed with the results
   - Explain why rand() and rand() % n are unsuitable for scientific work
-standard: c++17
 references:
   - "cppreference.com: Pseudo-random number generation (<random>)"
-  - "Matsumoto M, Nishimura T (1998) Mersenne Twister: a 623-dimensionally equidistributed uniform pseudo-random number generator. ACM Transactions on Modeling and Computer Simulation 8: 3–30"
+  - "Matsumoto M, Nishimura T (1998) Mersenne Twister: a 623-dimensionally equidistributed uniform pseudo-random number generator. ACM Transactions on Modeling and Computer Simulation 8: 3-30"
 ---
 
 ## What it is
@@ -89,7 +88,7 @@ Run it twice without an argument: the seeds and numbers differ. Then copy one of
 `std::random_device` produces 32 random bits per call, so the function calls it twice and joins the two halves into one 64-bit seed with a shift (`<<`) and a bitwise or (`|`). On a few older platforms, notably some MinGW versions of GCC on Windows, `std::random_device` was not random at all and returned the same values in every run. Running the program twice shows at once whether yours is affected.
 
 <Callout kind="manual" title="Seeding from the clock">
-The course manual derives the seed from the system clock (`std::chrono::high_resolution_clock`), converts it to `unsigned` and writes it to `std::clog`. That works, and writing the seed to the standard error stream `std::clog` is a good way to keep it out of a data file that holds only numbers. Two weaknesses are worth knowing: runs started at the same moment, for example many jobs launched together on a computing cluster, can receive the same or very similar seeds, and converting the clock count to a 32-bit `unsigned` discards information. `std::random_device`, or a seed list managed by your experiment script, avoids both. Whatever the source, the seed must be recorded.
+A common older approach derives the seed from the system clock (`std::chrono::high_resolution_clock`), converts it to `unsigned` and writes it to `std::clog`. That works, and writing the seed to the standard error stream `std::clog` is a good way to keep it out of a data file that holds only numbers. It has two weaknesses. Runs started at the same moment, for example many jobs launched together on a computing cluster, can receive the same or very similar seeds, and converting the clock count to a 32-bit `unsigned` discards information. `std::random_device`, or a seed list managed by your experiment script, avoids both. Whatever the source, the seed must be recorded.
 </Callout>
 
 ### Why not `rand()`
@@ -110,7 +109,7 @@ Do not use it for modelling, for four reasons.
 The `<random>` library has none of these problems.
 
 <Callout kind="manual" title="The range of rand()">
-The manual gives the range of `rand()` as $[0, \text{RAND\_MAX})$. The C standard defines it as 0 to `RAND_MAX` *inclusive*. The difference does not matter in practice, because `rand()` should not be used at all.
+The C standard defines the range of `rand()` as 0 to `RAND_MAX` *inclusive*, so the upper bound is a possible value. The exact bound does not matter in practice, because `rand()` should not be used at all.
 </Callout>
 
 ## Explore it

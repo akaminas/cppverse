@@ -1,5 +1,5 @@
 // Title: A tour of <cmath>
-// Standard: C++17
+// Standard: C++23
 // Common mathematical functions from the standard library. They live in
 // namespace std, take double arguments and return double results.
 

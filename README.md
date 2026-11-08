@@ -18,21 +18,23 @@ Live site (after deployment): <https://akaminas.github.io/cppverse/>
 ## What is in it
 
 - **Atlas** (`/atlas/`): a zoomable map of 124 concepts in 12 domains, joined by typed edges
-  (prerequisite, composition, application, extension, conceptual, validation). Zooming reveals
-  more detail; search, routes to a goal, bookmarks, keyboard navigation and a phone layout are
+  (prerequisite, composition, application, extension, conceptual, validation). The three view
+  buttons highlight the landscape, the domains or the concepts, and lines appear only for the
+  selected concept; search, routes to a goal, bookmarks, keyboard navigation and a phone layout are
   built in.
 - **Lessons** (`/learn/<slug>/`): 74 lessons written in MDX, with compiled C++ examples,
   step-through traces, annotated program anatomy, synchronised maths and code, computed
   figures and knowledge checks.
-- **Model destinations** (`/models/`): the discrete-time and matrix models, the ODE, stochastic
-  and individual-based models, and a scientific-inference synthesis. Each
+- **Destinations and goals** (`/models/`): the discrete-time and matrix models, the ODE, stochastic
+  and individual-based models, and a scientific-inference synthesis, each with the learning goals
+  that lead to it and a route worked out from the prerequisites. Each destination
   has a model assembly view that links every part of the mathematics to the lines of C++ that
   implement it, and a browser laboratory.
 - **Laboratories:** five interactive simulations written in TypeScript (discrete-time, matrix,
   ODE, Gillespie, individual-based). They are clearly labelled as browser simulations: **the
   site never runs or pretends to run C++.** The C++ programs are compiled and run in CI and
   cross-validated against the laboratories.
-- **Pathways and progress:** a start page asks for a level (beginner, intermediate or seasoned)
+- **Levels and progress:** a start page asks for a level (beginner, intermediate or seasoned)
   and goals, then recommends a route. Progress stays in the browser's local storage and can be
   exported and imported as JSON.
 - **Capstones** (`/capstones/`): six original projects, A–F, one for each modelling family plus
@@ -53,7 +55,8 @@ npm run test:e2e     # Playwright: navigation, atlas, labs, accessibility (axe)
 npm run coverage     # regenerate the local coverage document (docs/, not tracked)
 ```
 
-The C++ examples are checked in CI on Ubuntu with g++-14 and clang++-18. To run the same check
+The C++ examples are written for C++23 (the baseline of the site; C++26 features are only
+described in the Modern C++ lesson) and are checked in CI on Ubuntu with g++-14 and clang++-18. To run the same check
 locally on a machine with a compiler:
 
 ```sh

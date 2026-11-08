@@ -1,5 +1,5 @@
 // Title: How a weighted lottery works
-// Standard: C++17
+// Standard: C++23
 // The cumulative sums of the weights split [0, total) into one interval per
 // option, each as wide as its weight. A uniform number u in [0, 1), scaled
 // by the total, lands in interval i with probability w_i / total. Fixed

@@ -1,5 +1,5 @@
 // Title: Building and checking a projection matrix
-// Standard: C++17
+// Standard: C++23
 // The projection matrix of a perennial plant is the sum A = U + F of a
 // survival-and-transition matrix U and a fecundity matrix F. No column of U
 // may sum to more than 1: a stage cannot send on more plants than it holds.

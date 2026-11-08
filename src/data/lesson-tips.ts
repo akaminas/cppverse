@@ -1,11 +1,10 @@
 // What the nautilus says inside each lesson: a one-line welcome ("In about N
 // minutes you will learn …") and tips specific to that lesson.
 //
-// The tips speak in the six voices of src/data/tips.ts, modelled on the kinds
-// of comment made by the expert panel of the Groningen manual: rules of the
+// The tips speak in the six voices of src/data/tips.ts: rules of the
 // language, the elegant way, notes from the field, recipes for disaster,
-// deeper water and quick-and-dirty shortcuts (with a warning). All wording is
-// original. src/tests/tips.test.ts checks that every lesson has an entry.
+// deeper water and quick-and-dirty shortcuts (with a warning).
+// src/tests/tips.test.ts checks that every lesson has an entry.
 
 import type { Tip } from './tips';
 
@@ -37,7 +36,7 @@ export const LESSON_GUIDES: Readonly<Record<string, LessonGuide>> = {
     learn: 'how a source file is compiled, linked and run, and how to read what the compiler tells you',
     tips: [
       rule('Compile C++ with g++ or clang++, not gcc. gcc compiles the file but does not link the C++ library, so you get pages of undefined references.'),
-      style('Build with -std=c++17 -Wall -Wextra from day one. Warnings are free advice from the compiler.'),
+      style('Build with -std=c++23 -Wall -Wextra from day one. Warnings are free advice from the compiler.'),
       disaster('Running an old executable after editing the source. If a fix seems to change nothing, check that you rebuilt.'),
       deep('An undefined reference comes from the linker, not the compiler: the code compiled, but a definition is missing or a file was not linked.'),
     ],
@@ -249,7 +248,7 @@ export const LESSON_GUIDES: Readonly<Record<string, LessonGuide>> = {
     tips: [
       style('A struct with named members beats a pair: p.mass says more than p.second.'),
       field('Group the parameters of a model in one struct and pass it around. Adding a parameter then changes one line, not every call.'),
-      style('auto [time, size] = record; unpacks a pair or struct into named variables (C++17).'),
+      style('auto [time, size] = record; unpacks a pair or struct into named variables.'),
       rule('Brace initialisation fills members in declaration order. Reorder the members and an initialiser can silently change meaning.'),
     ],
   },
@@ -277,7 +276,7 @@ export const LESSON_GUIDES: Readonly<Record<string, LessonGuide>> = {
       rule('Template definitions belong in headers: the compiler needs the full code to instantiate them for each type.'),
       disaster('A template error can run to hundreds of lines. Read the first error and the line marked "required from here".'),
       style('Write the function for one concrete type first, test it, then turn it into a template.'),
-      deep('A C++20 concept such as std::floating_point states what a template needs and turns cryptic errors into readable ones.'),
+      deep('A concept such as std::floating_point states what a template needs and turns cryptic errors into readable ones.'),
     ],
   },
   containers: {
@@ -320,7 +319,7 @@ export const LESSON_GUIDES: Readonly<Record<string, LessonGuide>> = {
     learn: 'to sort, search, count and summarise data with standard algorithms and lambdas',
     tips: [
       disaster('std::accumulate(v.begin(), v.end(), 0) on doubles sums in int and truncates every step. Start from 0.0.'),
-      rule('std::remove_if does not shrink the container. Follow it with erase, or use std::erase_if in C++20.'),
+      rule('std::remove_if does not shrink the container. Follow it with erase, or use std::erase_if, which does both in one call.'),
       style('std::max_element returns an iterator; its distance from begin() gives the time of the peak as well as its height.'),
       deep('A lambda that captures by reference must not outlive the variables it captured.'),
     ],
@@ -444,12 +443,12 @@ export const LESSON_GUIDES: Readonly<Record<string, LessonGuide>> = {
     ],
   },
   'modern-cpp': {
-    learn: 'which newer C++ features make model code shorter and safer',
+    learn: 'which C++23 features make model code shorter and safer, and what C++26 adds',
     tips: [
       deep('std::span lets one function accept a vector, an array or part of either without copying.'),
       style('std::format("{:.3f}", x) formats like Python and is checked by the compiler.'),
-      disaster('Using a C++23 feature on a compiler that does not support it yet. Check the compiler support table before you depend on it.'),
-      deep('Designated initialisers, Params{.r = 1.2, .K = 500}, name each parameter at the call site (C++20).'),
+      disaster('Using a library feature your compiler does not provide yet, such as std::views::enumerate on GCC 14. Check the compiler support table before you depend on it.'),
+      deep('Designated initialisers, as in Params{.r = 1.2, .K = 500}, name each parameter at the call site.'),
     ],
   },
   // ── Algorithm design ─────────────────────────────────────────────────────

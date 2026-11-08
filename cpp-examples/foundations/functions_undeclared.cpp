@@ -1,5 +1,5 @@
 // Title: Calling a function before it is declared
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // main calls next_generation, but the compiler has not seen it yet.
 

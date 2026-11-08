@@ -1,5 +1,5 @@
 // Title: Gillespie simulation of a birth–death process
-// Standard: C++17
+// Standard: C++23
 // Each individual gives birth at rate b and dies at rate d. With N
 // individuals the two events have propensities b N and d N. Gillespie's
 // direct method draws the waiting time to the next event from an

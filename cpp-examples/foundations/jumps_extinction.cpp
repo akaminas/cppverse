@@ -1,5 +1,5 @@
 // Title: Stopping a simulation at extinction
-// Standard: C++17
+// Standard: C++23
 // break leaves the loop as soon as the population is extinct; continue
 // skips the output step in generations that are not recorded.
 

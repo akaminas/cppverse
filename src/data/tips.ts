@@ -1,12 +1,11 @@
 // Tips the nautilus offers while a learner reads.
 //
-// Every tip speaks in one of six voices, modelled on the kinds of comment the
-// expert panel of the Groningen manual makes in its margins: the rules of the
-// language, the elegant way of writing it, notes from biological fieldwork,
-// recipes for disaster (common mistakes), deeper water (advanced material)
-// and quick-and-dirty shortcuts that come with a warning. The wording is
-// original. Lesson-specific tips live in lesson-tips.ts; the tips here are
-// keyed by atlas domain, and the general ones can appear anywhere.
+// Every tip speaks in one of six voices: the rules of the language, the
+// elegant way of writing it, notes from biological fieldwork, recipes for
+// disaster (common mistakes), deeper water (advanced material) and
+// quick-and-dirty shortcuts that come with a warning. Lesson-specific tips
+// live in lesson-tips.ts; the tips here are keyed by atlas domain, and the
+// general ones can appear anywhere.
 
 import { LESSON_GUIDES } from './lesson-tips';
 

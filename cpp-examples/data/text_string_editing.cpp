@@ -1,5 +1,5 @@
 // Title: Editing, comparing and converting strings
-// Standard: C++17
+// Standard: C++23
 // Abbreviating a species name, building a file name, comparing site codes,
 // and converting between text and numbers.
 

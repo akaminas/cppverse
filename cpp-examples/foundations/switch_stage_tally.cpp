@@ -1,5 +1,5 @@
 // Title: Stacked case labels and deliberate fall-through
-// Standard: C++17
+// Standard: C++23
 // Field codes are tallied with a switch. Stacked labels accept upper- and
 // lower-case codes; [[fallthrough]] lets an individual at a late stage
 // count towards every earlier stage it has passed through.

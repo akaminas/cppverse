@@ -1,5 +1,5 @@
 // Title: Leaving nested loops with a flag
-// Standard: C++17
+// Standard: C++23
 // The outer loop tries increasing harvest percentages; the inner loop
 // simulates 50 years of harvesting. break leaves only the inner loop, so a
 // flag tells the outer loop to stop once a harvest causes a collapse.

@@ -1,5 +1,5 @@
 // Title: One class template, two classes
-// Standard: C++17
+// Standard: C++23
 // TimeSeries<int> records occupied patches in a simple metapopulation;
 // TimeSeries<double> records plant cover. Both come from one template.
 

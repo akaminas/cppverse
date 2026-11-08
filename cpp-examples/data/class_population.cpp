@@ -1,5 +1,5 @@
 // Title: A population whose size can never become negative
-// Standard: C++17
+// Standard: C++23
 // The count is private. Births and deaths go through public member
 // functions, which maintain the invariant: the size is never negative.
 

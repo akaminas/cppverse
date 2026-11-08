@@ -1,5 +1,5 @@
 // Title: The deep trial, worked: a two-layer cichlid lake with a food web
-// Standard: C++20
+// Standard: C++23
 // One way to pass the final trial, not the only one. A surface layer sits on a
 // deep layer; wind mixes them in the dry season. Phosphorus is the currency of
 // the food web and is conserved. Photosynthesis and respiration move oxygen and

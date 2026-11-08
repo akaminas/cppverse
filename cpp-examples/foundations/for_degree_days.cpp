@@ -1,5 +1,5 @@
 // Title: Accumulating degree-days over a season
-// Standard: C++17
+// Standard: C++23
 // A running total is declared before the loop and updated inside it.
 // Only the part of each day's temperature above the threshold counts.
 

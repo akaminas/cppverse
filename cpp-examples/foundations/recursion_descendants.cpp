@@ -1,5 +1,5 @@
 // Title: Counting descendants recursively
-// Standard: C++17
+// Standard: C++23
 // Every individual has the same number of offspring. The descendants of a
 // founder over n generations are its offspring plus their own descendants
 // over the remaining n - 1 generations.

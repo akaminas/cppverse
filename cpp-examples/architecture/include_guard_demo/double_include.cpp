@@ -1,5 +1,5 @@
 // Title: The same header reached twice
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // stage_counts.hpp is included directly and again through census.hpp. Without
 // an include guard the compiler sees the definition of StageCounts twice.

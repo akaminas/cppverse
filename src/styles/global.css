@@ -1,6 +1,6 @@
 /* C++ Atlas, the standard pages. A plain reference-site look after the R
    education site (education.rstudio.com/learn): white page, thin shadowed
-   header, Source Sans Pro, blue links, a content column with a sidebar, list
+   header, Calibri, blue links, a content column with a sidebar, list
    rows instead of cards, a flat blue footer band. There is a light theme and a
    dark one; data-theme on <html> picks between them (see BaseLayout).
 
@@ -17,45 +17,34 @@
 @import './charts.css';
 @import './labs.css';
 @import './models.css';
+@import './levels.css';
 
+/* Calibri where it is installed (Windows and Office on Mac); otherwise Carlito, the open
+   metric-compatible twin, so the text sets the same on every machine. */
 @font-face {
-  font-family: 'Source Sans Pro';
-  src: url('../assets/fonts/source-sans-pro-300.woff2') format('woff2');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Source Sans Pro';
-  src: url('../assets/fonts/source-sans-pro-400.woff2') format('woff2');
+  font-family: 'Carlito';
+  src: url('../assets/fonts/carlito-400-normal.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
-  font-family: 'Source Sans Pro';
-  src: url('../assets/fonts/source-sans-pro-400italic.woff2') format('woff2');
+  font-family: 'Carlito';
+  src: url('../assets/fonts/carlito-400-italic.woff2') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
 }
 @font-face {
-  font-family: 'Source Sans Pro';
-  src: url('../assets/fonts/source-sans-pro-600.woff2') format('woff2');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Source Sans Pro';
-  src: url('../assets/fonts/source-sans-pro-700.woff2') format('woff2');
+  font-family: 'Carlito';
+  src: url('../assets/fonts/carlito-700-normal.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
-  font-family: 'Source Sans Pro';
-  src: url('../assets/fonts/source-sans-pro-700italic.woff2') format('woff2');
+  font-family: 'Carlito';
+  src: url('../assets/fonts/carlito-700-italic.woff2') format('woff2');
   font-weight: 700;
   font-style: italic;
   font-display: swap;
@@ -78,7 +67,7 @@
   --v-muted: #5f6977;
   --v-secondary: #4a5461;
   --v-ink: #2b2f36;
-  --v-font-body: 'Source Sans Pro', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --v-font-body: Calibri, Carlito, 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
   --v-font-title: var(--v-font-body);
   --v-font-mono: 'Source Code Pro', Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace;
 
@@ -99,9 +88,9 @@
   --shadow-header: 0 1px 3px rgba(0, 0, 0, 0.09);
   --shadow-float: 0 12px 28px -12px rgba(15, 34, 54, 0.35);
 
-  --measure: 72ch;
-  --page: 1100px;
-  --gutter: 24px;
+  --measure: 68ch;
+  --page: 1180px;
+  --gutter: 18px;
   --radius: 4px;
   --step: 8px;
 
@@ -109,7 +98,7 @@
   --t-h1: clamp(1.9rem, 1.5rem + 1.6vw, 2.35rem);
   --t-h2: clamp(1.45rem, 1.3rem + 0.6vw, 1.7rem);
   --t-h3: 1.25rem;
-  --t-body: 1.0625rem;
+  --t-body: 1.15rem;
   --t-small: 0.92rem;
   --t-tiny: 0.85rem;
 
@@ -160,7 +149,7 @@
   --p-moss: #bad3b4;
 }
 @media (max-width: 620px) {
-  :root { --gutter: 16px; }
+  :root { --gutter: 14px; }
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────── */
@@ -225,8 +214,8 @@ summary:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
 
 /* ── Layout ───────────────────────────────────────────────────────────── */
 .wrap { width: min(var(--page), 100% - 2 * var(--gutter)); margin-inline: auto; }
-.wrap-narrow { width: min(800px, 100% - 2 * var(--gutter)); margin-inline: auto; }
-.measure { max-width: var(--measure); }
+.wrap-narrow { width: min(42rem, 100% - 2 * var(--gutter)); margin-inline: auto; }
+.measure { max-width: var(--measure); margin-inline: auto; }
 .stack > * + * { margin-top: var(--flow, 1em); }
 .grid { display: grid; gap: var(--gutter); }
 .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -1,5 +1,5 @@
 // Title: Braces refuse a narrowing conversion
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // An int cannot hold 4.5. With = the fraction would be dropped silently;
 // with braces the compiler rejects the initialisation on line 10.

@@ -1,5 +1,5 @@
 // Title: A skeleton for the deep trial: a lake as fluxes between pools
-// Standard: C++20
+// Standard: C++23
 // Not a solution: scaffolding an ecosystem model can grow on. Every process
 // returns fluxes from one named pool to another, so the limiting nutrient is
 // conserved by construction, and the integrator never sees the biology. Three

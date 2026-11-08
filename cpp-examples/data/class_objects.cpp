@@ -1,5 +1,5 @@
 // Title: Objects behave like values
-// Standard: C++17
+// Standard: C++23
 // Copies of an object are independent; objects can be returned from and
 // passed to functions, by value or by reference; a member function can
 // read the private data of another object of its own class.

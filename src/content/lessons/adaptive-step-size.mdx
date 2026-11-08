@@ -15,8 +15,8 @@ objectives:
 lab: ode
 references:
   - "Hairer, Nørsett and Wanner (1993). Solving Ordinary Differential Equations I: Nonstiff Problems, section II.4. Springer."
-  - "Bogacki and Shampine (1989). A 3(2) pair of Runge–Kutta formulas. Applied Mathematics Letters 2: 321–325."
-  - "Dormand and Prince (1980). A family of embedded Runge–Kutta formulae. Journal of Computational and Applied Mathematics 6: 19–26."
+  - "Bogacki and Shampine (1989). A 3(2) pair of Runge-Kutta formulas. Applied Mathematics Letters 2: 321-325."
+  - "Dormand and Prince (1980). A family of embedded Runge-Kutta formulae. Journal of Computational and Applied Mathematics 6: 19-26."
   - "Boost.Odeint documentation (boost.org); GNU Scientific Library manual, chapter on ordinary differential equations; SUNDIALS documentation (computing.llnl.gov/projects/sundials)."
 ---
 
@@ -111,7 +111,7 @@ The first trial step of one day is far too long; the controller rejects it, shri
 The minimum step is enforced with an exception (see <Concept id="exceptions" />): if a rejection pushes `h` below `hMin`, `tryStep` throws, and `main` reports where the integration failed instead of looping indefinitely.
 
 <Callout kind="manual" title="Absolute and mixed tolerances">
-The course manual's adaptive integrator compares the error estimate with a single absolute tolerance. This site uses a mixed absolute and relative tolerance, as Boost.Odeint, GSL, SUNDIALS and most other professional solvers do, so that the same settings work for variables of very different sizes. With $r_{\mathrm{tol}} = 0$ the two approaches coincide.
+The simplest adaptive integrator compares the error estimate with a single absolute tolerance. This lesson uses a mixed absolute and relative tolerance, as Boost.Odeint, GSL, SUNDIALS and most other professional solvers do, so that the same settings work for variables of very different sizes. With $r_{\mathrm{tol}} = 0$ the two approaches coincide.
 </Callout>
 
 ## Explore it
@@ -126,7 +126,7 @@ Each dot is the end of one accepted step. They crowd together on the steep flank
 
 <Figure id="adaptive-step-size-work-precision" />
 
-The decisive comparison is cost against accuracy. For the same error in the final proportion susceptible, the adaptive integrator needs several times fewer evaluations than Heun's method with a fixed step, although both use the same formula for the step itself. The difference is entirely in where the steps are placed.
+The comparison that matters is cost against accuracy. For the same error in the final proportion susceptible, the adaptive integrator needs several times fewer evaluations than Heun's method with a fixed step, although both use the same formula for the step itself. The difference is entirely in where the steps are placed.
 
 <Lab id="ode" />
 
@@ -191,7 +191,7 @@ The decisive comparison is cost against accuracy. For the same error in the fina
 
 ### Standard embedded pairs
 
-The Heun-Euler pair is ideal for learning but too low in order for serious work. Two higher-order pairs dominate practice, and you will meet them under these names in every library:
+The Heun-Euler pair is ideal for learning but too low in order for serious work. Two higher-order pairs dominate practice, and libraries offer them under these names:
 
 - **Bogacki-Shampine 3(2)**: a third-order method with an embedded second-order estimate. It has four stages, but the last slope of an accepted step is the slope at the new point, which is exactly the first slope of the next step. Reusing it ("first same as last", FSAL) brings the cost to three evaluations per step. It suits moderate tolerances. MATLAB's `ode23` and SciPy's `RK23` are of this kind.
 - **Dormand-Prince 5(4)**: a fifth-order method with a fourth-order estimate and FSAL, about six evaluations per step. It is the default general-purpose choice: MATLAB's `ode45`, SciPy's `RK45` and Boost.Odeint's `runge_kutta_dopri5` use it.

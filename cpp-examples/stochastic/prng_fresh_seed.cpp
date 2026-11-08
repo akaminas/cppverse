@@ -1,5 +1,5 @@
 // Title: A fixed or a fresh seed, always recorded
-// Standard: C++17
+// Standard: C++23
 // With a seed on the command line the run can be repeated exactly; without
 // one, std::random_device supplies a fresh seed. Either way the seed is the
 // first line of the output, so every run can be reproduced later.

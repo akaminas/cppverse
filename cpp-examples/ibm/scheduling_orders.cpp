@@ -1,5 +1,5 @@
 // Title: One rule, three schedules, three outcomes
-// Standard: C++17
+// Standard: C++23
 // Seven plants stand in a row ('#' alive, '.' dead). Rule: a plant dies this
 // year if both of its immediate neighbours are alive. Synchronous updating
 // applies the rule to one census; sequential updating applies it plant by

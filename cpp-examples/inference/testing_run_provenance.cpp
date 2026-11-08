@@ -1,5 +1,5 @@
 // Title: Writing provenance at the top of every output file
-// Standard: C++17
+// Standard: C++23
 // Before any results, the program records what produced them: model version,
 // git commit, compiler, language standard, build flags, seed and parameters.
 // The commit and the flags are passed in when compiling, for example

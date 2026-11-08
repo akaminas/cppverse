@@ -1,5 +1,5 @@
 // Title: A parameter set and a model state as structs
-// Standard: C++17
+// Standard: C++23
 // Discrete logistic growth, N(t+1) = N(t) + r N(t) (1 - N(t)/K). The two
 // parameters travel together in one struct; each state records its year.
 

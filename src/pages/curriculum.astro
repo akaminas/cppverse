@@ -11,6 +11,10 @@ const g = getGraph();
 const lessons = await getCollection('lessons');
 const written = new Set(lessons.map((l) => l.id));
 const LEVEL = { beginner: 'Beginner', intermediate: 'Intermediate', seasoned: 'Seasoned' } as const;
+const nConcepts = concepts.filter((c) => c.kind === 'concept' || c.kind === 'integration').length;
+const nOptional = concepts.filter((c) => c.optional).length;
+const nCapstones = concepts.filter((c) => c.kind === 'capstone').length;
+const nLessons = written.size;
 
 const byRegion = regions.map((r) => ({
   r,
@@ -24,6 +28,61 @@ const byRegion = regions.map((r) => ({
     <header class="page-head">
       <h1>Curriculum outline</h1>
     </header>
+
+    <section class="how" aria-labelledby="how-title">
+      <h2 id="how-title">How the curriculum is structured</h2>
+      <p>
+        The curriculum is a network, not a list. {nConcepts} <strong>concepts</strong> are grouped into {domains.length} <strong>domains</strong>, and the
+        domains into {regions.length} <strong>regions</strong>: the language foundations, data and program structure, the modelling destinations and
+        scientific inference. A concept is one teachable idea, such as integer division or the Gillespie algorithm. Each one belongs
+        to a domain, is taught in a lesson (the {nLessons} lessons usually teach several related concepts) and lists the concepts it needs first.
+      </p>
+      <dl class="how-terms">
+        <dt>Levels</dt>
+        <dd>
+          <p>
+            <span class="lvl lvl-beginner">Beginner</span> concepts need no earlier C++. <span class="lvl lvl-intermediate">Intermediate</span> concepts
+            assume you can already read and write ordinary programs and want to build scientific simulations.
+            <span class="lvl lvl-seasoned">Seasoned</span> concepts are for people who know C++ or modelling and want more advanced simulation techniques.
+            On the <a href={url('/start/')}>start page</a> you choose a level, and routes skip the concepts below it. Nothing is locked: every lesson is open to everyone.
+          </p>
+        </dd>
+        <dt>Prerequisites</dt>
+        <dd>
+          <p>Each concept lists what it needs. Lessons follow that order inside a domain, and a route to a goal is the chain of prerequisites that ends at it.</p>
+        </dd>
+        <dt>Destinations</dt>
+        <dd>
+          <p>
+            A destination is a kind of model you can build once you have the concepts behind it: algorithms and discrete-time models, ordinary differential
+            equations, stochastic models, and individual-based models. Each has a <a href={url('/models/')}>page of its own</a> with a laboratory, a model
+            assembly view that links every term of the mathematics to a line of C++, and its goals. Scientific inference is the last region: it uses all four
+            destinations to design experiments, analyse output and state what a model can and cannot support.
+          </p>
+        </dd>
+        <dt>Capstones</dt>
+        <dd>
+          <p>
+            A capstone is a project that finishes a destination: you use everything on the way there to answer one biological question with a model you
+            build yourself. There are {nCapstones}: two for algorithms and one each for the other destinations and for inference. Each states the question, the model and its equations, a
+            series of milestones, the checks that show the code is right, and what to hand in. No solutions are published, so the checks are how you judge your own
+            work. See the <a href={url('/capstones/')}>list of capstones</a>.
+          </p>
+        </dd>
+        <dt>Integration concepts</dt>
+        <dd><p>One concept, a complete procedural simulation, pulls the foundations together into a single program before the modelling destinations begin.</p></dd>
+        <dt>Optional branches</dt>
+        <dd><p>{nOptional} concepts are marked optional. They go deeper than the main route needs, and you can skip them without losing the thread.</p></dd>
+        <dt>Practice</dt>
+        <dd>
+          <p>
+            Lessons contain worked examples that are compiled and run, step-through traces, knowledge checks and practice tasks. The laboratories are simulations that run in
+            your browser. They are not C++: the C++ programs are compiled and checked separately against them.
+          </p>
+        </dd>
+      </dl>
+      <p>The full list follows, region by region, with the level and the prerequisites of every concept.</p>
+    </section>
 
     <div class="split">
       <div class="outline">
@@ -48,7 +107,7 @@ const byRegion = regions.map((r) => ({
                       <li class="item">
                         <h4 class="item-title">
                           {available ? <a href={hrefFor(c)}>{c.title}</a> : c.title}
-                          <span class="tag">{c.kind === 'concept' ? LEVEL[c.level] : c.kind === 'landmark' ? 'Destination' : c.kind === 'capstone' ? 'Capstone' : 'Integration'}</span>
+                          <span class={c.kind === 'concept' ? `lvl lvl-${c.level}` : 'tag'}>{c.kind === 'concept' ? LEVEL[c.level] : c.kind === 'landmark' ? 'Destination' : c.kind === 'capstone' ? 'Capstone' : 'Integration'}</span>
                           {c.optional && <span class="tag">Optional</span>}
                           {!available && <span class="tag">In preparation</span>}
                         </h4>
@@ -74,7 +133,7 @@ const byRegion = regions.map((r) => ({
         <p class="side-title">Elsewhere</p>
         <ul>
           <li><a href={url('/atlas/')}>The atlas, as a map</a></li>
-          <li><a href={url('/pathways/')}>Pathways to a goal</a></li>
+          <li><a href={url('/models/')}>Destinations and goals</a></li>
           <li><a href={url('/start/')}>Find your route</a></li>
         </ul>
       </aside>
@@ -83,6 +142,13 @@ const byRegion = regions.map((r) => ({
 </BaseLayout>
 
 <style>
+  .how { max-width: 68ch; margin: 8px 0 48px; }
+  .how h2 { padding-bottom: 6px; border-bottom: 1px solid var(--frame); }
+  .how-terms { margin: 1.4em 0; }
+  .how-terms dt { font-weight: 700; margin-top: 1em; }
+  .how-terms dd { margin: 0.2em 0 0; }
+  .how-terms dd p { margin: 0; }
+  .how-terms .lvl { font-size: 0.9rem; }
   .outline-region { scroll-margin-top: calc(var(--header-h) + 16px); }
   .outline-region + .outline-region { margin-top: 64px; }
   .outline-summary { color: var(--v-secondary); max-width: 70ch; }

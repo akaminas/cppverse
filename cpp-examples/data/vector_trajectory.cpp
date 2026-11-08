@@ -1,5 +1,5 @@
 // Title: Storing a population trajectory in a vector
-// Standard: C++17
+// Standard: C++23
 // An insect population grows by 50 per cent per generation. Each new size
 // is appended with push_back, so the whole trajectory is kept.
 

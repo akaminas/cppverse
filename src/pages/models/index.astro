@@ -1,40 +1,99 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import RouteBox from '../../components/progress/RouteBox';
 import { destinations } from '../../data/destinations';
-import { concepts } from '../../data/concepts';
+import { goals } from '../../data/goals';
+import { concepts, conceptById } from '../../data/concepts';
 import { domainById } from '../../data/domains';
 import { dependencyClosure, getGraph } from '../../lib/graph/graph';
+import { lessonCheckCounts } from '../../lib/atlas-data';
+import { hrefFor } from '../../lib/lesson-context';
 import { modelUrl, url } from '../../lib/url';
 
 const g = getGraph();
-const cards = destinations.map((d) => ({
-  d,
-  domain: domainById[d.id],
-  lessons: new Set(concepts.filter((c) => c.domain === d.id && c.lesson).map((c) => c.lesson)).size,
-  needs: dependencyClosure(g, [d.landmark]).size,
-}));
+const checkCounts = lessonCheckCounts();
+
+// One group per destination, preceded by the language itself. Each holds the goals that lead there.
+const groups = [
+  {
+    id: 'foundations',
+    title: 'The language and good practice',
+    text: 'Start here if you have not written C++ before, or if you want your simulations to be easy for others to rerun.',
+    link: null as string | null,
+    meta: '',
+    goals: goals.filter((x) => x.group === 'foundations'),
+  },
+  ...destinations.map((d) => {
+    const lessons = new Set(concepts.filter((c) => c.domain === d.id && c.lesson).map((c) => c.lesson)).size;
+    const needs = dependencyClosure(g, [d.landmark]).size;
+    return {
+      id: d.id,
+      title: domainById[d.id].title,
+      text: d.capability,
+      link: modelUrl(d.id),
+      meta: `${lessons} lessons · builds on ${needs} concepts${d.lab ? ' · interactive laboratory' : ''}${d.assemblies.length ? ' · model assembly' : ''} · capstone project`,
+      goals: goals.filter((x) => x.group === d.id),
+    };
+  }),
+];
 ---
-<BaseLayout title="Destinations" section="models" description="The four modelling destinations of the Groningen curriculum and the scientific-inference synthesis.">
+<BaseLayout title="Destinations" section="models" description="Choose what you want to learn: each modelling destination and the goals that lead to it, with a route worked out from the prerequisites of every concept.">
   <div class="wrap">
     <header class="page-head">
-      <h1>Where the language leads</h1>
+      <h1>What do you want to learn?</h1>
+      <p class="lead">
+        Pick a destination, then a goal on the way to it. Every goal comes with its route through the atlas, worked out from what
+        each concept needs and shortened to match your level.
+      </p>
+      <p class="dest-level"><a href={url('/start/')}>Set your level</a> to skip what you already know, or <a href={url('/atlas/')}>explore the atlas</a> freely.</p>
     </header>
-    <div class="item-list">
-      {cards.map(({ d, domain, lessons, needs }) => (
-        <div class="item">
-          {d.eyebrow !== 'Destination' && <p class="eyebrow">{d.eyebrow}</p>}
-          <h2 class="item-title"><a href={modelUrl(d.id)}>{domain.title}</a></h2>
-          <p class="item-text">{d.capability}</p>
-          <p class="item-meta">
-            {lessons} lessons · builds on {needs} concepts{d.lab ? ' · interactive laboratory' : ''}{d.assemblies.length ? ' · model assembly' : ''}
-          </p>
-        </div>
+
+    <nav class="dest-jump" aria-label="Destinations">
+      <ul>
+        {groups.map((gr) => <li><a class="chip" href={`#${gr.id}`}>{gr.title}</a></li>)}
+      </ul>
+    </nav>
+
+    <div class="dest-list">
+      {groups.map((gr) => (
+        <section class="dest" id={gr.id} aria-labelledby={`h-${gr.id}`}>
+          <div class="sec-head">
+            <h2 id={`h-${gr.id}`}>{gr.link ? <a href={gr.link}>{gr.title}</a> : gr.title}</h2>
+            {gr.link && <a href={gr.link}>About this destination</a>}
+          </div>
+          <p class="dest-text">{gr.text}</p>
+          {gr.meta && <p class="item-meta dest-meta">{gr.meta}</p>}
+          {gr.goals.map((goal) => (
+            <div class="goal" aria-labelledby={`goal-${goal.id}`}>
+              <div class="goal-head">
+                <h3 id={`goal-${goal.id}`}>{goal.title}</h3>
+                <p class="muted">{goal.summary}</p>
+                <p class="goal-targets">
+                  Ends with {goal.targets.map((t, i) => (<>{i > 0 && ', '}<a href={hrefFor(conceptById[t])}>{conceptById[t].title}</a></>))}
+                  {' · '}<a href={url(`/atlas/?goal=${goal.id}`)}>Show in the atlas</a>
+                </p>
+              </div>
+              <RouteBox client:visible targets={goal.targets} base={import.meta.env.BASE_URL} checkCounts={checkCounts} limit={5} />
+            </div>
+          ))}
+        </section>
       ))}
     </div>
-    <p class="measure muted" style="margin-top: 40px">
-      Each destination page shows the complete prerequisite network, a model assembly view that maps mathematics to C++ line by
-      line, the laboratory, the lessons and an original capstone project. The <a href={url('/atlas/')}>atlas</a> shows all of this
-      spatially.
-    </p>
   </div>
 </BaseLayout>
+<style>
+  .dest-level { margin: 0; }
+  .dest-jump { margin: 8px 0 8px; }
+  .dest-jump ul { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; }
+  .dest-list { display: grid; gap: 56px; margin-top: 32px; }
+  .dest { scroll-margin-top: calc(var(--header-h) + 16px); }
+  .dest .sec-head h2 a { text-decoration: none; }
+  .dest .sec-head h2 a:hover { text-decoration: underline; }
+  .dest-text { max-width: 70ch; margin: 0 0 4px; }
+  .dest-meta { margin: 0 0 8px; }
+  .goal { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 28px; padding: 20px 0; border-top: 1px solid var(--line); }
+  .dest .goal:first-of-type { margin-top: 12px; }
+  .goal h3 { margin: 0 0 4px; }
+  .goal-targets { font-size: var(--t-small); }
+  @media (max-width: 860px) { .goal { grid-template-columns: minmax(0, 1fr); gap: 12px; } }
+</style>

@@ -5,7 +5,7 @@ export const anatomies: Record<string, Anatomy> = {
     title: 'A build command, flag by flag',
     start: 'compiler',
     lines: [
-      [['g++', 'compiler'], ' ', ['-std=c++17', 'std'], ' ', ['-Wall', 'wall'], ' ', ['-Wextra', 'wextra'], ' ', ['-Wpedantic', 'wpedantic'], ' ', ['-O2', 'opt'], ' ', ['toolchain_degree_days.cpp', 'source'], ' ', ['-o', 'o'], ' ', ['degree_days', 'exe']],
+      [['g++', 'compiler'], ' ', ['-std=c++23', 'std'], ' ', ['-Wall', 'wall'], ' ', ['-Wextra', 'wextra'], ' ', ['-Wpedantic', 'wpedantic'], ' ', ['-O2', 'opt'], ' ', ['toolchain_degree_days.cpp', 'source'], ' ', ['-o', 'o'], ' ', ['degree_days', 'exe']],
       [['./degree_days', 'run']],
     ],
     parts: {
@@ -16,10 +16,10 @@ export const anatomies: Record<string, Anatomy> = {
           'The program that runs the whole tool chain: preprocessor, compiler, assembler and linker. Use g++ (or clang++) for C++, never gcc: gcc compiles C++ source but does not link the C++ standard library, so the link step fails. On macOS, g++ is usually a second name for Apple’s clang++.',
       },
       std: {
-        label: '-std=c++17',
+        label: '-std=c++23',
         role: 'Language standard',
         explain:
-          'Which edition of the C++ standard the code is written in. Compilers have different defaults; stating the standard makes the build reproducible on another machine. Use -std=c++20 for programs that need C++20 features.',
+          'Which edition of the C++ standard the code is written in. Compilers have different defaults; stating the standard makes the build reproducible on another machine. The examples on this site are compiled with -std=c++23.',
       },
       wall: {
         label: '-Wall',

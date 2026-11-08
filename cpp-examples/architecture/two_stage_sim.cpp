@@ -1,5 +1,5 @@
 // Title: A complete procedural simulation of a juvenile-adult population
-// Standard: C++17
+// Standard: C++23
 //     J(t+1) = b A(t) / (1 + A(t) / M)        A(t+1) = sj J(t) + sa A(t)
 // Usage: two_stage_sim [b] [sj] [sa] [generations]   Output: two_stage_output.csv
 

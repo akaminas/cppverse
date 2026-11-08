@@ -21,11 +21,11 @@ A loop repeats a statement. The `for` loop is the one to use when the number of 
 
 ## Why it matters
 
-Most models in this atlas are update rules: from the state now, compute the state one step later. Applying a rule once is a calculation. Applying it again and again, each time to the result of the previous step, is a simulation. Here is geometric growth, $N_{t+1} = \lambda N_t$, with the update written out by hand:
+Most models in this atlas are update rules: from the state now, compute the state one step later. Applying a rule once is a calculation. Applying it again and again, each time to the result of the previous step, is a simulation. The program below simulates geometric growth, $N_{t+1} = \lambda N_t$, with the update written out by hand:
 
 <Example file="foundations/for_one_generation.cpp" mark="11-16" />
 
-This works for three generations, but not for three hundred. The program grows with every generation simulated, and a change to the update rule has to be made in every copy. The rule should be written *once*, and the computer told how many times to apply it. That is what a loop does.
+This works for three generations, but not for three hundred. The program grows with every generation simulated, and a change to the update rule has to be made in every copy. A loop avoids this: the rule is written *once*, and the computer is told how many times to apply it.
 
 ## How it works in C++
 
@@ -55,11 +55,11 @@ for (initialisation; condition; update) {
 
 The four parts do not run in the order they are written. A `for` loop runs like this:
 
-1. **Initialisation**, once: `int t = 1` creates the loop variable.
-2. **Condition**: if `t <= generations` is false, the loop ends and the program continues after the closing brace (step 5). If it is true, carry on.
-3. **Body**: the statements between the braces run.
-4. **Update**: `++t`, and then back to step 2.
-5. **End**: execution continues with the first statement after the loop.
+1. Initialisation, once: `int t = 1` creates the loop variable.
+2. Condition: if `t <= generations` is false, the loop ends and the program continues after the closing brace (step 5). If it is true, carry on.
+3. Body: the statements between the braces run.
+4. Update: `++t`, and then back to step 2.
+5. End: execution continues with the first statement after the loop.
 
 The condition is tested *before* each pass, including the first. A loop whose condition is false from the start, such as `for (int t = 1; t <= 0; ++t)`, runs zero times. The trace in [Explore it](#explore-it) walks through these steps one at a time.
 
@@ -73,7 +73,7 @@ Most loop bugs are off by one: the loop runs once too often or once too rarely. 
 | `for (int t = 1; t <= n; ++t)` | 1, 2, …, n | n |
 | `for (int t = 0; t <= n; ++t)` | 0, 1, …, n | n + 1 |
 
-The first form is the standard one for counting n things, and the one you will use for indices of a vector, which start at 0. The second suits "generation 1 to generation n", as above. The third is correct when you really mean n + 1 values: a trajectory from generation 0 to generation n has n + 1 states but only n updates. Getting this "fencepost" count wrong is the most common way to simulate one generation too many.
+The first form is the standard one for counting n things, and the one you will use for indices of a vector, which start at 0. The second suits "generation 1 to generation n", as above. The third is correct when you really mean n + 1 values: a trajectory from generation 0 to generation n has n + 1 states but only n updates. Miscounting these "fencepost" values is the most common way to simulate one generation too many.
 
 ### The loop variable and its scope
 
@@ -107,9 +107,9 @@ The body of a loop may contain another loop. The inner loop then runs completely
 
 <Example file="foundations/for_nested_growth.cpp" mark="13-21" />
 
-The outer loop chooses a growth factor; the inner loop runs a complete ten-generation simulation with it. `N` is declared inside the outer loop, so that every simulation starts afresh from 100. With 3 outer and 10 inner passes the update runs 30 times in total. Nested loops are how you explore a model over a range of parameter values, run replicates, or visit every cell of a spatial grid (see <Concept id="nested-vectors" />).
+The outer loop chooses a growth factor, and the inner loop runs a complete ten-generation simulation with it. `N` is declared inside the outer loop, so that every simulation starts afresh from 100. With 3 outer and 10 inner passes the update runs 30 times in total. Nested loops are how you explore a model over a range of parameter values, run replicates, or visit every cell of a spatial grid (see <Concept id="nested-vectors" />).
 
-Note how `lambda` is computed from the integer `k` rather than used as the loop variable itself. Counting with integers and computing the real-valued parameter from the count avoids the rounding trap described under [Common mistakes](#common-mistakes).
+Note that `lambda` is computed from the integer `k` rather than used as the loop variable itself. Counting with integers and computing the real-valued parameter from the count avoids the rounding trap described under [Common mistakes](#common-mistakes).
 
 ### Variations on the header
 
@@ -231,24 +231,24 @@ A `for` loop over time steps is the skeleton of every discrete-time simulation i
 
 <Figure id="for-loops-geometric" />
 
-Some habits make such loops trustworthy:
+These habits make such loops easier to trust:
 
-- **Count steps with an integer.** Compute times from the count (`t = i * dt`) instead of adding `dt` to a `double` counter.
-- **Print or store the initial state too.** A run of $T$ steps has $T + 1$ states. Recording the initial state before the loop and each new state inside it gives all of them.
-- **Keep the update in one place.** The body should read like the model's equations. In the lesson on <Concept id="functions" /> the update moves into its own function, and the loop becomes a single line.
-- **Update all variables of a state together.** When the state has several variables, compute all the new values from the old ones before overwriting any. See <Concept id="update-order" />.
-- **Nest for parameter sweeps and replicates.** An outer loop over parameter values or random seeds, an inner loop over time.
+- Count steps with an integer. Compute times from the count (`t = i * dt`) instead of adding `dt` to a `double` counter.
+- Print or store the initial state too. A run of $T$ steps has $T + 1$ states. Recording the initial state before the loop and each new state inside it gives all of them.
+- Keep the update in one place. The body should read like the model's equations. In the lesson on <Concept id="functions" /> the update moves into its own function, and the loop becomes a single line.
+- Update all variables of a state together. When the state has several variables, compute all the new values from the old ones before overwriting any. See <Concept id="update-order" />.
+- Nest loops for parameter sweeps and replicates: an outer loop over parameter values or random seeds, and an inner loop over time.
 
 The general pattern is developed further in <Concept id="time-stepping" />.
 
 ## Common mistakes
 
-- **A semicolon after the header.** `for (…);` repeats nothing; the block that follows runs once.
-- **Off by one.** `<=` where `<` was meant, or the fencepost confusion between $T$ steps and $T + 1$ states. Check the loop with a small count, say 2, by hand.
-- **A `double` as the loop counter.** Accumulated rounding error can change the number of passes or prevent the loop from ending. Count with an integer.
-- **An accumulator declared inside the loop.** It is reset on every pass. Declare it before the loop.
-- **Changing the loop variable in the body.** Leave the counting to the header.
-- **Mixing signed and unsigned in the condition.** `for (int i = 0; i < v.size(); ++i)` compares an `int` with the unsigned result of `size()`, and the compiler warns. Use `std::size_t i` (see <Concept id="std-vector" />).
+- A semicolon after the header. `for (…);` repeats nothing, and the block that follows runs once.
+- Off by one. `<=` where `<` was meant, or the fencepost confusion between $T$ steps and $T + 1$ states. Check the loop with a small count, say 2, by hand.
+- A `double` as the loop counter. Accumulated rounding error can change the number of passes or prevent the loop from ending. Count with an integer.
+- An accumulator declared inside the loop. It is reset on every pass. Declare it before the loop.
+- Changing the loop variable in the body. Leave the counting to the header.
+- Mixing signed and unsigned in the condition. `for (int i = 0; i < v.size(); ++i)` compares an `int` with the unsigned result of `size()`, and the compiler warns. Use `std::size_t i` (see <Concept id="std-vector" />).
 
 ## Practice
 

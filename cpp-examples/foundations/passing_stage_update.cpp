@@ -1,5 +1,5 @@
 // Title: Updating a stage-structured state in place
-// Standard: C++17
+// Standard: C++23
 // step receives the juvenile and adult numbers by reference and replaces
 // them with next year's values. Both new values are computed from the old
 // ones before either variable is overwritten.

@@ -86,8 +86,8 @@ export interface ConceptNode {
   lab?: LabId;
   /** Advanced or optional branch (manual "advanced" sections, enrichment). */
   optional?: boolean;
-  /** Language standard required by the main code of the concept, if newer than C++17. */
-  standard?: 'c++20' | 'c++23';
+  /** Language standard required by the main code of the concept, if newer than the C++23 baseline. */
+  standard?: 'c++26';
 }
 
 export type EdgeType =
@@ -146,6 +146,8 @@ export interface Goal {
   id: string;
   title: string;
   summary: string;
+  /** Where the goal belongs on the Destinations page: a modelling destination, or the language itself. */
+  group: DomainId | 'foundations';
   /** Target concept ids; the route is their prerequisite closure. */
   targets: string[];
 }

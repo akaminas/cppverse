@@ -1,4 +1,4 @@
-// Figures for the lesson adaptive-step-size: the embedded Heun–Euler pair
+// Figures for the lesson adaptive-step-size: the embedded Heun-Euler pair
 // of integrateAdaptive applied to the SIR epidemic. Computed at build time
 // from the tested code in src/lib/simulations/ode.ts.
 

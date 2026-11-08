@@ -1,5 +1,5 @@
 // Title: Pass the engine by reference
-// Standard: C++17
+// Standard: C++23
 // A function that takes the engine BY VALUE draws from a copy: every call
 // returns the same number and the caller's engine never moves on. Creating
 // a new engine inside a loop restarts the sequence in the same way. Only

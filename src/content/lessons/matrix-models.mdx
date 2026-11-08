@@ -13,8 +13,8 @@ objectives:
   - Interpret λ and the stable structure, and recognise transient dynamics
 references:
   - "Caswell, H. (2001) Matrix Population Models: Construction, Analysis, and Interpretation, 2nd edn. Sunderland, MA: Sinauer."
-  - "Leslie, P. H. (1945) On the use of matrices in certain population mathematics. Biometrika 33, 183–212."
-  - "Lefkovitch, L. P. (1965) The study of population growth in organisms grouped by stages. Biometrics 21, 1–18."
+  - "Leslie, P. H. (1945) On the use of matrices in certain population mathematics. Biometrika 33, 183-212."
+  - "Lefkovitch, L. P. (1965) The study of population growth in organisms grouped by stages. Biometrics 21, 1-18."
 ---
 
 ## What it is
@@ -72,6 +72,8 @@ The canonical program stores the matrix as a vector of rows, `std::vector<std::v
 
 The result goes into a new vector `y`. Every stage of next year is computed from the same, unchanged vector of this year. Writing into `x` while reading from it would mix old and new values: the update-order bug of <Concept id="update-order" />, which here would silently change the matrix.
 
+C++23 adds two features that suit matrices. `std::mdspan` is a non-owning view that presents a flat block of memory as a multidimensional array, and the language now lets `operator[]` take several indices, so a matrix type can be read as `A[i, j]`. Library support for `std::mdspan` needs a recent standard library; check your compiler's documentation. The listings here keep `std::vector<std::vector<double>>` and `A[i][j]`, which need no special support, and C++26 adds `std::linalg`, a BLAS-style interface for products of this kind. <Std v="c++26" />
+
 ### Projection over time
 
 Projecting the population is the simulation loop of a discrete-time model with a vector as its state (lines 89 to 94 of the program): print the year, multiply, repeat. Starting from 100 seedlings, 20 rosettes and 5 flowering plants:
@@ -94,8 +96,8 @@ where $c$ is a constant set by the initial vector. $\lambda$ is the *asymptotic 
 
 Two refinements make it a good algorithm:
 
-- **Renormalise each step.** After many years, $\lambda^t$ becomes too large or too small for a `double`. Dividing the vector by its total after each multiplication keeps it at sum 1. Then the total of $A\mathbf n$ is precisely the growth over that one step, which converges to $\lambda$.
-- **Stop when the structure stops changing, but not later than a cap.** Compare successive normalised vectors. When their distance falls below a tolerance $\varepsilon$, stop. Some matrices never converge, so a maximum number of iterations is needed as well, and reaching it is an error, not an answer.
+- Renormalise each step. After many years, $\lambda^t$ becomes too large or too small for a `double`. Dividing the vector by its total after each multiplication keeps it at sum 1. Then the total of $A\mathbf n$ is precisely the growth over that one step, which converges to $\lambda$.
+- Stop when the structure stops changing, but not later than a cap. Compare successive normalised vectors. When their distance falls below a tolerance $\varepsilon$, stop. Some matrices never converge, so a maximum number of iterations is needed as well, and reaching it is an error, not an answer.
 
 ```text
 Input:  projection matrix A (k × k), tolerance ε, iteration cap itMax
@@ -232,8 +234,8 @@ The multiplication itself, term by term:
 
 Projection matrices are usually estimated from marked individuals followed from one census to the next: each transition probability is the fraction of plants in stage $j$ found in stage $i$ the next year, and fecundity is the number of new recruits per reproductive plant. Two details matter when you build $A$ from such data:
 
-- **The census point.** With a census just before breeding, fecundity must include the survival of offspring to their first census; with a census just after breeding, it must include the survival of the parents. Both are correct if applied consistently.
-- **Primitivity.** Strict biennials and other organisms with fixed life cycles give imprimitive matrices, for which $\mathbf n(t)$ oscillates for ever and the power method does not converge. Adding stasis, even rarely, makes the matrix primitive.
+- The census point. With a census just before breeding, fecundity must include the survival of offspring to their first census; with a census just after breeding, it must include the survival of the parents. Both are correct if applied consistently.
+- Primitivity. Strict biennials and other organisms with fixed life cycles give imprimitive matrices, for which $\mathbf n(t)$ oscillates for ever and the power method does not converge. Adding stasis, even rarely, makes the matrix primitive.
 
 $\lambda$ is a function of every entry of $A$. How much it changes when one entry changes (its sensitivity or elasticity) tells you which part of the life cycle matters most, for example where management would have the largest effect. See <Concept id="sensitivity" />.
 

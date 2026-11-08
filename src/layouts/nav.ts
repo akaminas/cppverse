@@ -5,7 +5,6 @@ export const NAV = [
   { id: 'atlas', href: url('/atlas/'), label: 'Atlas' },
   { id: 'curriculum', href: url('/curriculum/'), label: 'Curriculum' },
   { id: 'models', href: url('/models/'), label: 'Destinations' },
-  { id: 'pathways', href: url('/pathways/'), label: 'Pathways' },
   { id: 'progress', href: url('/progress/'), label: 'Progress' },
   { id: 'about', href: url('/about/'), label: 'About' },
 ] as const;

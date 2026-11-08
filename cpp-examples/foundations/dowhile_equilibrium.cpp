@@ -1,5 +1,5 @@
 // Title: Iterating to equilibrium with do-while
-// Standard: C++17
+// Standard: C++23
 // The change between generations can only be measured after one step, so
 // the test comes after the body: a do-while loop always runs at least once.
 

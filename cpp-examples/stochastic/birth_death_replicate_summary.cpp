@@ -1,5 +1,5 @@
 // Title: Summarising replicate runs of a birth–death process
-// Standard: C++17
+// Standard: C++23
 // Each replicate has its own seed, made from a base seed and the replicate
 // number, so any single run can be repeated on its own. The population size
 // is recorded on a time grid; for each time the program prints the mean and

@@ -1,5 +1,5 @@
 // Title: Erasing while iterating
-// Standard: C++17
+// Standard: C++23
 // Individuals aged 4 or more die. erase() returns the position after the
 // removed element, so the loop continues from there instead of using the
 // iterator that erase has just invalidated.

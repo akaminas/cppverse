@@ -1,5 +1,5 @@
 // Title: A census that owns its records
-// Standard: C++17
+// Standard: C++23
 // The class Census keeps a private vector of plot records. Its nested type
 // Record is public, so other code names it Census::Record. find() fills an
 // in/out reference parameter and returns whether it found the plot.

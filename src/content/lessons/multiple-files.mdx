@@ -19,8 +19,8 @@ references:
 
 Until now every program has been a single `.cpp` file. Larger programs are split into several files, in pairs:
 
-- a **header** (`growth.hpp`) contains *declarations*: the names, types and function signatures that other code needs to use a part of the program;
-- a **source file** (`growth.cpp`) contains the *definitions*: the function bodies that do the work.
+- a *header* (`growth.hpp`) contains *declarations*: the names, types and function signatures that other code needs to use a part of the program;
+- a *source file* (`growth.cpp`) contains the *definitions*: the function bodies that do the work.
 
 Any other file that needs the growth model writes `#include "growth.hpp"` and can then call its functions without seeing how they are implemented. Each `.cpp` file is compiled on its own; the *linker* then joins the compiled pieces into one executable (see <Concept id="compilation" />).
 
@@ -75,7 +75,7 @@ The program includes the header and calls the functions. It knows nothing about 
 Build it by naming *both* source files, never the header:
 
 ```bash
-g++ -std=c++17 -Wall -Wextra -pedantic main.cpp growth.cpp -o growth
+g++ -std=c++23 -Wall -Wextra -pedantic main.cpp growth.cpp -o growth
 ./growth
 ```
 
@@ -136,7 +136,7 @@ The rule behind the table is the *one-definition rule* (ODR): a program may cont
 A default argument, such as a default time step, is written once, in the declaration in the header, so that every caller sees it.
 
 <Callout kind="manual" title="Names in prototypes">
-The course manual lists only the parameter types in header prototypes. Parameter names are optional for the compiler but useful to the reader (`double ageAtLength(double length, const GrowthParameters& p);` says what the first argument means), so this site keeps them.
+Older code often lists only the parameter types in header prototypes. Parameter names are optional for the compiler but useful to the reader (`double ageAtLength(double length, const GrowthParameters& p);` says what the first argument means), so write them.
 </Callout>
 
 ### Separate compilation and linking
@@ -144,8 +144,8 @@ The course manual lists only the parameter types in header prototypes. Parameter
 The one-line build above does three steps at once. Doing them separately shows what each step needs:
 
 ```bash
-g++ -std=c++17 -Wall -Wextra -pedantic -c growth.cpp   # compile: growth.o
-g++ -std=c++17 -Wall -Wextra -pedantic -c main.cpp     # compile: main.o (needs growth.hpp only)
+g++ -std=c++23 -Wall -Wextra -pedantic -c growth.cpp   # compile: growth.o
+g++ -std=c++23 -Wall -Wextra -pedantic -c main.cpp     # compile: main.o (needs growth.hpp only)
 g++ main.o growth.o -o growth                          # link: one executable
 ```
 
@@ -159,7 +159,7 @@ Typing compile commands does not scale, and tracking which files must be rebuilt
 cmake_minimum_required(VERSION 3.20)
 project(growth_model LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -185,7 +185,7 @@ Headers are not listed in `add_executable`: CMake finds out which sources includ
 Use lower-case file names with underscores (`growth_model.hpp`), give a header and its source file the same base name, and use one extension convention throughout (`.hpp`/`.cpp` on this site; `.h` and `.cc` are also common).
 
 <Callout kind="modern" title="Modules">
-C++20 <Std v="c++20" /> introduces *modules* (`export module growth;` and `import growth;`), which replace textual inclusion. They need no include guards, cannot cause the ODR errors that headers can, and can build faster. Compiler and build-tool support is still maturing, so headers remain the norm in scientific code.
+C++20 introduced *modules* (`export module growth;` and `import growth;`), which replace textual inclusion. They need no include guards and can build faster, and a module does not paste its text into every file that imports it. C++23 adds `import std;`, which imports the whole standard library as a module. Both depend on support in the compiler and the build tool, and that support is still uneven, so the examples on this site use headers, as most scientific code does.
 </Callout>
 
 ## Explore it
@@ -193,7 +193,7 @@ C++20 <Std v="c++20" /> introduces *modules* (`export module growth;` and `impor
 <Check
   id="undefined-reference"
   kind="debug"
-  question="A student builds with g++ -std=c++17 main.cpp -o growth and gets: undefined reference to 'lengthAtAge(double, GrowthParameters const&)'. What is wrong?"
+  question="A student builds with g++ -std=c++23 main.cpp -o growth and gets: undefined reference to 'lengthAtAge(double, GrowthParameters const&)'. What is wrong?"
   options={[
     "main.cpp is missing #include \"growth.hpp\"",
     "growth.cpp was not compiled and linked, so no definition of lengthAtAge exists in the program",
@@ -265,12 +265,12 @@ The test program and the simulation share `model.cpp`, so the code you test is t
 
 ## Common mistakes
 
-- **Compiling a header** or listing it on the command line. Headers are included, not compiled; name only the `.cpp` files.
-- **Forgetting a source file** in the build: an "undefined reference" from the linker.
-- **Function bodies in headers** without `inline`: a "multiple definition" from the linker.
-- **Missing or duplicated include guards.** Two headers that use the same guard macro silently hide each other; derive the name from the path.
-- **A header that relies on its includer.** Each header should include what it uses itself (`<string>`, `<vector>`), so that it works wherever it is included.
-- **Repeating default arguments** in the definition: the compiler rejects a default given twice for the same parameter.
+- Compiling a header or listing it on the command line. Headers are included, not compiled; name only the `.cpp` files.
+- Forgetting a source file in the build: an "undefined reference" from the linker.
+- Function bodies in headers without `inline`: a "multiple definition" from the linker.
+- Missing or duplicated include guards: two headers that use the same guard macro silently hide each other; derive the name from the path.
+- A header that relies on its includer: each header should include what it uses itself (`<string>`, `<vector>`), so that it works wherever it is included.
+- Repeating default arguments in the definition: the compiler rejects a default given twice for the same parameter.
 
 ## Practice
 

@@ -1,5 +1,5 @@
 // Title: A priority queue of future events
-// Standard: C++17
+// Standard: C++23
 // Events are (time, description) pairs. With std::greater the queue always
 // hands out the EARLIEST event first, whatever the order of insertion, and
 // handling one event may schedule another.

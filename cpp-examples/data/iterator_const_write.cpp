@@ -1,5 +1,5 @@
 // Title: A const_iterator cannot write
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // cbegin() returns a const_iterator: the element it refers to is read-only,
 // so the assignment through it is rejected by the compiler.

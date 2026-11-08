@@ -1,5 +1,5 @@
 // Title: Von Bertalanffy growth: the interface
-// Standard: C++17
+// Standard: C++23
 // Declarations only: everything another file needs in order to call the growth
 // functions, and nothing about how they work.
 

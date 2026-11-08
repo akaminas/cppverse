@@ -10,10 +10,9 @@ objectives:
   - Build the distribution from an initializer list or from an iterator range over a vector
   - Explain the cumulative-sum algorithm and handle zero and all-zero weights
   - Simulate neutral genetic drift by multinomial sampling of parents
-standard: c++17
 references:
   - "cppreference.com: std::discrete_distribution"
-  - "Ewens WJ (2004) Mathematical Population Genetics I: Theoretical Introduction, 2nd ed. Springer (Wright–Fisher model, decay of heterozygosity)"
+  - "Ewens WJ (2004) Mathematical Population Genetics I: Theoretical Introduction, 2nd ed. Springer (Wright-Fisher model, decay of heterozygosity)"
 ---
 
 ## What it is
@@ -30,9 +29,9 @@ The weights need not add up to one; only their relative sizes matter. Egg counts
 
 Weighted choices appear wherever individuals or events differ in how likely they are.
 
-- **Reproduction.** In a population model, the parent of each offspring is chosen in proportion to fecundity or fitness.
-- **Which event happens next.** In a stochastic simulation with several possible events, the next event is chosen in proportion to its rate. This is step 4 of <Concept id="gillespie" />.
-- **Behaviour.** A forager picks a patch in proportion to its attractiveness; a predator meets prey types in proportion to their encounter rates.
+- Reproduction. In a population model, the parent of each offspring is chosen in proportion to fecundity or fitness.
+- Which event happens next. In a stochastic simulation with several possible events, the next event is chosen in proportion to its rate. This is step 4 of <Concept id="gillespie" />.
+- Behaviour. A forager picks a patch in proportion to its attractiveness; a predator meets prey types in proportion to their encounter rates.
 
 ## How it works in C++
 
@@ -84,10 +83,10 @@ A linear scan costs time proportional to $n$ for every draw. `std::discrete_dist
 
 ### Zero, all-zero and missing weights
 
-- **A zero weight** is allowed and means "never".
-- **All weights zero** is not allowed. The standard requires the total $W$ to be positive; with $W = 0$ there is no probability to normalise, and the result is undefined. In a model this usually means that nothing can happen any more (every patch is empty, the population is extinct), and the program should detect it and act on it.
-- **No weights at all** is defined, but surprising: an empty range is treated as a single weight of 1, so the distribution always returns 0, as if a population with no members had an individual 0.
-- **Negative, infinite or NaN weights** violate the preconditions.
+- A zero weight is allowed and means "never".
+- All weights zero is not allowed. The standard requires the total $W$ to be positive; with $W = 0$ there is no probability to normalise, and the result is undefined. In a model this usually means that nothing can happen any more (every patch is empty, the population is extinct), and the program should detect it and act on it.
+- No weights at all is defined, but surprising: an empty range is treated as a single weight of 1, so the distribution always returns 0, as if a population with no members had an individual 0.
+- Negative, infinite or NaN weights violate the preconditions.
 
 So check before you draw:
 
@@ -100,8 +99,8 @@ if (weights.empty() || total <= 0.0) {
 }
 ```
 
-<Callout kind="manual" title="How the manual uses weighted lotteries">
-The manual builds `std::discrete_distribution` from an iterator range over a weight vector and draws one offspring at a time, as here. It does not discuss empty or all-zero weight lists, which arise naturally once populations can go extinct.
+<Callout kind="manual" title="Empty and all-zero weight lists">
+A common pattern builds `std::discrete_distribution` from an iterator range over a weight vector and draws one offspring at a time, as here. Simple versions of it leave out the empty and all-zero cases, which arise naturally once populations can go extinct. Always check for them.
 </Callout>
 
 ## Explore it
@@ -196,9 +195,9 @@ In a continuous-time stochastic model the weights are the rates of the possible 
 
 <Practice>
 
-1. **A foraging bee.** Four flower patches offer nectar rewards in the ratio 5 : 1 : 0 : 2 (illustrative values). Simulate 1000 visits by a bee that chooses a patch with probability proportional to its reward, and print the observed and expected share of each patch. Then let patch 0 be emptied after its 200th visit (its weight drops to zero) and describe what changes in your program.
-2. **Heterozygosity in one population.** Extend `neutral_drift_alleles.cpp` so that it prints $H_t$ every generation. Then wrap the simulation in a loop over 500 replicates with different seeds and print the mean $H_t$ for $t = 0, 10, 20, \dots, 60$. Compare it with $H_0 (1 - 1/N)^t$.
-3. **Multinomial sampling by binomials.** The counts of a multinomial draw can be generated one allele at a time: $n'_0 \sim \text{Binomial}(N, p_0)$, then $n'_1 \sim \text{Binomial}(N - n'_0,\; p_1 / (1 - p_0))$, and so on, each time with the offspring that remain and the probability of the allele among the remaining alleles. Implement this with `std::binomial_distribution<int>` and check, over many replicates, that the mean time to fixation matches the version with `std::discrete_distribution`.
+1. A foraging bee. Four flower patches offer nectar rewards in the ratio 5 : 1 : 0 : 2 (illustrative values). Simulate 1000 visits by a bee that chooses a patch with probability proportional to its reward, and print the observed and expected share of each patch. Then let patch 0 be emptied after its 200th visit (its weight drops to zero) and describe what changes in your program.
+2. Heterozygosity in one population. Extend `neutral_drift_alleles.cpp` so that it prints $H_t$ every generation. Then wrap the simulation in a loop over 500 replicates with different seeds and print the mean $H_t$ for $t = 0, 10, 20, \dots, 60$. Compare it with $H_0 (1 - 1/N)^t$.
+3. Multinomial sampling by binomials. The counts of a multinomial draw can be generated one allele at a time: $n'_0 \sim \text{Binomial}(N, p_0)$, then $n'_1 \sim \text{Binomial}(N - n'_0,\; p_1 / (1 - p_0))$, and so on, each time with the offspring that remain and the probability of the allele among the remaining alleles. Implement this with `std::binomial_distribution<int>` and check, over many replicates, that the mean time to fixation matches the version with `std::discrete_distribution`.
 
 <details>
 <summary>Hint for exercise 1</summary>

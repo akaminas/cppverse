@@ -1,5 +1,5 @@
 // Title: A header without an include guard
-// Standard: C++17
+// Standard: C++23
 // Deliberately unguarded: including it twice defines StageCounts twice.
 
 struct StageCounts {

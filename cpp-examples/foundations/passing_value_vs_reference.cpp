@@ -1,5 +1,5 @@
 // Title: Pass by value and pass by reference
-// Standard: C++17
+// Standard: C++23
 // grow_copy receives a copy of N and cannot change the caller's variable;
 // grow_in_place receives a reference, an alias for the caller's N.
 

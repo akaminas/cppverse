@@ -1,5 +1,5 @@
 // Title: Throwing unwinds the stack; std::exit does not
-// Standard: C++17
+// Standard: C++23
 // A small object announces when it is destroyed. A thrown exception destroys
 // every local object on its way to the handler; std::exit skips them all.
 

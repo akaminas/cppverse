@@ -1,4 +1,4 @@
-// Figures for the lesson "weighted-lottery". Neutral Wright–Fisher drift is
+// Figures for the lesson "weighted-lottery". Neutral Wright-Fisher drift is
 // simulated by multinomial sampling with weightedIndex (the tested weighted
 // lottery in src/lib/simulations/rng.ts) and compared with the exact
 // expectation E[H_t] = H_0 (1 − 1/N)^t.

@@ -1,5 +1,5 @@
 // Title: A model, an algorithm and a program
-// Standard: C++17
+// Standard: C++23
 // Model: a population grows by the same factor lambda every year,
 // N(t+1) = lambda * N(t). Algorithm: start from N(0) and apply the update
 // once per year. This program is one implementation of that algorithm.

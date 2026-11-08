@@ -1,5 +1,5 @@
 // Title: (time, value) samples as pairs
-// Standard: C++17
+// Standard: C++23
 // A seed bank loses 30 per cent of its seeds each year. Every second year
 // the year and the seed density are stored together as a std::pair.
 

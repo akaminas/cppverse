@@ -1,5 +1,5 @@
 // Title: When does Euler's method stay stable for first-order elimination?
-// Standard: C++17
+// Standard: C++23
 // For dC/dt = -k C, one Euler step multiplies C by g = 1 - h k. The program
 // integrates 24 hours with several step sizes and classifies the behaviour
 // of the numerical solution by g. The true solution always decays smoothly.

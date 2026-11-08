@@ -28,7 +28,7 @@ Element `seedlings[i][j]` is read from left to right: `seedlings[i]` is row *i* 
 
 ## Why it matters
 
-Structured populations are where matrices first become indispensable in ecology and evolution. In a matrix population model the state is a vector of stage densities and one time step multiplies it by a projection matrix (see <Concept id="matrix-models" />). Spatial models store a landscape as a grid; distance matrices, contact matrices between age classes and genotype-by-environment tables all have the same shape. Being able to build, fill, traverse and print such a table is the step from one-dimensional trajectories to structured models.
+Matrices become necessary in ecology and evolution as soon as populations are structured. In a matrix population model the state is a vector of stage densities and one time step multiplies it by a projection matrix (see <Concept id="matrix-models" />). Spatial models store a landscape as a grid; distance matrices, contact matrices between age classes and genotype-by-environment tables all have the same shape. Being able to build, fill, traverse and print such a table is the step from one-dimensional trajectories to structured models.
 
 ## How it works in C++
 
@@ -86,7 +86,9 @@ A vector of vectors is easy to read but is not one block of memory: each row is 
 
 <Example file="data/matrix_flat_grid.cpp" mark="13,18,27" />
 
-Row *r* starts at element `r * cols`; within the row, the column is the offset. This *row-major* layout is also how image files and numerical libraries store matrices. It guarantees a rectangular shape, keeps neighbouring elements of a row next to each other in memory (good for speed), and is simple to resize or copy. The cost is readability: every access needs the formula, and a slip such as `r * rows + c` produces wrong results without an error. If you choose flat storage, write the formula once, in a small function (see <Concept id="functions" />), rather than at every access.
+Row *r* starts at element `r * cols`; within the row, the column is the offset. This *row-major* layout is also how image files and many numerical libraries store matrices. It guarantees a rectangular shape, keeps neighbouring elements of a row next to each other in memory (good for speed), and is simple to resize or copy. The cost is readability: every access needs the formula, and a slip such as `r * rows + c` produces wrong results without an error. If you choose flat storage, write the formula once, in a small function (see <Concept id="functions" />), rather than at every access.
+
+C++23 adds `std::mdspan`, a non-owning view that lets a flat vector be indexed as a two-dimensional grid without writing the formula yourself. It goes with another C++23 change: `operator[]` can now take several indices, so a view can be read as `view[r, c]`. Library support for `std::mdspan` needs a recent standard library; check your compiler's documentation.
 
 ## Explore it
 
@@ -143,9 +145,9 @@ for (std::size_t j = 0; j < g[0].size(); ++j) {
 
 ## In biological modelling
 
-- **Projection matrices.** A Leslie (age-classified) or Lefkovitch (stage-classified) matrix is a small, square vector of vectors. The matrix-vector product above is the whole of one time step; repeated products give the projection, and the long-term growth rate is the dominant eigenvalue of the matrix (<Concept id="power-iteration" />).
-- **Landscapes.** Occupancy, habitat quality or density on a grid of patches. Dispersal to neighbouring cells uses indices `[i - 1][j]`, `[i + 1][j]` and so on, which must be checked at the edges of the grid: row −1 does not exist (see <Concept id="indexing-errors" />).
-- **Trajectories of structured states.** A vector of stage vectors, one per year, `std::vector<std::vector<double>> history;` with `history.push_back(n);` after every step, is a matrix whose rows are years and whose columns are stages: exactly the table you will want to write to a file.
+- Projection matrices. A Leslie (age-classified) or Lefkovitch (stage-classified) matrix is a small, square vector of vectors. The matrix-vector product above is the whole of one time step; repeated products give the projection, and the long-term growth rate is the dominant eigenvalue of the matrix (<Concept id="power-iteration" />).
+- Landscapes. Occupancy, habitat quality or density on a grid of patches. Dispersal to neighbouring cells uses indices `[i - 1][j]`, `[i + 1][j]` and so on, which must be checked at the edges of the grid: row −1 does not exist (see <Concept id="indexing-errors" />).
+- Trajectories of structured states. A vector of stage vectors, one per year, `std::vector<std::vector<double>> history;` with `history.push_back(n);` after every step, is a matrix whose rows are years and whose columns are stages: exactly the table you will want to write to a file.
 
 A name for the type makes such code easier to read. `using Matrix = std::vector<std::vector<double>>;` lets you write `Matrix A(3, std::vector<double>(3, 0.0));` (type aliases are explained in <Concept id="auto-range-for" />).
 
@@ -155,7 +157,7 @@ A name for the type makes such code easier to read. `using Matrix = std::vector<
 - **Using the row count for columns.** `for (j = 0; j < grid.size(); ++j)` runs over as many columns as there are rows. Use `grid[i].size()` for the length of a row.
 - **Indexing rows that were never created.** `std::vector<std::vector<int>> g(3);` has three *empty* rows, so `g[0][0]` is out of range. Give each row a size, as in the fill form above.
 - **Updating a state in place** during a matrix-vector product, instead of writing into a new vector.
-- **Writing `> >`.** Older code (and the course manual) writes `std::vector<std::vector<int> >` with a space; since C++11 the space is unnecessary.
+- **Writing `> >`.** Older code writes `std::vector<std::vector<int> >` with a space; since C++11 the space is unnecessary.
 
 ## Practice
 

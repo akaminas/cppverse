@@ -1,5 +1,5 @@
 // Title: How literals are written
-// Standard: C++17
+// Standard: C++23
 // Literals are values written directly in the code. Their notation decides
 // their type: integer or floating point, decimal, hexadecimal, binary or octal.
 

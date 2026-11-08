@@ -1,5 +1,5 @@
 // Title: Variables of four basic types
-// Standard: C++17
+// Standard: C++23
 // One record of a plant in a monitoring plot. Each value is stored in a
 // variable whose type matches the kind of quantity: a count, a measurement,
 // a yes/no state and a one-letter code.

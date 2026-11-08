@@ -1,5 +1,5 @@
 // Title: Event-driven scheduling with per-individual clocks
-// Standard: C++17
+// Standard: C++23
 // Every vole has its own clocks: a time of death and a time of its next
 // litter. All pending events wait in one priority queue, earliest on top.
 // Robust and frail voles differ only in their death rate; a pup inherits its

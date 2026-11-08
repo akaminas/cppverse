@@ -152,8 +152,8 @@ constexpr double tooEarly = temperature + 273.15;  // error: not known when comp
 
 `constexpr` requires a value that the compiler can compute, and the compiler then computes it. Use it for true constants of the program: physical constants, conversion factors, the number of loci in a model. Use `const` for values that are fixed during a run but only known once it starts, such as parameters read from a file. Older code often uses `#define GAS_CONSTANT 8.314` for this; a `constexpr` variable has a type and obeys the rules of scope, so prefer it.
 
-<Callout kind="manual" title="Literals and constants in the manual">
-The manual states that floating-point literals always contain a decimal point; `1e3` is a counterexample. It does not cover binary literals, digit separators, `constexpr` or most suffixes, which all belong to modern C++ and are used throughout this site.
+<Callout kind="manual" title="Floating-point literals do not need a decimal point">
+It is sometimes said that a floating-point literal always contains a decimal point. That is not so: `1e3` is a `double` without one. Binary literals and digit separators (C++14), `constexpr` and the suffixes in the table above are part of modern C++ and are used throughout this site.
 </Callout>
 
 ## Explore it

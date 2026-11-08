@@ -1,5 +1,5 @@
 // Title: Conflicting template arguments
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // The first argument says T is double, the other two say T is int. The
 // compiler refuses to choose; write clampTo<double>(...) or use 0.0 and 1.0.

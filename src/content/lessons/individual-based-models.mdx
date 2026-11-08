@@ -10,7 +10,6 @@ objectives:
   - State the rules of an individual-based model in the way a biologist would describe behaviour
   - Explain how an individual-based model relates to its ODE, matrix and Gillespie counterparts
   - Recognise the costs of individual-based modelling and plan for them
-standard: c++17
 references:
   - "Grimm, V. and Railsback, S. F. (2005). Individual-based Modeling and Ecology. Princeton University Press."
   - "Grimm, V. et al. (2020). The ODD protocol for describing agent-based and other simulation models: a second update. Journal of Artificial Societies and Social Simulation 23(2), 7."
@@ -69,7 +68,7 @@ Three design decisions follow, and each has its own lesson:
 
 ### How an IBM relates to aggregate models
 
-An IBM is not a different kind of science from the models in earlier lessons. It sits at the fine-grained end of a family of descriptions of the same population:
+An IBM follows the same scientific logic as the models in earlier lessons. It sits at the fine-grained end of a family of descriptions of the same population:
 
 | Model | State | Assumes | Lesson |
 |---|---|---|---|
@@ -154,12 +153,12 @@ The plant model also runs in your browser, in the laboratory of <Concept id="sch
 
 Individual-based models have a long history in ecology and evolution. Forest gap models follow every tree in a stand as it grows, shades its neighbours and dies. Models of animal movement follow foragers across real landscapes. Epidemiological models follow hosts on contact networks. Evolutionary models follow genomes with many interacting loci. What they share is a population built from individuals whose state and surroundings differ.
 
-That flexibility has a price, and you should plan for it:
+This flexibility has costs, and they need planning:
 
 - **Results are distributions.** Every run is one realisation of a stochastic process, so conclusions rest on <Concept id="replicates" /> and on summaries of their spread.
 - **Many choices are hidden in code.** The order of updates, the treatment of edges and the timing of births all change results. Describing an IBM completely is hard enough that ecologists developed a standard format, the ODD protocol (Overview, Design concepts, Details; see the references), for publishing them.
 - **Verification needs anchors.** An IBM rarely has an exact solution, so it is tested piece by piece and against limits in which an aggregate model must hold. This is the subject of <Concept id="ibm-validation" /> and <Concept id="testing-reproducibility" />.
-- **Start simple.** Begin with the fewest rules that can address the question, test them, and add one process at a time. An IBM that contains everything explains nothing.
+- **Start simple.** Begin with the fewest rules that can address the question, test them, and add one process at a time. An IBM that contains every process is too complicated to interpret.
 
 ## Common mistakes
 

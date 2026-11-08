@@ -1,5 +1,5 @@
 // Title: static_assert stops an inconsistent model at compile time
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // The model was extended to four stages, but the list of stage labels was not
 // updated. The static_assert turns this into a compiler error.

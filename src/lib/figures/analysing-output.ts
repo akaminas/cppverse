@@ -28,7 +28,7 @@ const sd = (xs: readonly number[]) => {
   return Math.sqrt(xs.reduce((s, x) => s + (x - m) ** 2, 0) / (xs.length - 1));
 };
 
-/** Exact variance of the linear birth–death process at time t. */
+/** Exact variance of the linear birth-death process at time t. */
 const exactVariance = (t: number) => {
   const g = Math.exp((b - d) * t);
   return (N0 * (b + d) * g * (g - 1)) / (b - d);

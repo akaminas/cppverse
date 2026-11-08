@@ -42,7 +42,7 @@ A `std::list` stores each element in its own small block of memory, together wit
 - `push_front` and `push_back` add at either end.
 - `splice(pos, other)` moves every element of `other` into the list before `pos`. Nothing is copied or allocated: the nodes are simply relinked, and `other` is left empty. Overloads move a single element or a range.
 - `sort()` is a member function, because the general `std::sort` requires random-access iterators, which a list does not have.
-- `remove(value)` erases every element equal to `value`; `remove_if` takes a condition, and `erase(it)` removes one element at a known position (with the idiom `it = l.erase(it)` inside loops).
+- `remove(value)` erases every element equal to `value`; `remove_if` takes a condition, and `erase(it)` removes one element at a known position (with the idiom `it = l.erase(it)` inside loops). `std::erase_if(l, condition)` removes the elements that satisfy a condition in one call, for lists, sets and maps as well as vectors.
 
 `std::forward_list` is a singly linked list (forward iterators only), with slightly less memory per element.
 
@@ -74,14 +74,14 @@ There are three ways to look a key up, and they behave very differently when the
 
 `m[k] = v` is the convenient way to insert or overwrite. For *reading*, `operator[]` is a trap: a misspelt parameter name silently becomes a new entry with value 0, and the model runs with a death rate of zero. Read with `find` or `at`. (For the same reason `operator[]` cannot be used on a `const` map at all.)
 
-<Callout kind="manual" title="Missing keys and operator[]">
-The manual uses `dir[name] = value` to insert and `find` to look up, but does not warn that `operator[]` inserts any key it does not find. When you read from a map, use `find`, `at`, or, in C++20, `contains`.
+<Callout kind="manual" title="Read with find or at, not operator[]">
+Code often uses `dir[name] = value` to insert and `find` to look up. Using `operator[]` for the lookup is the mistake, because it inserts any key it does not find. When you read from a map, use `find`, `at` or `contains`.
 </Callout>
 
 The iterator returned by `find` points to a pair, so `it->first` is the key and `it->second` the value. The arrow is shorthand for `(*it).first`; the parentheses are required because `.` binds more tightly than `*`. In a loop, a structured binding names both at once: `for (const auto& [name, value] : parameters)`. `std::multimap` allows repeated keys.
 
-<Callout kind="modern" title="contains (C++20)">
-<Std v="c++20" /> `if (parameters.contains("death"))` asks the question directly; with C++17, write `parameters.find("death") != parameters.end()` or `parameters.count("death") > 0`.
+<Callout kind="modern" title="contains">
+`if (parameters.contains("death"))` asks the question directly. Before C++20 you wrote `parameters.find("death") != parameters.end()` or `parameters.count("death") > 0`.
 </Callout>
 
 ### std::unordered_map and std::unordered_set
@@ -98,7 +98,7 @@ A *container adaptor* wraps another container and allows only a few operations. 
 - **`std::queue`** (first in, first out): `push(x)` adds at the back, `front()` reads the oldest element, `pop()` removes it.
 - **`std::priority_queue`**: `push(x)` adds an element, `top()` reads the *largest* one, `pop()` removes it.
 
-All three also have `empty()` and `size()`. Note that `pop()` returns nothing: read the element with `top()` or `front()` first.
+All three also have `empty()` and `size()`. `pop()` returns nothing, so read the element with `top()` or `front()` first.
 
 <Example file="data/adaptor_stack_queue.cpp" mark="15,19-20,25,29-30" />
 
@@ -117,7 +117,7 @@ Pairs compare by their first member, so a queue of (time, event) pairs always ha
 (The line `using Event = …;` gives the long pair type a short name; type aliases are explained in <Concept id="auto-range-for" />.)
 
 <Callout kind="manual" title="Priority queues are efficient">
-The manual describes `std::priority_queue` as "not particularly efficient". It is a binary heap: insertion and removal of the top element take time proportional to the logarithm of its size, which is as good as general-purpose priority queues get. What it lacks is a way to change or remove an element that is not on top.
+`std::priority_queue` is not inefficient. It is a binary heap: insertion and removal of the top element take time proportional to the logarithm of its size, which is as good as general-purpose priority queues get. What it lacks is a way to change or remove an element that is not on top.
 </Callout>
 
 ## Explore it

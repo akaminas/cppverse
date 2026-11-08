@@ -19,10 +19,10 @@ references:
 
 ## What it is
 
-Programs handle text constantly, even when they model numbers: the identifier of a sample, the name of a species, the label of a column, the name of the file a trajectory is written to. C++ gives you two levels:
+Programs handle text constantly, even when they model numbers: the identifier of a sample, the name of a species, the label of a column, the name of the file a trajectory is written to. C++ has two levels:
 
-- **`char`**, a single character such as `'F'`, `'7'` or a tab. Internally a `char` is a small integer, the character's numeric code.
-- **`std::string`**, a sequence of characters that knows its own length and can grow, be searched, cut and joined. It lives in the header `<string>`.
+- `char`, a single character such as `'F'`, `'7'` or a tab. Internally a `char` is a small integer, the character's numeric code.
+- `std::string`, a sequence of characters that knows its own length and can grow, be searched, cut and joined. It lives in the header `<string>`.
 
 A `std::string` behaves much like a `std::vector<char>` with extra member functions for text, so most of what you know about <Concept id="std-vector" /> carries over.
 
@@ -34,7 +34,7 @@ Scientific code is full of small text tasks. A field data set identifies quadrat
 
 ### Characters
 
-A character literal is written between **single** quotes: `'C'`, `'7'`, `'-'`. Double quotes make a *string* literal, even if it contains one character: `"C"` is not a `char`.
+A character literal is written between *single* quotes: `'C'`, `'7'`, `'-'`. Double quotes make a *string* literal, even if it contains one character: `"C"` is not a `char`.
 
 Each `char` is stored as a number. On every system you are likely to use, the codes follow ASCII: `'A'` is 65, `'B'` 66, `'a'` 97, and the digit characters `'0'` to `'9'` are 48 to 57. Because the codes are numbers, you can do arithmetic with them:
 
@@ -67,7 +67,7 @@ Because `char` is an integer type, it can hold numbers as well as characters, an
 <Example file="data/text_char_signedness.cpp" />
 
 <Callout kind="manual" title="char is not unsigned by default">
-The manual states that `char` is unsigned by default, with values from 0 to 255. The standard leaves this choice to the compiler, and the most common desktop compilers make plain `char` signed. Do not rely on either: use plain `char` for text, and `std::uint8_t` or `int` for small numbers.
+Plain `char` is not guaranteed to be unsigned, so values from 0 to 255 cannot be assumed. The standard leaves this choice to the compiler, and the most common desktop compilers make plain `char` signed. Do not rely on either: use plain `char` for text, and `std::uint8_t` or `int` for small numbers.
 </Callout>
 
 <Anchor id="strings" />
@@ -103,14 +103,14 @@ Strings share many members with vectors: `size()` (also called `length()`), `emp
 
 ### Searching and cutting
 
-`s.find(x)` returns the position of the first occurrence of `x` (a character or a string), counted from 0. An optional second argument starts the search at a later position: `s.find('-', 5)`. If `x` does not occur, `find` returns the special value `std::string::npos`. Always test for it before using the position.
+`s.find(x)` returns the position of the first occurrence of `x` (a character or a string), counted from 0. An optional second argument starts the search at a later position: `s.find('-', 5)`. If `x` does not occur, `find` returns the special value `std::string::npos`. Always test for it before using the position. If you only need to know whether `x` occurs, `s.contains(x)` (C++23) returns a `bool`.
 
 `s.substr(pos, count)` returns a new string of `count` characters starting at `pos`. If `count` is left out, or runs past the end, the substring stops at the end of `s`.
 
 The trace below takes a sample code apart in exactly this way.
 
 <Callout kind="manual" title="Store positions as std::string::size_type">
-The manual stores the result of `find` in an `int` and describes `npos` as −1. In fact positions have the unsigned type `std::string::size_type` (in practice `std::size_t`), and `npos` is the *largest* value of that type. Before C++20, converting it to `int` gives an implementation-defined result, and comparisons between `int` and unsigned positions draw compiler warnings. Declare positions as `std::string::size_type` (or `auto`, see <Concept id="auto-range-for" />).
+Older code often stores the result of `find` in an `int` and treats `npos` as −1. Positions actually have the unsigned type `std::string::size_type` (in practice `std::size_t`), and `npos` is the *largest* value of that type. Before C++20, converting it to `int` gives an implementation-defined result, and comparisons between `int` and unsigned positions draw compiler warnings. Declare positions as `std::string::size_type` (or `auto`, see <Concept id="auto-range-for" />).
 </Callout>
 
 ### Editing
@@ -130,12 +130,12 @@ Three member functions change a string in place:
 | `std::to_string(x)` | the text of a number (`4` → `"4"`, `0.85` → `"0.850000"`) |
 | `s.c_str()` | a pointer to the characters, for older functions that expect a C-style string |
 
-`std::stoi` and `std::stod` skip leading spaces and read as much of a number as they can. If there is no number at the start at all (`"eggs"`), they throw an exception, `std::invalid_argument`, which stops the program unless it is caught (see <Concept id="exceptions" />). `std::to_string` for a `double` always uses six decimals; for control over the format, use a string stream (<Concept id="string-streams" />).
+`std::stoi` and `std::stod` skip leading spaces and read as much of a number as they can. If there is no number at the start at all (`"eggs"`), they throw an exception, `std::invalid_argument`, which stops the program unless it is caught (see <Concept id="exceptions" />). `std::to_string` for a `double` always uses six decimals; for control over the format, use a string stream (<Concept id="string-streams" />) or `std::format` from `<format>` (C++20), as in `std::format("run_{:03}.csv", seed)`.
 
 <Example file="data/text_string_editing.cpp" mark="12,16,18,20,23-24" />
 
-<Callout kind="modern" title="std::string_view (C++17)">
-A `std::string_view`, from `<string_view>`, is a read-only *view* of characters that belong to someone else: a pointer and a length, no copy. It is the modern choice for a function parameter that only reads text, because it accepts a `std::string` and a string literal equally cheaply: `bool isControl(std::string_view code) { return code.substr(0, 4) == "CTRL"; }`. A view must not outlive the string it looks at, so do not store one that refers to a temporary string.
+<Callout kind="modern" title="std::string_view">
+A `std::string_view`, from `<string_view>`, is a read-only *view* of characters that belong to someone else: a pointer and a length, no copy. It is the usual choice for a function parameter that only reads text, because it accepts a `std::string` and a string literal equally cheaply: `bool isControl(std::string_view code) { return code.substr(0, 4) == "CTRL"; }`. A view must not outlive the string it looks at, so do not store one that refers to a temporary string.
 </Callout>
 
 ## Explore it
@@ -196,10 +196,10 @@ std::cout << name.substr(0, dot) << '\\n';`}
 
 ## In biological modelling
 
-- **Identifiers.** Sample, plot and individual codes are strings. Keep the parts you need for analysis (plot number, quadrat) as numbers as well, so that you never compare `"10"` with `"9"` as text.
-- **File names per run.** `"run_" + std::to_string(seed) + ".csv"` gives every replicate its own output file. Pad numbers to a fixed width if the files should list in order.
-- **Species and parameter names.** Abbreviations such as `P. major` are built with `substr` and `+`. Names read from a parameter file are compared with `==` to decide which parameter a value belongs to (see <Concept id="parameter-files" />).
-- **Output tables.** `'\t'` and `','` separate columns; `"\n"` ends a row. A header line made of strings tells the reader, and the plotting script, what each column is.
+- Identifiers: sample, plot and individual codes are strings. Keep the parts you need for analysis (plot number, quadrat) as numbers as well, so that you never compare `"10"` with `"9"` as text.
+- File names per run: `"run_" + std::to_string(seed) + ".csv"` gives every replicate its own output file. Pad numbers to a fixed width if the files should list in order.
+- Species and parameter names: abbreviations such as `P. major` are built with `substr` and `+`. Names read from a parameter file are compared with `==` to decide which parameter a value belongs to (see <Concept id="parameter-files" />).
+- Output tables: `'\t'` and `','` separate columns; `"\n"` ends a row. A header line made of strings tells the reader, and the plotting script, what each column is.
 
 ## Common mistakes
 
@@ -209,11 +209,11 @@ std::cout << name.substr(0, dot) << '\\n';`}
 
 <Example file="data/text_literal_plus.cpp" mark="11" />
 
-- **Single and double quotes.** `'a'` is a `char`; `"a"` is a string literal. `'ab'` is a multicharacter literal with an implementation-defined value, almost never what you want.
-- **`'0'` for 0.** The character `'0'` has code 48. Convert a digit with `c - '0'` and a whole number with `std::stoi`.
-- **Positions in an `int`.** Use `std::string::size_type` and test against `std::string::npos` before using the result of `find`.
-- **Expecting `std::cin >> s` to read a line.** It reads one word. Use `std::getline`.
-- **`std::to_string` for formatted output.** It always gives six decimals for a `double`. Use stream formatting when the number of digits matters (<Concept id="output-formatting" />).
+- Single and double quotes: `'a'` is a `char`; `"a"` is a string literal. `'ab'` is a multicharacter literal with an implementation-defined value, almost never what you want.
+- `'0'` for 0: the character `'0'` has code 48. Convert a digit with `c - '0'` and a whole number with `std::stoi`.
+- Positions in an `int`: use `std::string::size_type` and test against `std::string::npos` before using the result of `find`.
+- Expecting `std::cin >> s` to read a line: it reads one word. Use `std::getline`.
+- `std::to_string` for formatted output: it always gives six decimals for a `double`. Use stream formatting when the number of digits matters (<Concept id="output-formatting" />).
 
 ## Practice
 

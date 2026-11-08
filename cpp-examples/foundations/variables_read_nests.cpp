@@ -1,5 +1,5 @@
 // Title: Reading values from the keyboard
-// Standard: C++17
+// Standard: C++23
 // Reads the number of nests found and their mean clutch size, then prints
 // the expected number of eggs. Type two numbers, pressing Enter after each.
 

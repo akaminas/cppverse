@@ -1,5 +1,5 @@
 // Title: A table for people and a file for programs
-// Standard: C++17
+// Standard: C++23
 // Basal metabolic rate from Kleiber's rule, B = B0 * mass^(3/4), printed as an
 // aligned table with <iomanip> and written to a CSV file at full precision.
 

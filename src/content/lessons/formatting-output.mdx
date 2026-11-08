@@ -30,8 +30,8 @@ Manipulators without arguments (`std::fixed`, `std::left`, `std::boolalpha`) com
 
 Model output has two audiences with opposite needs.
 
-- **People** read logs and tables on the console. They need aligned columns, a sensible number of digits and units, and nothing more: `47.26` is easier to take in than `47.259363900103999`.
-- **Programs** (R, Python, the next stage of your pipeline) read data files. They need every digit, a plain separator and no padding. Rounding a trajectory to two decimals before analysis throws information away for good.
+- People read logs and tables on the console. They need aligned columns, a sensible number of digits and units, and nothing more: `47.26` is easier to take in than `47.259363900103999`.
+- Programs (R, Python, the next stage of your pipeline) read data files. They need every digit, a plain separator and no padding. Rounding a trajectory to two decimals before analysis throws information away for good.
 
 A single program usually serves both, so you must control formatting deliberately, and know that some settings outlive the line on which you set them.
 
@@ -53,12 +53,12 @@ A single program usually serves both, so you must control formatting deliberatel
 | `std::showpoint` / `std::noshowpoint` | always print the decimal point | until changed |
 | `std::boolalpha` / `std::noboolalpha` | `true`/`false` instead of `1`/`0` | until changed |
 | `std::skipws` / `std::noskipws` | (input) skip leading whitespace before `>>` | until changed |
-| `std::flush`, `std::endl` | act immediately: flush; newline and flush | — |
+| `std::flush`, `std::endl` | act immediately: flush; newline and flush | not applicable |
 
 The one exception to stickiness is `setw`: it is reset after every field, so a table needs it before each value.
 
 <Callout kind="manual" title="What setprecision counts">
-The course manual describes `setprecision` as the number of digits after the decimal point. That is its meaning only in fixed and scientific notation; in the default notation it counts significant digits, as the next paragraph explains.
+`setprecision` is often read as the number of digits after the decimal point. That is its meaning only in fixed and scientific notation; in the default notation it counts significant digits, as the next paragraph explains.
 </Callout>
 
 The meaning of `setprecision` depends on the notation. In default notation it is the number of *significant* digits; in fixed and scientific notation it is the number of digits *after the decimal point*. With the default precision of 6, `std::cout << 1234567.0` prints `1.23457e+06`: the default notation switches to scientific when a number has more digits before the point than the precision allows.
@@ -108,7 +108,7 @@ A `double` carries about 15 to 17 significant decimal digits. The default precis
 - `std::numeric_limits<double>::max_digits10` (17): enough digits that reading the text back gives *exactly* the same `double`. Use it for computed values written to data files.
 - `std::numeric_limits<double>::digits10` (15): any decimal number with at most this many significant digits survives the trip into a `double` and back. Parameters typed by a person, such as `2.2`, therefore print exactly as typed with this precision.
 
-The CSV file written by the example contains, for instance, `shrew,0.0050000000000000001,0.063930252582468691`. The extra digits of the mass are not noise added by the program: they show the binary value nearest to 0.005, which is what the model computed with.
+The CSV file written by the example contains, for instance, `shrew,0.0050000000000000001,0.063930252582468691`. The extra digits of the mass are the binary value nearest to 0.005, which is what the model computed with. The program adds no noise.
 
 ### Separators and regional settings
 
@@ -120,7 +120,7 @@ Comma-separated values use a comma between fields and a point as decimal separat
 C++ streams, unless you tell them otherwise, use the classic locale, which always writes a decimal point. Do not install a regional locale on a stream that writes data files: the decimal commas it produces break the file for other programs.
 
 <Callout kind="modern" title="std::format and std::print">
-C++20 <Std v="c++20" /> adds `std::format` in `<format>`, which formats with a pattern instead of stream state, so nothing can stick. C++23 <Std v="c++23" /> adds `std::print` and `std::println` in `<print>`, which write the formatted text directly:
+`std::format` (C++20, in `<format>`) formats with a pattern instead of stream state, so nothing can stick. `std::print` and `std::println` (C++23, in `<print>`) write the formatted text directly:
 
 ```cpp
 #include <format>
@@ -131,7 +131,7 @@ std::println("{:<10}{:>11.2e}{:>9.2f}", "vole", 0.03, 0.2451);   // C++23
 std::println("{},{},{}", "hare", 3.5, 8.700214303937395);       // shortest round-trip form
 ```
 
-`{:>9.2f}` reads "right-aligned, width 9, fixed with 2 decimals". An empty `{}` writes a `double` in the shortest form that reads back to the same value, which is ideal for data files. GCC 13, Clang 17 and recent Visual Studio support `std::format`; `std::print` needs GCC 14 or Clang 18 with a matching library. See <Concept id="modern-cpp" />.
+`{:>9.2f}` reads "right-aligned, width 9, fixed with 2 decimals". An empty `{}` writes a `double` in the shortest form that reads back to the same value, which is ideal for data files. Both work with GCC 14 and Clang 18. See <Concept id="modern-cpp" />.
 </Callout>
 
 ## Explore it
@@ -188,9 +188,9 @@ std::cout << 7.0 << '\\n';`}
 
 ## In biological modelling
 
-- **Progress logs** on `std::clog` benefit from fixed widths: a column of generation numbers and population sizes that stays aligned is far easier to scan for a sudden jump or a `nan`.
-- **Data files** need `max_digits10`, a header and a plain separator. <Concept id="trajectory-output" /> builds a complete output file around this rule.
-- **Tables for a manuscript** are better produced from the data file by the analysis script than formatted by the simulation, so that rounding happens once, at the end.
+- Progress logs on `std::clog` benefit from fixed widths: a column of generation numbers and population sizes that stays aligned is far easier to scan for a sudden jump or a `nan`.
+- Data files need `max_digits10`, a header and a plain separator. <Concept id="trajectory-output" /> builds a complete output file around this rule.
+- Tables for a manuscript are better produced from the data file by the analysis script than formatted by the simulation, so that rounding happens once, at the end.
 
 ## Common mistakes
 

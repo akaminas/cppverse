@@ -10,11 +10,10 @@ objectives:
   - Draw a fresh random visiting order every time step with std::shuffle
   - Schedule events across individuals with per-individual next-event times and a priority queue
   - Explain, with a mechanism, why a change of schedule changes the outcome of the plant model
-standard: c++17
 lab: ibm
 references:
   - "cppreference.com: std::shuffle, std::priority_queue"
-  - "Ruxton, G. D. and Saravia, L. A. (1998). The need for biological realism in the updating of cellular automata models. Ecological Modelling 107, 105–112."
+  - "Ruxton, G. D. and Saravia, L. A. (1998). The need for biological realism in the updating of cellular automata models. Ecological Modelling 107, 105-112."
 ---
 
 ## What it is
@@ -35,7 +34,7 @@ Take one rule and apply it with different schedules. Seven plants stand in a row
 
 Synchronously, every interior plant has two living neighbours in the census, so all five die. Sequentially, a death protects the plant visited next to it, so far fewer die, and *how many* depends on the order. Nothing in the rule says which outcome is right; the schedule is part of the model, and it should be chosen for biological reasons and reported.
 
-The effect is not confined to toy examples. Here is the plant model of this part of the atlas with identical parameters and seeds, run synchronously (every plant counts its neighbours at the start of the year, and the deaths are applied afterwards) and in random order (each plant counts the neighbours still alive when its turn comes):
+The effect also appears in a realistic model. Here is the plant model of this part of the atlas with identical parameters and seeds, run synchronously (every plant counts its neighbours at the start of the year, and the deaths are applied afterwards) and in random order (each plant counts the neighbours still alive when its turn comes):
 
 <Figure id="ibm-scheduling-abundance" />
 

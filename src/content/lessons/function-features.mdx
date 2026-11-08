@@ -99,7 +99,7 @@ inline double next_generation(double N, double lambda) {
 Without `inline`, every source file that includes this header would contain its own definition, and the linker would reject the program for defining the function more than once. Functions defined inside a class body and `constexpr` functions are implicitly inline for the same reason, and templates follow similar rules. Since C++17, variables can be declared `inline` too, which allows a constant to be defined in a header. See <Concept id="multiple-files" />.
 
 <Callout kind="manual" title="inline as an optimisation">
-The manual presents `inline` as a way to make small functions faster, at the cost of a larger program. That was its original purpose, but compilers no longer depend on the hint. Use `inline` for definitions in headers; leave optimisation to the compiler and to measurement (see <Concept id="performance" />).
+Older material often presents `inline` as a way to make small functions faster, at the cost of a larger program. That was its original purpose, but compilers no longer depend on the hint. Use `inline` for definitions in headers; leave optimisation to the compiler and to measurement (see <Concept id="performance" />).
 </Callout>
 
 ### static local variables

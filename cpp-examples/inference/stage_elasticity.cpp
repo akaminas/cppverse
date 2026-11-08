@@ -1,5 +1,5 @@
 // Title: Elasticities of a plant population's growth rate
-// Standard: C++17
+// Standard: C++23
 // Local sensitivity analysis of the three-stage plant model: each parameter
 // p is raised and lowered by a fraction delta, and the elasticity
 //     e_p = (p / lambda) dlambda/dp ~ (lambda(+) - lambda(-)) / (2 delta lambda)

@@ -9,7 +9,7 @@ objectives:
   - Distinguish a biological model, an algorithm and an implementation
   - Explain why the instructions in a program must be accurate, unambiguous and complete
   - Say in a few sentences what C++ is and why it is used for simulation
-  - Find your way through the levels, pathways and atlas of this site
+  - Find your way through the levels, goals and atlas of this site
 references:
   - "Stroustrup, B. A Tour of C++, 3rd edition. Addison-Wesley, 2022."
 ---
@@ -25,7 +25,7 @@ C++ has a few dozen *keywords*, words such as `if`, `return` and `const` that th
 When a biologist writes a simulation, three different things are involved. It pays to keep them apart from the first day.
 
 - A **model** is a set of biological assumptions stated precisely, usually as mathematics. "The population grows by the same factor $\lambda$ every year" is a model: $N_{t+1} = \lambda N_t$, where $N_t$ is the number of individuals in year $t$. It says nothing about computers.
-- An **algorithm** is a finite, unambiguous procedure that computes something about the model. "Start with $N_0$ individuals. Repeat for each year: multiply the population by $\lambda$, then record it." Notice that this is not the only algorithm for this model: the closed form $N_t = \lambda^t N_0$ gives the same numbers in one step.
+- An **algorithm** is a finite, unambiguous procedure that computes something about the model. "Start with $N_0$ individuals. Repeat for each year: multiply the population by $\lambda$, then record it." This is not the only algorithm for the model: the closed form $N_t = \lambda^t N_0$ gives the same numbers in one step.
 - An **implementation** is an algorithm written in a particular programming language. The repeated multiplication above can be written in C++, R or Python, and in many different ways within each language. Some are faster, clearer or more robust than others.
 
 Most of the work happens before any code is typed: deciding what the model assumes and choosing a strategy, the algorithm, to compute its consequences. The code then has to express that strategy faithfully.
@@ -40,7 +40,7 @@ Keeping the three levels apart also tells you where to look when results are wro
 
 ## How it works in C++
 
-C++ was created by Bjarne Stroustrup at Bell Labs from 1979 as an extension of the language C, first under the name "C with classes". It became an international (ISO) standard in 1998 and has been revised every three years since 2011, as C++11, C++14, C++17, C++20 and C++23. It is a general-purpose, *compiled* language: a program called a compiler translates your text into machine code before it runs, which is why C++ programs are fast. That speed is the main reason it is used for simulation, where a model may be run millions of times. This site uses C++17 as its baseline and marks newer features, such as <Std v="c++20" />, as optional alternatives.
+C++ was created by Bjarne Stroustrup at Bell Labs from 1979 as an extension of the language C, first under the name "C with classes". It became an international (ISO) standard in 1998 and has been revised every three years since 2011, as C++11, C++14, C++17, C++20 and C++23. It is a general-purpose, *compiled* language: a program called a compiler translates your text into machine code before it runs, which is why C++ programs are fast. That speed is the main reason it is used for simulation, where a model may be run millions of times. This site uses C++23 as its baseline, and every complete program is compiled with `-std=c++23`. C++26 is the newest standard: the ISO committee finished its technical work in March 2026, and formal publication follows.
 
 A C++ program is plain text. You write it in an editor, the compiler turns it into an executable file, and you run that file (see <Concept id="compilation" />). When the program runs, its instructions are carried out one after another, from the top of a function called `main` to the bottom. Some instructions repeat others (loops) or choose between them (decisions), but at every moment exactly one instruction is being carried out.
 
@@ -109,20 +109,20 @@ Step through the program. At each step, the highlighted line has just been carri
 
 Almost every simulation on this site has the shape of the small program above: parameters that stay fixed during a run, a state that describes the system at one moment, an update rule that turns one state into the next, and output that records the trajectory (see <Concept id="state-representation" /> and <Concept id="update-rule" />). Learning C++ is learning how to express each of these clearly.
 
-Treat a program as a scientific instrument. Like a balance or a sequencer, it should be checked against known cases before it is trusted: does it reproduce the closed-form solution $N_t = \lambda^t N_0$, does a population with $\lambda = 1$ stay constant? <Concept id="verification" /> develops this idea.
+A program is a scientific instrument. Like a balance or a sequencer, it should be checked against known cases before it is trusted: does it reproduce the closed-form solution $N_t = \lambda^t N_0$, does a population with $\lambda = 1$ stay constant? <Concept id="verification" /> develops this idea.
 
 ### How this site is organised
 
-The course manual on which this site is built offers several *tracks* through its chapters, so that learners with different backgrounds can start at different points. This site keeps that idea in three ways.
+Learners come with different backgrounds, so the site offers several routes through its lessons. There are three mechanisms.
 
 - **Levels.** Every lesson is marked beginner, intermediate or seasoned. Beginner lessons explain every symbol; later lessons link back instead of repeating.
-- **Pathways.** You can choose a goal, such as *write my first C++ program*, *build a discrete-time population model* or *learn Gillespie simulation*. The site then lists exactly the lessons that goal depends on, in an order that respects their prerequisites.
+- **Goals.** On the [Destinations](/models/) page you can choose a goal, such as *write my first C++ program*, *build a discrete-time population model* or *learn Gillespie simulation*. The site then lists exactly the lessons that goal depends on, in an order that respects their prerequisites.
 - **The atlas.** [The atlas](/atlas/) is a map of all concepts and the dependencies between them, grouped into regions from language foundations to modelling destinations. Use it to see where a lesson sits and what it leads to.
 
-Each lesson has the same structure, ends with original exercises, and links to the concepts it connects to. Every complete program is compiled and run with two compilers whenever the site is built, so the code you see is code that works.
+Each lesson has the same structure, ends with exercises, and links to the concepts it connects to. Every complete program is compiled and run with two compilers whenever the site is built, so the code you see is code that works.
 
-<Callout kind="manual" title="Tracks, levels and pathways">
-The Groningen manual groups its chapters into tracks (elementary procedural, advanced procedural and object-oriented programming) with a suggested plan for each week of the course. Here the tracks become levels and goal-based pathways, and each lesson lists the manual sections it covers. You do not need to work through the lessons in the manual's order.
+<Callout kind="manual" title="Levels and goals instead of one fixed order">
+Programming material is often arranged as a single sequence of chapters, or as a few tracks, with a plan for each week. Here the tracks become levels and goals. You can start at the point that suits your background and need not work through the lessons in any fixed order.
 </Callout>
 
 ## Common mistakes

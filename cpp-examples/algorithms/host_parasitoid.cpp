@@ -1,5 +1,5 @@
 // Title: Host–parasitoid dynamics and update order
-// Standard: C++17
+// Standard: C++23
 // Nicholson–Bailey dynamics with host self-limitation:
 //     H(t+1) = H(t) exp(r (1 - H(t)/K) - a P(t))
 //     P(t+1) = c H(t) (1 - exp(-a P(t)))

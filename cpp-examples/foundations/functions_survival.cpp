@@ -1,5 +1,5 @@
 // Title: A function for survival probability
-// Standard: C++17
+// Standard: C++23
 // survival_probability packages one formula behind a name; main calls it
 // three times with different arguments.
 

@@ -1,5 +1,5 @@
 // Title: A grid of quadrat counts as a vector of rows
-// Standard: C++17
+// Standard: C++23
 // Seedlings counted in a 3 x 4 grid: rows are transects, columns are quadrats
 // along each transect. Nested loops print the grid with row and column totals.
 

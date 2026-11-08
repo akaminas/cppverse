@@ -1,5 +1,5 @@
 // Title: A const reference cannot be used to modify
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // mean promises, through its const reference parameter, only to read the
 // sample. The line that tries to convert the values in place is rejected.

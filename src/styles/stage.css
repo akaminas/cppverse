@@ -11,7 +11,37 @@
 @import './charts.css';
 @import './labs.css';
 @import './models.css';
+@import './levels.css';
 
+/* Body text is Calibri (or its open twin Carlito), as on the other pages; titles keep Pagella. */
+@font-face {
+  font-family: 'Carlito';
+  src: url('../assets/fonts/carlito-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Carlito';
+  src: url('../assets/fonts/carlito-400-italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Carlito';
+  src: url('../assets/fonts/carlito-700-normal.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Carlito';
+  src: url('../assets/fonts/carlito-700-italic.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
 @font-face {
   font-family: 'TeX Gyre Pagella';
   src: url('../assets/fonts/texgyrepagella-regular.woff2') format('woff2');
@@ -55,6 +85,7 @@
   --accent: #6FE3EE;
   --accent-soft: #12303A;
   --link: var(--accent);
+  --v-font-body: Calibri, Carlito, 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
   --v-font-mono: Consolas, 'SFMono-Regular', Menlo, 'DejaVu Sans Mono', monospace;
 
   --measure: 68ch;
@@ -67,7 +98,7 @@
   --t-h1: clamp(2rem, 1.5rem + 2vw, 2.8rem);
   --t-h2: clamp(1.55rem, 1.3rem + 1vw, 2rem);
   --t-h3: 1.15rem;
-  --t-body: 1.0625rem;
+  --t-body: 1.15rem;
   --t-small: 0.9rem;
   --t-tiny: 0.8rem;
 

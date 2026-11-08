@@ -22,7 +22,7 @@ The condition of an `if` is an expression whose value is either true or false. C
 
 ## Why it matters
 
-Model rules are rarely a single comparison. A seed germinates when it is warm *and* moist; an individual dies if it starves *or* is predated; a site is suitable *unless* it is flooded. Getting the logic right matters as much as getting the arithmetic right, and some of the most persistent bugs in scientific code are conditions that compile perfectly and test the wrong thing.
+Model rules are rarely a single comparison. A seed germinates when it is warm *and* moist; an individual dies if it starves *or* is predated; a site is suitable *unless* it is flooded. Getting the logic right matters as much as getting the arithmetic right, and some of the most persistent bugs in scientific code are conditions that compile without complaint and test the wrong thing.
 
 ## How it works in C++
 
@@ -37,7 +37,7 @@ Model rules are rarely a single comparison. A seed germinates when it is warm *a
 | `==` | equal to | `eggs == 0` |
 | `!=` | not equal to | `stage != 3` |
 
-Each produces a `bool`. Note that "equal to" is written with two equals signs. A single `=` is assignment (see the pitfall below).
+Each produces a `bool`. "Equal to" is written with two equals signs. A single `=` is assignment (see the pitfall below).
 
 ### The type bool
 
@@ -101,7 +101,6 @@ const int occupied = (eggs > 0) + (eggs > 10);   // 1 + 0 = 1
 ```
 
 `if (eggs)` is common in older code. `if (eggs != 0)` says the same thing explicitly and is easier to read, so prefer it.
-
 
 ### Comparing floating-point numbers
 

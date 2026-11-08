@@ -10,12 +10,11 @@ objectives:
   - Verify simulations against closed-form solutions, invariants, convergence orders and exact statistical results
   - Write a self-checking test program and interpret a statistical test of a stochastic simulation
   - Describe how models are validated against data, and what validation can and cannot establish
-standard: c++17
 references:
   - "Oberkampf, W. L. & Roy, C. J. (2010). Verification and Validation in Scientific Computing. Cambridge University Press."
-  - "Grimm, V. et al. (2005). Pattern-oriented modeling of agent-based complex systems: lessons from ecology. Science 310: 987–991."
+  - "Grimm, V. et al. (2005). Pattern-oriented modeling of agent-based complex systems: lessons from ecology. Science 310: 987-991."
   - "Burnham, K. P. & Anderson, D. R. (2002). Model Selection and Multimodel Inference, 2nd ed. Springer."
-  - "Kendall, D. G. (1948). On the generalized ‘birth-and-death’ process. Annals of Mathematical Statistics 19: 1–15."
+  - "Kendall, D. G. (1948). On the generalized ‘birth-and-death’ process. Annals of Mathematical Statistics 19: 1-15."
 ---
 
 ## What it is
@@ -69,7 +68,7 @@ $$
 
 <Figure id="verification-and-validation-convergence" />
 
-On logarithmic axes the three methods give straight lines of slopes 1, 2 and 4. A method whose observed order is wrong is wrong, even if its answers look reasonable: an "RK4" that converges at order 2 contains a mistake in its stages. The test needs the exact solution, or a reference solution computed with a much smaller step. Very large steps are outside the asymptotic regime (Euler's observed order at $h = 1$ is not 1), and very small steps hit rounding error, so test in between.
+On logarithmic axes the three methods give straight lines of slopes 1, 2 and 4. A method whose observed order is wrong is faulty even if its answers look reasonable: an "RK4" that converges at order 2 contains a mistake in its stages. The test needs the exact solution, or a reference solution computed with a much smaller step. Very large steps are outside the asymptotic regime (Euler's observed order at $h = 1$ is not 1), and very small steps hit rounding error, so test in between.
 
 ### Statistical tests against exact results
 
@@ -117,14 +116,14 @@ Re-implementation catches coding errors well. It is weaker against conceptual er
   kind="interpret"
   question="Which of these is a validation test rather than a verification test?"
   options={[
-    "The simulated extinction fraction agrees with Kendall’s formula within two standard errors",
+    "The simulated extinction fraction agrees with Kendall's formula within two standard errors",
     "Halving the step size divides the RK4 error by about 16",
     "The model, fitted to counts from 2001 to 2015, predicts the counts from 2016 to 2020 within their observation error",
     "The C++ and TypeScript implementations agree to a relative tolerance of 10⁻⁹",
   ]}
   answer={2}
   feedback={[
-    "Kendall’s formula is a mathematical property of the model itself. Agreement shows that the code implements the model, not that the model describes any real population.",
+    "Kendall's formula is a mathematical property of the model itself. Agreement shows that the code implements the model, not that the model describes any real population.",
     "This tests the numerical method against its theory: verification. It says nothing about whether logistic growth describes the organism.",
     "Correct. Only a comparison with observations of the real system can validate a model, and a prediction of data not used in fitting is among the strongest such comparisons.",
     "Two implementations of the same model agreeing is verification: both could implement a model that is biologically wrong.",
@@ -134,7 +133,7 @@ Re-implementation catches coding errors well. It is weaker against conceptual er
 <Check
   id="z-score"
   kind="interpret"
-  question="From 20,000 replicates, a Gillespie program finds an extinction fraction of 0.1590; Kendall’s formula gives 0.1539, and the standard error is 0.0026. What should you conclude?"
+  question="From 20,000 replicates, a Gillespie program finds an extinction fraction of 0.1590; Kendall's formula gives 0.1539, and the standard error is 0.0026. What should you conclude?"
   options={[
     "The program has a bug: it disagrees with the exact result",
     "z ≈ 2: weak evidence at most. Rerun with another seed or more replicates before suspecting a bug",
@@ -145,7 +144,7 @@ Re-implementation catches coding errors well. It is weaker against conceptual er
   feedback={[
     "A difference of two standard errors occurs by chance about once in twenty tests. It is not, on its own, evidence of a bug.",
     "Correct. z = (0.1590 − 0.1539)/0.0026 ≈ 2.0. If a rerun with a different seed and four times the replicates gives a z near 0, the first result was chance; if z grows to about 4, the difference is systematic and needs investigating.",
-    "Kendall’s formula is an exact mathematical result for this model. A large sample makes the simulated fraction precise, but a precise estimate can still differ from the truth by chance or by a bug.",
+    "Kendall's formula is an exact mathematical result for this model. A large sample makes the simulated fraction precise, but a precise estimate can still differ from the truth by chance or by a bug.",
     "They can: through statistical comparison with exact results, as here, with tolerances expressed in standard errors.",
   ]}
 />
@@ -153,7 +152,7 @@ Re-implementation catches coding errors well. It is weaker against conceptual er
 <Check
   id="order-bug"
   kind="debug"
-  question="A student’s fourth-order Runge-Kutta integrator gives an error of 4.0 × 10⁻³ at h = 0.1 and 1.0 × 10⁻³ at h = 0.05 on the logistic equation. What does this suggest?"
+  question="A student's fourth-order Runge-Kutta integrator gives an error of 4.0 × 10⁻³ at h = 0.1 and 1.0 × 10⁻³ at h = 0.05 on the logistic equation. What does this suggest?"
   options={[
     "The integrator is fine: the error is small and decreasing",
     "The integrator behaves like a second-order method, so one of its stages or weights is probably wrong",
@@ -181,7 +180,7 @@ Verification ends with a model you can trust to mean what it says. Validation as
 
 **Pattern-oriented modelling.** A model that reproduces one pattern, such as a population time series, may do so for the wrong reasons; with enough parameters, many structures can fit one curve. Grimm and colleagues (2005) argue for testing a model against *several* patterns observed at different levels and scales at once, for example a population's size, its spatial distribution and its age structure. Each pattern rules out some model structures and parameter values. A model that reproduces several patterns it was not tuned to is much more credible.
 
-**Out-of-sample tests.** A model fitted to data will match those data to some degree almost regardless of its truth. The stronger test is prediction of data not used in fitting: later years, another site, another treatment. The shift from fitting to predicting is the single most informative step in validation.
+**Out-of-sample tests.** A model fitted to data will match those data to some degree almost regardless of its truth. The stronger test is prediction of data not used in fitting: later years, another site, another treatment. Moving from fitting to predicting is among the most informative steps in validation.
 
 **Model comparison.** Often the question is not "is this model true?" but "which of these models is better supported?". When models are fitted by maximum likelihood, information criteria trade goodness of fit against complexity. Akaike's criterion is
 

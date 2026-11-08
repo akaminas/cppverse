@@ -17,17 +17,17 @@ references:
 
 ## What it is
 
-Three small features, all introduced in C++11 or C++17, that make code using the standard library much shorter and easier to read:
+Three small features, introduced in C++11 and C++17, make code that uses the standard library shorter and easier to read:
 
-- **`auto`** lets the compiler deduce a variable's type from its initial value: `auto it = nests.find("DUNE-04");` instead of `std::map<std::string, int>::iterator it = …`.
-- **Type aliases** give an existing type a new, shorter name: `using Trajectory = std::vector<double>;`.
-- **Range-based `for`** visits every element of a container directly: `for (double N : trajectory) { … }`.
+- `auto` lets the compiler deduce a variable's type from its initial value: `auto it = nests.find("DUNE-04");` instead of `std::map<std::string, int>::iterator it = …`.
+- Type aliases give an existing type a new, shorter name: `using Trajectory = std::vector<double>;`.
+- Range-based `for` visits every element of a container directly: `for (double N : trajectory) { … }`.
 
-None of them changes what a program can do. All three remove noise, so that what remains is the part a reader needs to check.
+None of them changes what a program can do. All three remove noise, so that what remains is the part a reader needs to check. They are part of everyday C++ and are used throughout the rest of the site.
 
 ## Why it matters
 
-Model code combines containers: a map from site codes to vectors of counts, a vector of (time, state) pairs, a list of individuals. Their full type names quickly become longer than the logic around them, and a loop over one by iterator spells the type three times. Long names also hide mistakes. The most common is copying every element of a large container on each pass through a loop, or silently modifying a copy and then wondering why the population never changed. The loop-variable rules in this lesson make those choices visible.
+Model code combines containers: a map from site codes to vectors of counts, a vector of (time, state) pairs, a list of individuals. Their full type names quickly become longer than the logic around them, and a loop over one by iterator spells the type three times. Long names also hide mistakes. The most common are copying every element of a large container on each pass through a loop, and silently modifying a copy so that the population never changes. The loop-variable rules in this lesson make those choices visible.
 
 ## How it works in C++
 
@@ -45,9 +45,9 @@ const auto mean = total / count;     // const, with the type of total / count
 
 Three rules cover almost every case:
 
-1. **The type comes from the initialiser, so there must be one.** `auto x;` does not compile, which is a small bonus: an `auto` variable is never uninitialised.
-2. **Literals decide.** `auto total = 0;` makes an `int`. Adding doubles to it later truncates every sum to a whole number. Write `auto total = 0.0;`, or simply `double total = 0.0;`.
-3. **Plain `auto` makes a copy.** It drops references and top-level `const`. If `best` is a reference to a large object, `auto x = best;` copies it; `const auto& x = best;` does not.
+1. The type comes from the initialiser, so there must be one. `auto x;` does not compile, so an `auto` variable is never uninitialised.
+2. Literals decide. `auto total = 0;` makes an `int`. Adding doubles to it later truncates every sum to a whole number. Write `auto total = 0.0;`, or simply `double total = 0.0;`.
+3. Plain `auto` makes a copy. It drops references and top-level `const`. If `best` is a reference to a large object, `auto x = best;` copies it; `const auto& x = best;` does not.
 
 Use `auto` where the type is obvious from the right-hand side or irrelevant to the reader (iterators, results of `find`, elements in loops), and write the type when it carries meaning: `double survival = 0.9;` tells the reader more than `auto survival = 0.9;`.
 
@@ -62,7 +62,7 @@ using Matrix = std::vector<std::vector<double>>;
 using SiteIter = std::map<std::string, int>::const_iterator;
 ```
 
-Prefer `using`: it reads left to right like an assignment ("Trajectory is a vector of double"), and it also works for templates, which `typedef` cannot do: `template <typename T> using Series = std::vector<std::pair<double, T>>;`.
+Prefer `using`. It reads left to right like an assignment ("Trajectory is a vector of double"), and it also works for templates, which `typedef` cannot do: `template <typename T> using Series = std::vector<std::pair<double, T>>;`.
 
 An alias is not a new type. A `Trajectory` *is* a `std::vector<double>`; you can pass one where the other is expected. Its value is documentation: `Trajectory simulate(const Parameters& p)` says what the function returns in the model's own terms.
 
@@ -82,10 +82,10 @@ The program below shows the difference between the first two, and uses aliases, 
 
 <Example file="data/range_for_modes.cpp" mark="12-13,19-20,25-27,31,36-38" />
 
-The first loop adds 1 g to *copies* of the masses, so the vector is unchanged afterwards; the second adds it to the elements themselves. The compiler accepts both, and nothing warns you that the first loop's changes are thrown away. This is why the habit matters: **`&` when the loop changes elements, `const&` when it only reads anything bigger than a number.**
+The first loop adds 1 g to *copies* of the masses, so the vector is unchanged afterwards; the second adds it to the elements themselves. The compiler accepts both, and nothing warns you that the first loop's changes are thrown away. This is why the habit matters: use `&` when the loop changes elements, and `const&` when it only reads anything bigger than a number.
 
-<Callout kind="manual" title="The range-for section of the manual is unfinished">
-The manual's "three tricks" section breaks off where it should show a rewritten loop and the combinations of `auto` with `const` and `&`, and one sentence says "read access" where *write* access is meant: a reference is needed to *change* elements, a const reference to *read* them without copying. The table above completes the picture.
+<Callout kind="manual" title="Which declaration gives write access">
+It is easy to mix up which loop variable gives which access. A reference is needed to *change* elements, and a const reference is used to *read* them without copying. The table above lists the combinations of `auto` with `const` and `&`.
 </Callout>
 
 ### Structured bindings in loops
@@ -98,7 +98,7 @@ With `auto&` the names refer to the members inside the container, so `count += 1
 
 ### When you still need an index
 
-A range-for has no index. When the body needs the position (to print the time step, to read a neighbouring element, or to fill two vectors in parallel), use a counting loop with `std::size_t`, as in <Concept id="std-vector" />. Do not add or remove elements of a container inside a range-for over it: the loop uses iterators internally, and `push_back` or `erase` can invalidate them (<Concept id="iterators" />).
+A range-for has no index. When the body needs the position (to print the time step, to read a neighbouring element, or to fill two vectors in parallel), use a counting loop with `std::size_t`, as in <Concept id="std-vector" />. C++23 offers an alternative, `std::views::enumerate`, which yields the index together with each element; it needs a standard library that provides it (GCC 15 or later, since GCC 14 does not have it), so the counting loop remains the portable choice. Do not add or remove elements of a container inside a range-for over it: the loop uses iterators internally, and `push_back` or `erase` can invalidate them (<Concept id="iterators" />).
 
 ## Explore it
 
@@ -160,18 +160,18 @@ std::cout << total << '\\n';`}
 
 ## In biological modelling
 
-- **Name the model's types.** `using State = std::vector<double>;`, `using Trajectory = std::vector<State>;` and `using ParameterSet = std::map<std::string, double>;` let function signatures describe the model: `Trajectory run(const ParameterSet& p, State start, int steps)`.
-- **Update individuals by reference.** `for (auto& plant : population) { plant.height += growth(plant); }` changes the population; the same loop without `&` would silently change copies and leave the model unchanged.
-- **Summarise by const reference.** Loops that compute totals, means or counts over individuals, patches or records should use `const auto&`.
-- **Loop over parameter tables** with `for (const auto& [name, value] : parameters)` to print every parameter at the start of a run, so that the output file records exactly which values produced it.
+- Name the model's types. `using State = std::vector<double>;`, `using Trajectory = std::vector<State>;` and `using ParameterSet = std::map<std::string, double>;` let function signatures describe the model: `Trajectory run(const ParameterSet& p, State start, int steps)`.
+- Update individuals by reference. `for (auto& plant : population) { plant.height += growth(plant); }` changes the population, whereas the same loop without `&` would change copies and leave the model unchanged.
+- Summarise by const reference. Loops that compute totals, means or counts over individuals, patches or records should use `const auto&`.
+- Loop over parameter tables with `for (const auto& [name, value] : parameters)` to print every parameter at the start of a run, so that the output file records exactly which values produced it.
 
 ## Common mistakes
 
-- **Modifying a by-value loop variable** and expecting the container to change.
-- **`auto total = 0;` for a sum of doubles.** It deduces `int`.
-- **Copying large elements** with `for (auto x : big)` where `const auto& x` was meant.
-- **Changing the size of the container inside a range-for** over it (`push_back`, `erase`).
-- **Overusing `auto`.** `auto r = 0.5f;` (a `float`) or `auto n = v.size() - 1;` (an unsigned value that wraps when `v` is empty) hide information the reader needs. Spell out types that carry meaning.
+- Modifying a by-value loop variable and expecting the container to change.
+- Writing `auto total = 0;` for a sum of doubles, which deduces `int`.
+- Copying large elements with `for (auto x : big)` where `const auto& x` was meant.
+- Changing the size of the container inside a range-for over it (`push_back`, `erase`).
+- Overusing `auto`. `auto r = 0.5f;` (a `float`) or `auto n = v.size() - 1;` (an unsigned value that wraps when `v` is empty) hide information the reader needs. Spell out types that carry meaning.
 
 ## Practice
 

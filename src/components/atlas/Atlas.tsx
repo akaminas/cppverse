@@ -13,10 +13,12 @@ import { routeSteps } from './route';
 // The map fills a column of its own; the reading panel is the second column
 // (a sheet below the map on narrow screens), so the two never overlap.
 //
-// Scale 1 (landscape): regions, domains and the modelling destinations.
-// Scale 2 (domains):   only the labels that fit; links inside each domain.
-// Scale 3 (concepts):  every label that fits, every dependency edge.
-// A selected node opens the panel; the map stays in view.
+// The three buttons at the bottom left choose what is highlighted; they never move the map.
+// View 1 (landscape): the regions and the modelling destinations stand out.
+// View 2 (domains):   the domain fields and their titles stand out; click a title to light up one.
+// View 3 (concepts):  the concepts stand out, with every label that fits.
+// Lines between concepts are drawn only for a selected concept (or a route, or a lit domain),
+// so the map stays quiet otherwise. A selected node opens the panel; the map stays in view.
 //
 // Every node has a fixed home in the precomputed, deterministic layout. A
 // light spring simulation only adds temporary offsets: nodes bloom out of
@@ -33,14 +35,10 @@ interface Props {
 }
 
 const PAD = 90;
-/** Effective scale (screen px per world unit) at which each level begins. */
-const LEVEL_AT = { two: 0.42, three: 0.72 };
-/** Where the altitude control lands when a level is chosen. */
-const LEVEL_SCALE: Record<Semantic, number> = { 1: 0, 2: 0.56, 3: 1.05 };
 const LEVELS: { level: Semantic; label: string; hint: string }[] = [
-  { level: 1, label: 'Landscape', hint: 'The whole atlas: regions, domains and destinations' },
-  { level: 2, label: 'Domains', hint: 'One domain at a time, with its key concepts' },
-  { level: 3, label: 'Concepts', hint: 'Every concept and every dependency' },
+  { level: 1, label: 'Landscape', hint: 'Highlight the regions and the modelling destinations' },
+  { level: 2, label: 'Domains', hint: 'Highlight the domains' },
+  { level: 3, label: 'Concepts', hint: 'Highlight every concept' },
 ];
 const NARROW = '(max-width: 900px)';
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -69,6 +67,8 @@ export default function Atlas({ data, checkCounts }: Props) {
   const [hover, setHover] = useState<Hover | null>(null);
   const [kbd, setKbd] = useState<string | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
+  /** A domain lit up by clicking its title: its concepts stay bright, everything else recedes. */
+  const [domainFocus, setDomainFocus] = useState<DomainId | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [isNarrow, setIsNarrow] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -96,7 +96,7 @@ export default function Atlas({ data, checkCounts }: Props) {
   const hoverNodeId = hover?.kind === 'node' && !isNarrow ? hover.id : null;
   const focusId = selected ?? hoverNodeId;
   const highlight = useMemo(() => {
-    if (!focusId) return null;
+    if (!focusId) return domainFocus ? new Set(data.nodes.filter((n) => n.domain === domainFocus).map((n) => n.id)) : null;
     const n = byId.get(focusId);
     if (!n) return null;
     if (mode === 'back' && selected) return new Set([focusId, ...closure(byId, focusId, 'back')]);
@@ -109,14 +109,12 @@ export default function Atlas({ data, checkCounts }: Props) {
       }
     }
     return set;
-  }, [focusId, mode, selected, byId, data.edges]);
+  }, [focusId, mode, selected, byId, data.edges, domainFocus, data.nodes]);
 
   // ── Zoom ────────────────────────────────────────────────────────────────
   const applyScale = useCallback((k: number) => {
     const sEff = k * s0Ref.current;
     svgRef.current?.style.setProperty('--k', sEff.toFixed(4));
-    const level: Semantic = sEff < LEVEL_AT.two ? 1 : sEff < LEVEL_AT.three ? 2 : 3;
-    setSemantic((prev) => (prev === level ? prev : level));
     const b = Math.round(Math.log(sEff) / Math.log(1.22));
     setBucket((prev) => (prev === b ? prev : b));
   }, []);
@@ -191,16 +189,6 @@ export default function Atlas({ data, checkCounts }: Props) {
     [vb, mapRect, setTransform],
   );
 
-  /** World coordinates currently at the centre of the map. */
-  const viewCentre = useCallback(() => {
-    const { cw, ch } = mapRect();
-    const s0 = s0Ref.current;
-    const ux = vb.x + (cw / 2 - (cw - vb.w * s0) / 2) / s0;
-    const uy = vb.y + (ch / 2 - (ch - vb.h * s0) / 2) / s0;
-    const [x, y] = transformRef.current.invert([ux, uy]);
-    return { x, y };
-  }, [vb, mapRect]);
-
   /** Fit the whole map, leaving room for the corner controls. */
   const fitAll = useCallback(
     (animate = true) => {
@@ -238,18 +226,20 @@ export default function Atlas({ data, checkCounts }: Props) {
     else sel.transition().duration(260).call(z.scaleBy, f);
   }, []);
 
-  /** The altitude control: jump to a level, keeping the current (or selected) centre. */
-  const goLevel = useCallback(
-    (level: Semantic) => {
-      if (level === 1) {
-        fitAll();
-        return;
-      }
-      const sel = selected ? byId.get(selected) : null;
-      const c = sel ? { x: sel.x, y: sel.y } : viewCentre();
-      centreOn(c.x, c.y, LEVEL_SCALE[level]);
+  /** The view control: choose what is highlighted. The map itself does not move. */
+  const goLevel = useCallback((level: Semantic) => {
+    setSemantic(level);
+    if (level === 1) setDomainFocus(null);
+  }, []);
+
+  /** Light up one domain; bring it into view when it is mostly off screen. */
+  const showDomain = useCallback(
+    (id: DomainId, { fit = true }: { fit?: boolean } = {}) => {
+      setDomainFocus(id);
+      setSemantic((s) => (s === 1 ? 2 : s));
+      if (fit) fitDomain(id);
     },
-    [fitAll, selected, byId, viewCentre, centreOn],
+    [fitDomain],
   );
 
   // ── Selection and URL state ─────────────────────────────────────────────
@@ -262,6 +252,7 @@ export default function Atlas({ data, checkCounts }: Props) {
       setMode('neighbours');
       setHover(null);
       if (id) {
+        setDomainFocus(null);
         const n = byId.get(id);
         if (n) {
           actions.touch(id);
@@ -304,7 +295,7 @@ export default function Atlas({ data, checkCounts }: Props) {
         requestAnimationFrame(() => centreOn(n.x, n.y, 1.1, false));
       } else {
         setSelected(null);
-        if (dom && domainById.has(dom)) requestAnimationFrame(() => fitDomain(dom));
+        if (dom && domainById.has(dom)) requestAnimationFrame(() => showDomain(dom));
         else requestAnimationFrame(() => fitAll(false));
       }
     };
@@ -388,6 +379,7 @@ export default function Atlas({ data, checkCounts }: Props) {
       selectNode(kbd);
     } else if (e.key === 'Escape') {
       if (selected) selectNode(null);
+      setDomainFocus(null);
       setKbd(null);
     } else if (e.key === '+' || e.key === '=') zoomBy(1.4);
     else if (e.key === '-' || e.key === '_') zoomBy(1 / 1.4);
@@ -398,89 +390,6 @@ export default function Atlas({ data, checkCounts }: Props) {
       document.getElementById('atlas-search')?.focus();
     }
   };
-
-  // ── Labels: greedy placement for the current zoom bucket ────────────────
-  const sEffBucket = Math.pow(1.22, bucket);
-  const labels = useMemo(() => {
-    const s = sEffBucket;
-    const placed: { x: number; y: number; w: number; h: number }[] = [];
-    const out: { id: string; x: number; y: number; anchor: 'start' | 'end' | 'middle' }[] = [];
-    const discs = data.nodes.map((n) => ({ x: n.x, y: n.y, r: n.r + 2 / s }));
-    const priority = (n: AtlasNode) =>
-      (n.id === selected ? 1e6 : 0) +
-      (highlight?.has(n.id) ? 1e5 : 0) +
-      (routeIndex.has(n.id) ? 5e4 : 0) +
-      (n.kind === 'landmark' ? 2e4 : n.kind === 'capstone' ? 900 : n.kind === 'integration' ? 1000 : 0) +
-      (n.deps.length + n.enables.length) * 10 -
-      (n.optional ? 50 : 0);
-    let candidates = [...data.nodes];
-    // Landscape: the domain titles name the destinations; only a selection is labelled.
-    if (semantic === 1) candidates = candidates.filter((n) => n.id === selected);
-    candidates.sort((a, b) => priority(b) - priority(a));
-    const overlaps = (r: { x: number; y: number; w: number; h: number }) =>
-      placed.some((p) => r.x < p.x + p.w && p.x < r.x + r.w && r.y < p.y + p.h && p.y < r.y + r.h) ||
-      discs.some((d) => d.x > r.x - d.r && d.x < r.x + r.w + d.r && d.y > r.y - d.r && d.y < r.y + r.h + d.r);
-    for (const n of candidates) {
-      if (n.kind === 'landmark') {
-        const w = labelWidthPx('Destination') / s;
-        out.push({ id: n.id, x: n.x, y: n.y + n.r + 18 / s, anchor: 'middle' });
-        placed.push({ x: n.x - w / 2, y: n.y + n.r + 6 / s, w, h: 22 / s });
-        continue;
-      }
-      const w = labelWidthPx(n.label) / s;
-      const h = 16 / s;
-      const gap = 6 / s;
-      const opts: [number, number, 'start' | 'end' | 'middle', { x: number; y: number; w: number; h: number }][] = [
-        [n.x, n.y + n.r + gap + h / 2, 'middle', { x: n.x - w / 2, y: n.y + n.r + gap, w, h }],
-        [n.x + n.r + gap, n.y, 'start', { x: n.x + n.r + gap, y: n.y - h / 2, w, h }],
-        [n.x - n.r - gap, n.y, 'end', { x: n.x - n.r - gap - w, y: n.y - h / 2, w, h }],
-        [n.x, n.y - n.r - gap - h / 2, 'middle', { x: n.x - w / 2, y: n.y - n.r - gap - h, w, h }],
-      ];
-      for (const [x, y, anchor, rect] of opts) {
-        const ownDisc = discs.findIndex((d) => d.x === n.x && d.y === n.y);
-        const saved = discs[ownDisc];
-        discs[ownDisc] = { x: 1e9, y: 1e9, r: 0 };
-        const bad = overlaps(rect);
-        discs[ownDisc] = saved;
-        if (!bad) {
-          placed.push(rect);
-          out.push({ id: n.id, x, y, anchor });
-          break;
-        }
-      }
-    }
-    return out;
-  }, [data.nodes, semantic, sEffBucket, selected, highlight, routeIndex]);
-
-  // ── Derived drawing data ────────────────────────────────────────────────
-  const minR = semantic === 1 ? 2.4 / sEffBucket : 0;
-  const domainEdges = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const e of data.edges) {
-      if (!DEPENDENCY.has(e.type)) continue;
-      const a = byId.get(e.from)!.domain;
-      const b = byId.get(e.to)!.domain;
-      if (a === b) continue;
-      const key = `${a}>${b}`;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-    return [...counts].map(([key, count]) => {
-      const [a, b] = key.split('>') as [DomainId, DomainId];
-      return { a: domainById.get(a)!, b: domainById.get(b)!, count };
-    });
-  }, [data.edges, byId, domainById]);
-
-  const visibleEdges = useMemo(() => {
-    return data.edges.filter((e) => {
-      const lit = highlight && highlight.has(e.from) && highlight.has(e.to) && (focusId === e.from || focusId === e.to || mode !== 'neighbours');
-      if (lit) return mode === 'neighbours' || DEPENDENCY.has(e.type);
-      if (route && routeIndex.has(e.from) && routeIndex.has(e.to) && DEPENDENCY.has(e.type)) return true;
-      if (!DEPENDENCY.has(e.type)) return false;
-      if (semantic === 1) return false;
-      if (semantic === 2) return byId.get(e.from)!.domain === byId.get(e.to)!.domain;
-      return true;
-    });
-  }, [data.edges, highlight, focusId, mode, route, routeIndex, semantic, byId]);
 
   /** Title placement per domain: in the empty band (LAYOUT.padTop world units) above the
       first row of concepts, west of any destination dot. A title that would have to be
@@ -517,6 +426,112 @@ export default function Atlas({ data, checkCounts }: Props) {
       ),
     [data.domains, data.nodes],
   );
+
+  // ── Labels: greedy placement for the current zoom bucket ────────────────
+  const sEffBucket = Math.pow(1.22, bucket);
+  const labels = useMemo(() => {
+    const s = sEffBucket;
+    const placed: { x: number; y: number; w: number; h: number }[] = [];
+    const out: { id: string; x: number; y: number; anchor: 'start' | 'end' | 'middle' }[] = [];
+    const discs = data.nodes.map((n) => ({ x: n.x, y: n.y, r: n.r + 2 / s }));
+    const priority = (n: AtlasNode) =>
+      (n.id === selected ? 1e6 : 0) +
+      (highlight?.has(n.id) ? 1e5 : 0) +
+      (routeIndex.has(n.id) ? 5e4 : 0) +
+      (n.kind === 'landmark' ? 2e4 : n.kind === 'capstone' ? 900 : n.kind === 'integration' ? 1000 : 0) +
+      (n.deps.length + n.enables.length) * 10 -
+      (n.optional ? 50 : 0);
+    let candidates = [...data.nodes];
+    // Landscape: the domain titles name the destinations; only a selection is labelled.
+    // Domains: the titles stand out, so concepts are labelled only when they are selected or lit.
+    if (semantic === 1) candidates = candidates.filter((n) => n.id === selected);
+    else if (semantic === 2) candidates = candidates.filter((n) => n.id === selected || highlight?.has(n.id));
+    candidates.sort((a, b) => priority(b) - priority(a));
+    // Domain titles are obstacles too, so concept labels never sit on a title.
+    if (semantic > 1) {
+      for (const d of data.domains) {
+        const t = domainTitles.get(d.id);
+        if (!t) continue;
+        const px = semantic === 3 || isNarrow ? 16 : 19;
+        const size = Math.min(px / s, t.fit);
+        const w = Math.max(...t.lines.map((l) => l.length)) * 0.55 * size;
+        placed.push({ x: t.x, y: t.y - size, w, h: size * (1.12 * (t.lines.length - 1) + 1.25) });
+      }
+    }
+    const overlaps = (r: { x: number; y: number; w: number; h: number }) =>
+      placed.some((p) => r.x < p.x + p.w && p.x < r.x + r.w && r.y < p.y + p.h && p.y < r.y + r.h) ||
+      discs.some((d) => d.x > r.x - d.r && d.x < r.x + r.w + d.r && d.y > r.y - d.r && d.y < r.y + r.h + d.r);
+    for (const n of candidates) {
+      if (n.kind === 'landmark') {
+        const w = labelWidthPx('Destination') / s;
+        out.push({ id: n.id, x: n.x, y: n.y + n.r + 18 / s, anchor: 'middle' });
+        placed.push({ x: n.x - w / 2, y: n.y + n.r + 6 / s, w, h: 22 / s });
+        continue;
+      }
+      const w = labelWidthPx(n.label) / s;
+      const h = 16 / s;
+      const gap = 6 / s;
+      const opts: [number, number, 'start' | 'end' | 'middle', { x: number; y: number; w: number; h: number }][] = [
+        [n.x, n.y + n.r + gap + h / 2, 'middle', { x: n.x - w / 2, y: n.y + n.r + gap, w, h }],
+        [n.x + n.r + gap, n.y, 'start', { x: n.x + n.r + gap, y: n.y - h / 2, w, h }],
+        [n.x - n.r - gap, n.y, 'end', { x: n.x - n.r - gap - w, y: n.y - h / 2, w, h }],
+        [n.x, n.y - n.r - gap - h / 2, 'middle', { x: n.x - w / 2, y: n.y - n.r - gap - h, w, h }],
+      ];
+      for (const [x, y, anchor, rect] of opts) {
+        const ownDisc = discs.findIndex((d) => d.x === n.x && d.y === n.y);
+        const saved = discs[ownDisc];
+        discs[ownDisc] = { x: 1e9, y: 1e9, r: 0 };
+        const bad = overlaps(rect);
+        discs[ownDisc] = saved;
+        if (!bad) {
+          placed.push(rect);
+          out.push({ id: n.id, x, y, anchor });
+          break;
+        }
+      }
+    }
+    return out;
+  }, [data.nodes, data.domains, domainTitles, isNarrow, semantic, sEffBucket, selected, highlight, routeIndex]);
+
+  // ── Derived drawing data ────────────────────────────────────────────────
+  const minR = semantic === 1 ? 2.4 / sEffBucket : 0;
+  const domainEdges = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const e of data.edges) {
+      if (!DEPENDENCY.has(e.type)) continue;
+      const a = byId.get(e.from)!.domain;
+      const b = byId.get(e.to)!.domain;
+      if (a === b) continue;
+      const key = `${a}>${b}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [...counts].map(([key, count]) => {
+      const [a, b] = key.split('>') as [DomainId, DomainId];
+      return { a: domainById.get(a)!, b: domainById.get(b)!, count };
+    });
+  }, [data.edges, byId, domainById]);
+
+  // Lines are drawn only for a selected concept, for a route to a goal, and (faintly, dotted)
+  // inside a domain that has been lit up. Otherwise the map shows no lines at all.
+  const visibleEdges = useMemo(() => {
+    return data.edges.filter((e) => {
+      if (selected && highlight && highlight.has(e.from) && highlight.has(e.to) && (selected === e.from || selected === e.to || mode !== 'neighbours')) {
+        return mode === 'neighbours' || DEPENDENCY.has(e.type);
+      }
+      if (route && routeIndex.has(e.from) && routeIndex.has(e.to) && DEPENDENCY.has(e.type)) return true;
+      if (!selected && domainFocus && DEPENDENCY.has(e.type)) return byId.get(e.from)!.domain === domainFocus && byId.get(e.to)!.domain === domainFocus;
+      return false;
+    });
+  }, [data.edges, highlight, selected, mode, route, routeIndex, domainFocus, byId]);
+
+  /** Domains whose links to other domains are drawn: the lit one, the one holding the selection, the hovered one. */
+  const linkedDomains = useMemo(() => {
+    const set = new Set<string>();
+    if (domainFocus) set.add(domainFocus);
+    if (selected) set.add(byId.get(selected)!.domain);
+    if (hover?.kind === 'domain') set.add(hover.id);
+    return set;
+  }, [domainFocus, selected, hover, byId]);
 
   // ── Spring offsets (entrance, hover lean, drag) ─────────────────────────
   const neighbours = useMemo(() => {
@@ -743,7 +758,7 @@ export default function Atlas({ data, checkCounts }: Props) {
 
   return (
     <div
-      className={`atlas sem-${semantic}${selected ? ' has-selection' : ''}${route ? ' has-route' : ''}${isNarrow ? ' is-narrow' : ''}${collapsed ? ' is-collapsed' : ''}`}
+      className={`atlas sem-${semantic}${selected || domainFocus ? ' has-selection' : ''}${domainFocus ? ' has-domain' : ''}${route ? ' has-route' : ''}${isNarrow ? ' is-narrow' : ''}${collapsed ? ' is-collapsed' : ''}`}
       onKeyDown={onKeyDown}
     >
       <div className="atlas-map" ref={mapRef}>
@@ -753,10 +768,13 @@ export default function Atlas({ data, checkCounts }: Props) {
           viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
           preserveAspectRatio="xMidYMid meet"
           role="group"
-          aria-label="Concept atlas. Use the arrow keys to move between concepts, Enter to open one, Escape to clear, plus and minus to zoom, 0 to reset, 1 to 3 to choose a scale, slash to search."
+          aria-label="Concept atlas. Use the arrow keys to move between concepts, Enter to open one, Escape to clear, plus and minus to zoom, 0 to reset, 1 to 3 to choose what is highlighted, slash to search."
           tabIndex={0}
           onClick={(e) => {
-            if (e.target === svgRef.current) selectNode(null);
+            if (e.target === svgRef.current) {
+              selectNode(null);
+              setDomainFocus(null);
+            }
           }}
           style={{ ['--k' as string]: 0.3 }}
         >
@@ -772,7 +790,7 @@ export default function Atlas({ data, checkCounts }: Props) {
           <g ref={gRef}>
             {/* Aggregated links between domains (landscape and domain scales). */}
             <g className="atlas-domain-links">
-              {domainEdges.filter(({ count }) => count >= 2).map(({ a, b, count }) => {
+              {domainEdges.filter(({ a, b, count }) => count >= 2 && (linkedDomains.has(a.id) || linkedDomains.has(b.id))).map(({ a, b, count }) => {
                 const x1 = a.box.x + a.box.w;
                 const y1 = a.box.y + a.box.h / 2;
                 const x2 = b.box.x;
@@ -802,10 +820,11 @@ export default function Atlas({ data, checkCounts }: Props) {
                       className="atlas-domain-label"
                       role="button"
                       tabIndex={-1}
-                      aria-label={`${d.title}. Zoom to this domain.`}
+                      aria-label={`${d.title}. Light up this domain.`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        fitDomain(d.id);
+                        if (domainFocus === d.id) setDomainFocus(null);
+                        else showDomain(d.id, { fit: false });
                       }}
                       onPointerEnter={(e) => {
                         if (e.pointerType === 'mouse' && !sim.current.drag) setHover({ kind: 'domain', id: d.id, ...localPoint(e) });
@@ -837,7 +856,7 @@ export default function Atlas({ data, checkCounts }: Props) {
               {visibleEdges.map((e) => {
                 const a = byId.get(e.from)!;
                 const b = byId.get(e.to)!;
-                const lit = highlight?.has(e.from) && highlight?.has(e.to);
+                const lit = !!selected && highlight?.has(e.from) && highlight?.has(e.to);
                 const onRoute = !lit && route && routeIndex.has(e.from) && routeIndex.has(e.to);
                 const style = EDGE_STYLE[e.type as EdgeType];
                 const straight = a.domain === b.domain;
@@ -848,7 +867,7 @@ export default function Atlas({ data, checkCounts }: Props) {
                     data-to={e.to}
                     data-straight={straight ? '1' : '0'}
                     d={edgePath(a, b, straight)}
-                    className={`atlas-edge type-${e.type}${lit ? ' is-lit' : ''}${onRoute ? ' is-route' : ''}${highlight && !lit ? ' is-faded' : ''}`}
+                    className={`atlas-edge type-${e.type}${lit ? ' is-lit' : ''}${onRoute ? ' is-route' : ''}${!lit && !onRoute ? ' is-quiet' : ''}`}
                     strokeDasharray={style.dash}
                     markerEnd={lit || onRoute ? 'url(#atlas-arrow)' : undefined}
                   />
@@ -946,7 +965,7 @@ export default function Atlas({ data, checkCounts }: Props) {
 
         {/* Corner controls: altitude (semantic level) and zoom. */}
         <div className="atlas-hud">
-          <div className="atlas-altitude" role="group" aria-label="Scale">
+          <div className="atlas-altitude" role="group" aria-label="Highlight">
             {LEVELS.map((l) => (
               <button key={l.level} type="button" aria-pressed={semantic === l.level} title={l.hint} onClick={() => goLevel(l.level)}>
                 {l.label}
@@ -1004,7 +1023,7 @@ export default function Atlas({ data, checkCounts }: Props) {
         onSelect={(id) => selectNode(id)}
         onClose={() => selectNode(null)}
         onBack={history.length ? goBack : undefined}
-        onDomain={fitDomain}
+        onDomain={(id) => showDomain(id)}
         goal={goal}
         onGoal={chooseGoal}
         route={route}

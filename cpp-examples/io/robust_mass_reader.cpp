@@ -1,5 +1,5 @@
 // Title: Reading a data file that contains entries that are not numbers
-// Standard: C++17
+// Standard: C++23
 // Reads one body mass per line from vole_masses_field.txt. A line that is not a
 // number is reported on std::cerr and skipped with clear() and ignore().
 

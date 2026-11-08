@@ -1,5 +1,5 @@
 // Title: One function template, several types
-// Standard: C++17
+// Standard: C++23
 // clampTo keeps a value inside [low, high] and total adds up a vector. The
 // compiler writes a separate version of each for every type it is used with.
 

@@ -1,5 +1,5 @@
 // Title: Recursion over a nested tree of clades
-// Standard: C++17
+// Standard: C++23
 // A clade is either a leaf with a known number of species or a group of
 // smaller clades. count_species calls itself on every subclade; leaves are
 // the base case. The tree and its numbers are illustrative.

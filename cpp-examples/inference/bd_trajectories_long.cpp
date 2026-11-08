@@ -1,5 +1,5 @@
 // Title: Replicate trajectories in tidy (long) format
-// Standard: C++17
+// Standard: C++23
 // Simulates replicate trajectories of the linear birth–death process and
 // records the population size on a regular time grid: one row per replicate
 // and time point, the layout that R (dplyr) and Python (pandas) summarise

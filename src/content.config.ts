@@ -24,7 +24,7 @@ const lessons = defineCollection({
     /** Supporting references beyond the manual (books, documentation). */
     references: z.array(z.string()).default([]),
     /** Newest language standard used by the lesson's main code. */
-    standard: z.enum(['c++17', 'c++20', 'c++23']).default('c++17'),
+    standard: z.enum(['c++23', 'c++26']).default('c++23'),
     optional: z.boolean().default(false),
   }),
 });

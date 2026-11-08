@@ -1,5 +1,5 @@
 // Title: auto, type aliases and range-for
-// Standard: C++17
+// Standard: C++23
 // A range-for variable can be a copy, a reference or a const reference.
 // Only a reference changes the elements; a const reference reads them
 // without copying. Aliases and auto shorten long type names.

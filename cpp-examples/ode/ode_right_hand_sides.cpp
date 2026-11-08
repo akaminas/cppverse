@@ -1,5 +1,5 @@
 // Title: Right-hand sides of the logistic and SIR models
-// Standard: C++17
+// Standard: C++23
 // An ODE model is a function from the current time and state to the rates
 // of change. The program evaluates two such functions at a few states;
 // nothing is integrated yet. That is the job of a separate numerical method.

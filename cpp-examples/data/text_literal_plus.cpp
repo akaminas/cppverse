@@ -1,5 +1,5 @@
 // Title: Two string literals cannot be added
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // "PLOT" and "07" are arrays of characters, not std::string objects, so +
 // has nothing to work with. Making either operand a std::string fixes it.

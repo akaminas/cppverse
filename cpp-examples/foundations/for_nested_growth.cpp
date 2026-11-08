@@ -1,5 +1,5 @@
 // Title: Nested loops: one simulation per growth factor
-// Standard: C++17
+// Standard: C++23
 // The outer loop chooses a growth factor; the inner loop runs a complete
 // simulation with it, starting afresh on every pass of the outer loop.
 

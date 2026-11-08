@@ -1,5 +1,5 @@
 // Title: A stage-structured plant population
-// Standard: C++17
+// Standard: C++23
 // Three stages (seedlings, vegetative rosettes, flowering plants) projected
 // by a matrix: n(t+1) = A n(t). The dominant eigenvalue (lambda, the
 // asymptotic growth rate) and the stable stage structure are found by

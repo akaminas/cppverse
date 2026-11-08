@@ -2,7 +2,7 @@ import type { Edge, EdgeType } from './types.ts';
 
 // Typed relationships of the atlas.
 //
-// Dependency edges — prerequisite, composition, application, extension —
+// Dependency edges (prerequisite, composition, application, extension)
 // mean "`to` requires `from`". Together they must form a DAG; they drive
 // backward learning ("what do I need for this model?") and recommendations.
 // conceptual and validation edges are informative and may form cycles.
@@ -134,7 +134,7 @@ export const edges: Edge[] = [
   ext('auto-range-for', 'modern-cpp'),
   pre('templates', 'modern-cpp'),
 
-  // ── Algorithm design (Module 14) ──────────────────────────────────────────
+  // ── Algorithm design ──────────────────────────────────────────
   pre('programs-and-algorithms', 'algorithm-design'),
   pre('for-loop', 'algorithm-design'),
   pre('algorithm-design', 'pseudocode'),
@@ -175,7 +175,7 @@ export const edges: Edge[] = [
   comp('parameter-files', 'capstone-b'),
   comp('trajectory-output', 'capstone-b'),
 
-  // ── Numerical integration (Module 15) ─────────────────────────────────────
+  // ── Numerical integration ─────────────────────────────────────
   pre('functions', 'odes'),
   pre('std-vector', 'odes', 'a system state is a vector'),
   pre('equation-to-code', 'odes'),
@@ -200,7 +200,7 @@ export const edges: Edge[] = [
   comp('numerical-error', 'capstone-c'),
   comp('trajectory-output', 'capstone-c'),
 
-  // ── Stochastic modelling (Module 16) ──────────────────────────────────────
+  // ── Stochastic modelling ──────────────────────────────────────
   pre('for-loop', 'stochasticity'),
   pre('stochasticity', 'random-seeds'),
   pre('random-seeds', 'random-library'),
@@ -231,7 +231,7 @@ export const edges: Edge[] = [
   comp('replicates', 'capstone-d'),
   comp('trajectory-output', 'capstone-d'),
 
-  // ── Individual-based modelling (Module 17) ────────────────────────────────
+  // ── Individual-based modelling ────────────────────────────────
   pre('stochasticity', 'ibm-logic'),
   pre('discrete-time', 'ibm-logic'),
   pre('ibm-logic', 'individual-representation'),
@@ -329,7 +329,7 @@ export const edges: Edge[] = [
   app('pointers-ownership', 'individual-representation', 'who owns each individual'),
   app('inheritance', 'ibm-logic', 'several kinds of agent behind one interface'),
   app('parallel-replicates', 'sensitivity', 'parameter sweeps run in parallel'),
-  app('modern-cpp', 'trajectory-output', 'std::format (C++20) for output tables'),
+  app('modern-cpp', 'trajectory-output', 'std::format for output tables'),
 
   // ── Conceptual relationships (may form cycles) ────────────────────────────
   rel('bitwise', 'array-bitset', 'bitsets apply bitwise operators to whole sets of flags'),

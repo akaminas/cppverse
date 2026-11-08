@@ -14,7 +14,7 @@ objectives:
 references:
   - "cppreference.com: std::numeric_limits"
   - "cppreference.com: Fixed width integer types"
-  - "Goldberg, D. (1991). What every computer scientist should know about floating-point arithmetic. ACM Computing Surveys 23: 5–48."
+  - "Goldberg, D. (1991). What every computer scientist should know about floating-point arithmetic. ACM Computing Surveys 23: 5-48."
 ---
 
 ## What it is
@@ -58,7 +58,7 @@ Eight lanes of 400 million reads give 3.2 billion reads, already more than a `st
 To protect a signed calculation, test *before* the operation whether the result would fit, as the last lines of the program do: `total > max - more` is safe to evaluate, whereas `total + more > max` would already overflow. Better still, choose a type with ample room. When debugging, compile with `-fsanitize=undefined`, which reports signed overflow at run time (see <Concept id="debugging" />).
 
 <Callout kind="manual" title="Overflow and long double">
-The manual describes signed overflow as dependent on compiler and machine. In standard C++ it is undefined behaviour, and since C++20 signed integers are required to use two's-complement representation without that changing. The manual's figure of 10 bytes for `long double` is also not what `sizeof` reports: with GCC and Clang on x86-64 it is 16 bytes (an 80-bit extended format, padded), with Microsoft's compiler 8 bytes, the same as `double`.
+Signed overflow is sometimes described as dependent on the compiler and machine. In standard C++ it is undefined behaviour, and since C++20 signed integers are required to use two's-complement representation without that changing. The size of `long double` is not a fixed 10 bytes either: with GCC and Clang on x86-64 `sizeof` reports 16 bytes (an 80-bit extended format, padded), and with Microsoft's compiler 8 bytes, the same as `double`.
 </Callout>
 
 ### Floating-point precision
@@ -83,7 +83,7 @@ The tolerances depend on the problem. The relative part handles large values; th
 **Underflow.** A result closer to zero than the smallest normal `double`, about 2.2 × 10⁻³⁰⁸, first becomes *subnormal*, with fewer significant digits, and below about 4.9 × 10⁻³²⁴ it becomes exactly 0. The likelihood of 400 independent observations, each with probability 0.01, is 10⁻⁸⁰⁰: far below anything a `double` can hold. Multiplying the probabilities one by one gives exactly 0 after 162 observations, and every comparison between models based on that number is then meaningless. The logarithm of the likelihood, a sum of logarithms, is about −1842 and is no problem at all.
 
 <Callout kind="manual" title="Underflow and absorption">
-The manual calls the lost increment in its float example an "underflow". The usual term is absorption or loss of significance: the result is large, but the change was too small to register. Underflow, in the IEEE sense used here, means a result too close to zero to be represented normally.
+A lost increment, as in the `float` example above, is sometimes called an "underflow". The usual term is absorption or loss of significance: the result is large, but the change was too small to register. Underflow, in the IEEE sense used here, means a result too close to zero to be represented normally.
 </Callout>
 
 Floating-point numbers can also *overflow*: `std::exp(1000.0)` gives infinity rather than undefined behaviour, and infinity then spreads through later calculations. And subtracting two nearly equal numbers leaves few correct digits (*cancellation*); `std::log1p(x)` and `std::expm1(x)` compute log(1 + x) and eˣ − 1 accurately for small x.

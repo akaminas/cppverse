@@ -16,11 +16,11 @@ references:
 
 ## What it is
 
-So far every program has run straight down from the first statement of `main` to the last. Models are not like that. A seed germinates *if* the soil is warm enough; a population is declared extinct *if* fewer than one individual remains; a larva pupates *once* it has accumulated enough warmth. The `if` statement lets a program take such decisions: it runs a statement only when a condition is true, and with `else` it can run a different statement when the condition is false.
+So far every program has run straight down from the first statement of `main` to the last. Models need more than that. A seed germinates *if* the soil is warm enough, a population is declared extinct *if* fewer than one individual remains, and a larva pupates *once* it has accumulated enough warmth. The `if` statement lets a program take such decisions. It runs a statement only when a condition is true, and with `else` it can run a different statement when the condition is false.
 
 ## Why it matters
 
-Decisions and repetition are the two ingredients that turn a list of calculations into an algorithm. With `if` and the loops of the next lessons you can, in principle, express any computation. In a model, conditionals encode the rules that switch behaviour on and off: thresholds, stage transitions, boundary conditions and checks that the state is still valid.
+Decisions and repetition turn a list of calculations into an algorithm. With `if` and the loops of the next lessons you can, in principle, express any computation. In a model, conditionals encode the rules that switch behaviour on and off, such as thresholds, stage transitions, boundary conditions and checks that the state is still valid.
 
 ## How it works in C++
 
@@ -108,7 +108,7 @@ The compiler does not care how you indent, but readers do. Indent each branch on
 </Callout>
 
 <Callout kind="modern" title="if with an initialiser (C++17)">
-Since C++17 an `if` may declare a variable just for itself: `if (const double next = lambda * N; next < 1.0) { … }`. The variable `next` is visible in the condition and in both branches, and nowhere else. It is handy for keeping a temporary result out of the surrounding scope.
+Since C++17 an `if` may declare a variable just for itself: `if (const double next = lambda * N; next < 1.0) { … }`. The variable `next` is visible in the condition and in both branches, and nowhere else. It keeps a temporary result out of the surrounding scope.
 </Callout>
 
 ## Explore it
@@ -187,24 +187,24 @@ else
 
 ## In biological modelling
 
-Conditionals are where a model's rules live. Some common patterns:
+Conditionals hold a model's rules. Some common patterns:
 
-- **Extinction and quasi-extinction.** A deterministic model can produce 0.3 individuals. Many models treat a population below one individual (or below a small quasi-extinction threshold) as extinct: `if (N < 1.0) { N = 0.0; }`.
-- **Thresholds and switches.** Germination when soil temperature exceeds a minimum, migration when day length passes a critical value, a harvest only when the stock is above a reference level.
-- **Stage transitions.** An individual moves from egg to larva to pupa once its accumulated degree-days pass each threshold, an else-if chain like the one above.
-- **Validity checks.** Before running a simulation, check that the parameters make sense, for example that a survival probability lies between 0 and 1, and stop with a message if not.
-- **Events in stochastic models.** In a stochastic simulation the program first draws which event happens and then applies its effect with a conditional. The <Concept id="gillespie" /> lesson does exactly that.
+- Extinction and quasi-extinction. A deterministic model can produce 0.3 individuals. Many models treat a population below one individual (or below a small quasi-extinction threshold) as extinct: `if (N < 1.0) { N = 0.0; }`.
+- Thresholds and switches. Germination when soil temperature exceeds a minimum, migration when day length passes a critical value, a harvest only when the stock is above a reference level.
+- Stage transitions. An individual moves from egg to larva to pupa once its accumulated degree-days pass each threshold, an else-if chain like the one above.
+- Validity checks. Before running a simulation, check that the parameters make sense, for example that a survival probability lies between 0 and 1, and stop with a message if not.
+- Events in stochastic models. In a stochastic simulation the program first draws which event happens and then applies its effect with a conditional. The <Concept id="gillespie" /> lesson does this.
 
 Keep the conditions close to the language of the model description. If the paper says "individuals mature at 250 degree-days", the code should say `degree_days >= 250.0`, with the 250 stored in a named constant that the reader can check.
 
 ## Common mistakes
 
-- **A semicolon too many.** `if (condition);` controls an empty statement; the block that follows always runs. See the second check above.
-- **Missing braces.** Two statements indented under an `if` without braces: only the first is conditional.
-- **The dangling else.** An `else` pairs with the nearest unmatched `if`, not with the one its indentation suggests. Use braces whenever ifs are nested.
-- **Chains in the wrong order.** In an else-if chain only the first true condition counts. Order threshold tests so that the most demanding comes first, or reverse the comparisons.
-- **`=` instead of `==`.** `if (count = 0)` assigns zero and then tests it, so it is always false. The compiler warns about it; <Concept id="boolean-logic" /> explains why it compiles at all.
-- **Comparing computed doubles for exact equality.** `if (N == 0.3)` is rarely what you want after arithmetic; compare with a tolerance (see <Concept id="boolean-logic" />).
+- A semicolon too many. `if (condition);` controls an empty statement, and the block that follows always runs. See the second check above.
+- Missing braces. Two statements indented under an `if` without braces: only the first is conditional.
+- The dangling else. An `else` pairs with the nearest unmatched `if`, not with the one its indentation suggests. Use braces whenever ifs are nested.
+- Chains in the wrong order. In an else-if chain only the first true condition counts. Order threshold tests so that the most demanding comes first, or reverse the comparisons.
+- `=` instead of `==`. `if (count = 0)` assigns zero and then tests it, so it is always false. The compiler warns about it; <Concept id="boolean-logic" /> explains why it compiles at all.
+- Comparing computed doubles for exact equality. `if (N == 0.3)` is rarely what you want after arithmetic; compare with a tolerance (see <Concept id="boolean-logic" />).
 
 ## Practice
 

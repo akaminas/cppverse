@@ -1,0 +1,39 @@
+/* Level colours. Beginner is green, intermediate amber, seasoned violet. The colour is
+   always paired with the level's name (and a dot), so it never carries the meaning alone.
+   Shared by the standard pages and the atlas; both set data-theme on <html>. */
+
+:root {
+  --lvl-beginner: #17613a;
+  --lvl-beginner-bg: #dff3e6;
+  --lvl-beginner-dot: #2e9e5b;
+  --lvl-intermediate: #7d4300;
+  --lvl-intermediate-bg: #fdebcc;
+  --lvl-intermediate-dot: #d9820b;
+  --lvl-seasoned: #5532a0;
+  --lvl-seasoned-bg: #ece4fb;
+  --lvl-seasoned-dot: #7c55cf;
+}
+:root[data-theme='dark'] {
+  --lvl-beginner: #8fe0ad;
+  --lvl-beginner-bg: #1b3a29;
+  --lvl-beginner-dot: #4cc27f;
+  --lvl-intermediate: #f4c27a;
+  --lvl-intermediate-bg: #433019;
+  --lvl-intermediate-dot: #f0a23c;
+  --lvl-seasoned: #cdb5f6;
+  --lvl-seasoned-bg: #33284d;
+  --lvl-seasoned-dot: #a07df0;
+}
+
+/* A level badge: <span class="lvl lvl-beginner">Beginner</span>. */
+.lvl {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; line-height: 1.5;
+  border-radius: 3px; padding: 1px 8px; white-space: nowrap; font-weight: 600;
+  color: var(--lvl-fg); background: var(--lvl-bg);
+}
+.lvl::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--lvl-dot); flex: none; }
+.lvl-beginner { --lvl-fg: var(--lvl-beginner); --lvl-bg: var(--lvl-beginner-bg); --lvl-dot: var(--lvl-beginner-dot); }
+.lvl-intermediate { --lvl-fg: var(--lvl-intermediate); --lvl-bg: var(--lvl-intermediate-bg); --lvl-dot: var(--lvl-intermediate-dot); }
+.lvl-seasoned { --lvl-fg: var(--lvl-seasoned); --lvl-bg: var(--lvl-seasoned-bg); --lvl-dot: var(--lvl-seasoned-dot); }
+/* The same colours as a plain word, for running text and facts lines. */
+.lvl-text { font-weight: 700; color: var(--lvl-fg); }

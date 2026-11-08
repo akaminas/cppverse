@@ -1,6 +1,6 @@
 import type { MathCode } from './types';
 
-// Synchronised view of the Beverton–Holt recurrence and its implementation
+// Synchronised view of the Beverton-Holt recurrence and its implementation
 // in cpp-examples/algorithms/beverton_holt.cpp (line numbers include the
 // header comment).
 export const mathcode: Record<string, MathCode> = {

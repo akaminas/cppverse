@@ -1,5 +1,5 @@
 // Title: A factorial simulation experiment with recorded seeds
-// Standard: C++17
+// Standard: C++23
 // Runs the linear birth–death process at every combination of two factors
 // (death rate d and initial size N0), with a distinct, recorded seed for each
 // replicate, and writes one tidy CSV: metadata lines starting with '#', then

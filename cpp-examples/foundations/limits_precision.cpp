@@ -1,5 +1,5 @@
 // Title: Limited precision of floating-point numbers
-// Standard: C++17
+// Standard: C++23
 // Three consequences of finite precision: a small increment absorbed by a
 // large total, a decimal fraction that is not stored exactly, and a product
 // of many probabilities that underflows to zero while its logarithm does not.

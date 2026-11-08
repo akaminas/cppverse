@@ -1,5 +1,5 @@
 // Title: A default argument for an output option
-// Standard: C++17
+// Standard: C++23
 // The default precision is written once, in the declaration. A call may
 // omit that argument or supply its own value.
 

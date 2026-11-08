@@ -17,13 +17,13 @@ references:
 
 ## What it is
 
-When both operands of `/` are integers, C++ performs **integer division**: the result is an integer and any fraction is discarded. `7 / 2` is 3, and `1 / 2` is 0. The companion operator `%` gives the **remainder** of that division: `7 % 2` is 1.
+When both operands of `/` are integers, C++ performs *integer division*: the result is an integer and any fraction is discarded. `7 / 2` is 3, and `1 / 2` is 0. The companion operator `%` gives the *remainder* of that division: `7 % 2` is 1.
 
-When the operands have different types, as in `7 / 2.0`, C++ first **converts** one of them so that both have the same type, and then performs the operation in that type. Here the `int` 7 becomes the `double` 7.0, and the result is 3.5.
+When the operands have different types, as in `7 / 2.0`, C++ first *converts* one of them so that both have the same type, and then performs the operation in that type. Here the `int` 7 becomes the `double` 7.0, and the result is 3.5.
 
 ## Why it matters
 
-In biological models, counts are integers but most derived quantities are not. An allele frequency is a count of alleles divided by a count of alleles; a germination rate is germinated seeds divided by seeds sown; a mean clutch size is eggs divided by nests. Written naively with integer variables, every one of these divisions discards its fraction and usually returns 0. The program compiles, runs and prints a plausible-looking number. This is the single most common transcription error in beginners' models.
+In biological models, counts are integers but most derived quantities are not. An allele frequency is a count of alleles divided by a count of alleles; a germination rate is germinated seeds divided by seeds sown; a mean clutch size is eggs divided by nests. Written naively with integer variables, every one of these divisions discards its fraction and usually returns 0. The program compiles, runs and prints a plausible-looking number. This is a very common error in beginners' models.
 
 Integer division and the remainder are also useful. They convert a running count of days into weeks and days of the week, and keep an index on a ring of habitat patches within range.
 
@@ -46,7 +46,7 @@ Integer division or remainder by zero is undefined behaviour; in practice the pr
 </Callout>
 
 <Callout kind="manual" title="Negative operands">
-The manual advises against integer division with negative numbers because compilers used to disagree about the result. Since C++11 the standard fixes it: the quotient is rounded toward zero and the remainder takes the sign of the dividend, on every compiler.
+Older advice is to avoid integer division with negative numbers, because compilers used to disagree about the result. Since C++11 the standard fixes it: the quotient is rounded toward zero and the remainder takes the sign of the dividend, on every compiler.
 </Callout>
 
 <Anchor id="conversion" />
@@ -65,15 +65,15 @@ The arithmetic operators work on two operands of the same type. When the types d
 
 The rules for each operation, in order:
 
-1. **Small integer types are promoted.** `bool`, `char` and `short` are converted to `int` before any arithmetic. `'A' + 1` is the `int` 66, and `true + true` is 2.
-2. **If either operand is floating-point, the other is converted to that type**, and if both are floating-point, to the wider of the two (`long double`, then `double`, then `float`). `int` + `double` is a `double`.
-3. **If both are integers, the narrower is converted to the wider** (`int` to `long long`, for example). If one is signed and the other unsigned of the same size, the signed one becomes unsigned, with surprising results: `-1 < 1u` is `false`, because −1 becomes a huge unsigned number. `-Wextra` warns about such comparisons.
+1. Small integer types are promoted. `bool`, `char` and `short` are converted to `int` before any arithmetic. `'A' + 1` is the `int` 66, and `true + true` is 2.
+2. If either operand is floating-point, the other is converted to that type, and if both are floating-point, to the wider of the two (`long double`, then `double`, then `float`). `int` + `double` is a `double`.
+3. If both are integers, the narrower is converted to the wider (`int` to `long long`, for example). If one is signed and the other unsigned of the same size, the signed one becomes unsigned, with surprising results: `-1 < 1u` is `false`, because −1 becomes a huge unsigned number. `-Wextra` warns about such comparisons.
 
 Converting an integer to a floating-point type keeps its value (exactly, for any `int`). Converting the other way does not.
 
 ### Conversion on initialisation and assignment
 
-When a value is stored in a variable, it is converted to the variable's type. From a floating-point type to an integer type, the fraction is discarded, again **toward zero**:
+When a value is stored in a variable, it is converted to the variable's type. From a floating-point type to an integer type, the fraction is discarded, again toward zero:
 
 ```cpp
 int a = 2.9;     // 2
@@ -90,9 +90,9 @@ This is truncation, not rounding. To round to the nearest integer, use `std::lro
 
 There are three common ways to avoid integer division, in order of preference:
 
-1. **Give a continuous quantity a floating-point type from the start.** If a variable holds a mass, a rate or a mean, it should be a `double`, and no conversion is needed later.
-2. **Convert explicitly with `static_cast`** when integers really are the right type for the counts, as here. The cast is visible and says exactly what happens.
-3. **Make the first operation floating-point**, as in `1.0 * allelesA / allelesTotal`. This works because `*` and `/` are evaluated left to right, but it is fragile: `allelesA / allelesTotal * 1.0` is 0 again.
+1. Give a continuous quantity a floating-point type from the start. If a variable holds a mass, a rate or a mean, it should be a `double`, and no conversion is needed later.
+2. Convert explicitly with `static_cast` when integers really are the right type for the counts, as here. The cast is visible and says exactly what happens.
+3. Make the first operation floating-point, as in `1.0 * allelesA / allelesTotal`. This works because `*` and `/` are evaluated left to right, but it is fragile: `allelesA / allelesTotal * 1.0` is 0 again.
 
 The position of the cast matters. `static_cast<double>(allelesA / allelesTotal)` converts the result of the integer division, which is already 0, into 0.0.
 
@@ -170,13 +170,13 @@ const int steps = static_cast<int>(tEnd / dt);   // 2, not 3
 
 ## Common mistakes
 
-- **`int / int` for a proportion.** Convert one operand first.
-- **Casting the result** instead of an operand: `static_cast<double>(a / b)`.
-- **Relying on order of operations** to make a division floating-point. It works until someone reorders the expression.
-- **Negative remainders as indices.** Add the cycle length before taking `%`.
-- **Truncating when you mean to round.** Converting to `int` drops the fraction toward zero; use `std::lround`.
-- **Comparing signed with unsigned integers.** Heed the warning; the comparison may convert −1 into a very large number.
-- **Dividing by a count that can be zero.**
+- `int / int` for a proportion: convert one operand first.
+- Casting the result instead of an operand: `static_cast<double>(a / b)`.
+- Relying on order of operations to make a division floating-point: it works until someone reorders the expression.
+- Negative remainders as indices: add the cycle length before taking `%`.
+- Truncating when you mean to round: converting to `int` drops the fraction toward zero; use `std::lround`.
+- Comparing signed with unsigned integers: heed the warning; the comparison may convert −1 into a very large number.
+- Dividing by a count that can be zero.
 
 ## Practice
 

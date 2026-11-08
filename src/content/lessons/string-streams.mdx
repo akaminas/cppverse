@@ -49,10 +49,10 @@ std::string a = "bh_R0-" + std::to_string(2.2) + ".csv";   // "bh_R0-2.200000.cs
 std::string b = "rep" + std::to_string(7);                  // "rep7": no padding
 ```
 
-`std::to_string` is fine for integers but always prints six decimals for a `double` and offers no control over width or padding.
+`std::to_string` is fine for integers, but for a `double` it always prints six decimals and gives no control over width or padding.
 
 <Callout kind="modern" title="std::format">
-With a C++20 compiler <Std v="c++20" />, `std::format` from `<format>` builds the same name in one expression: `std::format("bh_R0-{:.1f}_rep{:02}_seed{}.csv", R0, replicate, seed)`. See <Concept id="output-formatting" /> for the format mini-language.
+`std::format` from `<format>` builds the same name in one expression: `std::format("bh_R0-{:.1f}_rep{:02}_seed{}.csv", R0, replicate, seed)`. See <Concept id="output-formatting" /> for the format mini-language.
 </Callout>
 
 ### Reading from a string

@@ -10,11 +10,10 @@ objectives:
   - Explain why the waiting time to the next event is exponential with the total propensity as its rate
   - Implement the direct method, stopping correctly at the end time and in an absorbing state
   - Record a continuous-time stochastic path on a regular output grid
-standard: c++17
 lab: gillespie
 references:
-  - "Gillespie DT (1976) A general method for numerically simulating the stochastic time evolution of coupled chemical reactions. Journal of Computational Physics 22: 403–434"
-  - "Gillespie DT (1977) Exact stochastic simulation of coupled chemical reactions. Journal of Physical Chemistry 81: 2340–2361"
+  - "Gillespie DT (1976) A general method for numerically simulating the stochastic time evolution of coupled chemical reactions. Journal of Computational Physics 22: 403-434"
+  - "Gillespie DT (1977) Exact stochastic simulation of coupled chemical reactions. Journal of Physical Chemistry 81: 2340-2361"
   - "Allen LJS (2010) An Introduction to Stochastic Processes with Applications to Biology, 2nd ed. CRC Press"
 ---
 
@@ -26,10 +25,10 @@ Many biological processes are made of discrete events that happen at random mome
 
 ## Why it matters
 
-- **Individuals are whole.** The state is a set of counts, so populations can reach exactly zero and stay there. Extinction, fade-out of an epidemic and loss of a gene product are possible outcomes, not artefacts of rounding.
-- **Time is continuous.** There is no time step to choose, and no question of what happens when two events fall in the same step.
-- **It is exact.** Each simulated path is a draw from precisely the probability distribution that the model defines. Time-stepped approximations are only correct in the limit of a vanishing step.
-- **It connects to deterministic models.** The rates of a Gillespie model are the terms of an ODE model. For large populations the stochastic paths approach the ODE solution, which <Concept id="replicates" /> examines.
+- Individuals are whole. The state is a set of counts, so populations can reach exactly zero and stay there. Extinction, fade-out of an epidemic and loss of a gene product are possible outcomes, not artefacts of rounding.
+- Time is continuous. There is no time step to choose, and no question of what happens when two events fall in the same step.
+- It is exact. Each simulated path is a draw from precisely the probability distribution that the model defines. Time-stepped approximations are only correct in the limit of a vanishing step.
+- It connects to deterministic models. The rates of a Gillespie model are the terms of an ODE model. For large populations the stochastic paths approach the ODE solution, which <Concept id="replicates" /> examines.
 
 ## How it works in C++
 
@@ -121,8 +120,8 @@ Only steps 1 and 6 depend on the model: the propensities and the state changes. 
 
 **In an absorbing state.** When $N = 0$ in the birth-death process, or $I = 0$ in the epidemic, every propensity is zero and nothing can ever happen again. That is extinction, or the end of the epidemic: a normal, often the most important, outcome. Stop the run and record it. Test $a_0$ *before* drawing a waiting time, because `std::exponential_distribution` requires a positive rate; a rate of zero violates its precondition. A zero total propensity is an error only in a model where it cannot legitimately occur, and there throwing an exception (<Concept id="exceptions" />) is the right response.
 
-<Callout kind="manual" title="Two differences from the course manual">
-The manual's Gillespie program loops `while (t < tEnd)` and advances the time before applying each event, so the last event of a run, which falls after `tEnd`, is still applied. It also throws an exception when the total rate is zero. For the models here that state is extinction or the end of an epidemic, a result to be recorded rather than an error, so this site stops the run instead.
+<Callout kind="manual" title="Do not apply the last event, and do not throw at zero rate">
+A simple version of the program loops `while (t < tEnd)` and advances the time before applying each event. The last event of a run, which falls after `tEnd`, is then still applied. Such a version may also throw an exception when the total rate is zero. For the models here that state is extinction or the end of an epidemic, a result to be recorded rather than an error. This site therefore checks the end time before applying an event and stops the run quietly when the total rate is zero.
 </Callout>
 
 ### Why no time step is needed
@@ -277,8 +276,8 @@ The site's own laboratory uses exactly this structure (`src/lib/simulations/gill
 
 ### Assumptions and costs
 
-- **Well mixed and memoryless.** Every individual of a type is equivalent, and the rates depend only on the current counts. As a consequence, durations such as the infectious period are exponentially distributed. Real infectious periods are usually less variable; adding stages ($I_1 \to I_2 \to R$) is a standard remedy.
-- **Run time grows with the number of events.** The expected number of events per unit time is $a_0$, which grows with population size. Millions of events are fast, but a population of $10^7$ simulated for years may not be. Approximate methods such as tau-leaping trade exactness for speed, and the next-reaction method of Gibson and Bruck is faster when there are many event types.
+- Well mixed and memoryless. Every individual of a type is equivalent, and the rates depend only on the current counts. As a consequence, durations such as the infectious period are exponentially distributed. Real infectious periods are usually less variable; adding stages ($I_1 \to I_2 \to R$) is a standard remedy.
+- Run time grows with the number of events. The expected number of events per unit time is $a_0$, which grows with population size. Millions of events are fast, but a population of $10^7$ simulated for years may not be. Approximate methods such as tau-leaping trade exactness for speed, and the next-reaction method of Gibson and Bruck is faster when there are many event types.
 
 ## Common mistakes
 

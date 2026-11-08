@@ -1,5 +1,5 @@
 // Title: Integer division and the remainder operator
-// Standard: C++17
+// Standard: C++23
 // With two int operands, / discards the fraction and % gives the remainder.
 // Together they turn a running day count into a week and a day of the week,
 // and keep an index on a ring of habitat patches within range.

@@ -1,5 +1,5 @@
 // Title: Geometric growth, one generation at a time by hand
-// Standard: C++17
+// Standard: C++23
 // Without a loop, every generation needs its own copy of the update rule.
 
 #include <iostream>

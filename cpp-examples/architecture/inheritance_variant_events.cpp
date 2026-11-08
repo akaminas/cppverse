@@ -1,5 +1,5 @@
 // Title: The same seasonal events as a std::variant
-// Standard: C++17
+// Standard: C++23
 // Each event is a plain struct with apply() and name(); none derives from a
 // base class. std::visit calls the right apply() for whichever alternative the
 // variant holds. The output is identical to the virtual-function version.

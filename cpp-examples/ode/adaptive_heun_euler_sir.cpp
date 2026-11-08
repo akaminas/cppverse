@@ -1,5 +1,5 @@
 // Title: Adaptive Heun–Euler integration of the SIR model
-// Standard: C++17
+// Standard: C++23
 // Euler and Heun share their first slope; their difference estimates the
 // local error. Each attempted step is accepted or rejected against a mixed
 // tolerance, and the step size is adjusted after every attempt.

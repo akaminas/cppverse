@@ -47,7 +47,7 @@ export const labDocs: Record<LabId, LabDoc> = {
       { symbol: 'R_0', meaning: 'Beverton-Holt growth factor at low density', unit: 'per generation', value: '2.2 (0.5-6)' },
       { symbol: 'M', meaning: 'density at which the growth factor is halved', unit: 'individuals', value: '40' },
       { symbol: 'r', meaning: 'logistic-map growth factor', unit: 'per generation', value: '3.2 (0.5-4)' },
-      { symbol: 'r, K, a, c', meaning: 'host growth rate, host carrying capacity, parasitoid search efficiency, parasitoids per host attacked', unit: '—, hosts, per parasitoid, —', value: '1.2, 80, 0.06, 0.8' },
+      { symbol: 'r, K, a, c', meaning: 'host growth rate, host carrying capacity, parasitoid search efficiency, parasitoids per host attacked', unit: 'none, hosts, per parasitoid, none', value: '1.2, 80, 0.06, 0.8' },
     ],
     initial: 'Beverton-Holt: N₀ = 5. Logistic map: x₀ = 0.2. Host-parasitoid: H₀ = 20, P₀ = 2.',
     assumptions: [
@@ -184,7 +184,7 @@ export const labDocs: Record<LabId, LabDoc> = {
       { symbol: 'b, d', meaning: 'per-capita birth and death rates', unit: 'per unit time', value: '1, 0.8' },
       { symbol: 'β, γ', meaning: 'transmission and recovery rates', unit: 'per day', value: '0.5, 0.2' },
       { symbol: 'N', meaning: 'population size (SIR)', unit: 'individuals', value: '200' },
-      { symbol: 'seed', meaning: 'seed of the pseudo-random generator', unit: '—', value: '2024' },
+      { symbol: 'seed', meaning: 'seed of the pseudo-random generator', unit: 'none', value: '2024' },
     ],
     initial: 'Birth-death: N₀ = 5 individuals. SIR: I₀ = 3 infectious, the rest susceptible.',
     assumptions: [

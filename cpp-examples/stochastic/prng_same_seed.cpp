@@ -1,5 +1,5 @@
 // Title: The same seed gives the same sequence
-// Standard: C++17
+// Standard: C++23
 // A pseudo-random generator produces a fixed, deterministic sequence of
 // numbers. Engines given the same seed produce identical numbers; another
 // seed selects another sequence. Raw std::mt19937_64 output is fully

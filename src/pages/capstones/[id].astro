@@ -23,7 +23,7 @@ const all = topologicalOrder(g, [...dependencyClosure(g, [cap.id])]).map((id) =>
 <BaseLayout title={cap.title} section="capstones" description={cap.question}>
   <article class={`wrap-narrow capstone fam-${domain.family}`}>
     <header class="page-head">
-      <p class="eyebrow"><a href={url('/capstones/')}>Capstones</a> · {node.label} · <a href={modelUrl(node.domain)}>{domain.title}</a> · {cap.level}</p>
+      <p class="eyebrow"><a href={url('/capstones/')}>Capstones</a> · {node.label} · <a href={modelUrl(node.domain)}>{domain.title}</a> · <span class={`lvl-text lvl-${cap.level}`}>{cap.level}</span></p>
       <h1>{cap.title}</h1>
       <p class="lead">{cap.question}</p>
     </header>
@@ -57,7 +57,7 @@ const all = topologicalOrder(g, [...dependencyClosure(g, [cap.id])]).map((id) =>
       <ol class="cap-all">{all.map((c) => <li><a href={hrefFor(c)}>{c.title}</a></li>)}</ol>
     </details>
     <p class="muted" style="margin-top: 40px">
-      This project is original to C++ Atlas. It is not an assignment or project of the Groningen course, and no solution is published.
+      This project is original to C++ Atlas, and no solution is published.
     </p>
   </article>
 </BaseLayout>

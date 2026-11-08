@@ -56,7 +56,7 @@ export default function ProgressDashboard({ lessons, base }: { lessons: LessonIn
         <h2>Your profile</h2>
         {state.profile ? (
           <p>
-            Level: <strong>{state.profile.level}</strong> · C++ familiarity {['none', 'basics', 'comfortable'][state.profile.cpp]} · modelling familiarity{' '}
+            Level: <strong className={`lvl-text lvl-${state.profile.level}`}>{state.profile.level}</strong> · C++ familiarity {['none', 'basics', 'comfortable'][state.profile.cpp]} · modelling familiarity{' '}
             {['none', 'basics', 'comfortable'][state.profile.modelling]}
             {state.pathway && goalById[state.pathway] && (
               <>

@@ -1,6 +1,6 @@
 ---
 title: Modern C++ for modelling
-summary: Selected C++20 and C++23 features that make models safer and clearer, what each needs from the compiler, and why C++17 code remains perfectly good.
+summary: The C++20 and C++23 features that the examples on this site take as their baseline, such as span, ranges, format, concepts and expected, what each needs from the compiler, and what C++26 adds.
 level: seasoned
 module: null
 manual: []
@@ -12,7 +12,6 @@ objectives:
   - Constrain templates with concepts and name parameters with designated initialisers
   - Recognise std::expected and compile-time computation with constexpr
   - Check which compiler versions support each feature before relying on it
-standard: c++20
 references:
   - "cppreference.com: C++ compiler support"
   - "cppreference.com: std::span; Ranges library; std::format; Concepts library; std::expected"
@@ -20,15 +19,15 @@ references:
 
 ## What it is
 
-C++ is revised every three years. C++20 was the largest revision since C++11, and C++23 added a further set of conveniences. This lesson selects the features that most improve model code, shows each one briefly, and says which compilers support it. Everything here is optional: the C++17 code used throughout this atlas remains correct, idiomatic and fast, and nothing in the later lessons requires these features.
+C++ is revised every three years. C++20 was the largest revision since C++11, and C++23 added a further set of conveniences. The examples in this atlas are written for C++23 and compiled with `-std=c++23`, so the C++20 and C++23 features described here are the baseline, not extras. This lesson covers the ones that most improve model code, shows each briefly, and says which compilers support it. The last section lists what C++26 adds.
 
-Features that need a newer standard carry a badge such as <Std v="c++20" /> or <Std v="c++23" />. To use them, compile with `-std=c++20` or `-std=c++23` (GCC, Clang) or `/std:c++20` or `/std:c++latest` (Visual Studio).
+To use these features, compile with `-std=c++23` (GCC, Clang) or `/std:c++latest` (Visual Studio). The C++20 features also work with `-std=c++20`. Two related features still depend on build-tool support and are not used on this site: C++20 *modules* and, from C++23, `import std;`. Whether they work depends on your compiler, your build system and its version. Features from C++26 carry the badge <Std v="c++26" /> and need a very recent compiler.
 
 ## Why it matters
 
 Each feature below removes a class of mistakes or a piece of boilerplate that models are prone to: passing the wrong length with a pointer, mismatched format codes in output, cryptic template errors, positional parameter lists in which two doubles are swapped. None of them changes what a model computes.
 
-The cost is portability. A university cluster may provide a compiler several years old, and a collaborator may use a different platform. Before adopting a feature, check that every place where the model must run supports it, or keep a C++17 fallback.
+The cost is portability. A university cluster may provide a compiler several years old, and a collaborator may use a different platform. Before relying on a feature, check that every place where the model must run supports it.
 
 ## How it works in C++
 
@@ -45,9 +44,9 @@ The cost is portability. A university cluster may provide a compiler several yea
 | `std::expected` | C++23 | `<expected>` | 12 | 16 | 2022 (17.3) |
 | `std::print` | C++23 | `<print>` | 14 | 18 | 2022 (17.7) |
 
-The versions are the first releases with usable support and are a guide, not a guarantee; cppreference's compiler support page has the details. Two subtleties. On Linux, Clang normally uses GCC's standard library (libstdc++), so for *library* features the GCC column is the one that counts. And some combinations lag behind both columns: Clang 18 with libstdc++, for example, does not provide `std::expected`.
+The versions are the first releases with usable support and are a guide, not a guarantee; cppreference's compiler support page has the details. Two subtleties. On Linux, Clang normally uses GCC's standard library (libstdc++), so for *library* features the GCC column is the one that counts. And some combinations lag behind both columns, for example Clang paired with an old libstdc++. The site's own examples are compiled with GCC 14 and Clang 18, and the features in the table work on both. `std::views::enumerate` (below) is newer: it needs the standard library of GCC 15 or later.
 
-### `std::span`: a view of contiguous values <Std v="c++20" />
+### `std::span`: a view of contiguous values
 
 A function that reads a sequence of doubles usually takes `const std::vector<double>&`. That works only for vectors, and only for whole vectors. A `std::span<const double>` accepts any contiguous sequence (a vector, a `std::array`, part of either) without copying:
 
@@ -61,7 +60,7 @@ mean(monthlyRainfall);                 // a std::array<double, 12>
 
 A span is two numbers, a pointer and a length, so it is passed by value. It owns nothing: like a reference, it dangles if the underlying vector is destroyed or reallocated while the span is in use. Use spans as function parameters, not as long-lived members.
 
-### Ranges and views <Std v="c++20" />
+### Ranges and views
 
 The `std::ranges` versions of the standard algorithms take a whole container instead of a pair of iterators, and they accept a *projection*, a member or function to compare by:
 
@@ -80,9 +79,9 @@ auto growth = std::views::iota(std::size_t{1}, N.size())
 for (const double lambda : growth) std::cout << lambda << '\n';
 ```
 
-Views are useful but have sharp edges: they refer to the data they view, so they must not outlive it; some views, such as `filter`, cannot be iterated through a `const` reference; and compiler errors in long pipelines are hard to read. For a simple loop, a plain range-based `for` (see <Concept id="auto-range-for" />) is often clearer.
+C++23 adds more views, among them `std::views::zip` (walk several ranges together), `std::views::chunk` (blocks of fixed length) and `std::views::slide` (overlapping windows of fixed length, such as consecutive pairs of a trajectory), and `std::ranges::to`, which collects a view into a container. Views are useful but have sharp edges: they refer to the data they view, so they must not outlive it; some views, such as `filter`, cannot be iterated through a `const` reference; and compiler errors in long pipelines are hard to read. For a simple loop, a plain range-based `for` (see <Concept id="auto-range-for" />) is often clearer.
 
-### `std::format` and `std::print` <Std v="c++20" />
+### `std::format` and `std::print`
 
 `std::format` builds a string from a *format string* with replacement fields `{}` and a list of arguments, much like Python's f-strings:
 
@@ -90,7 +89,7 @@ Views are useful but have sharp edges: they refer to the data they view, so they
 std::cout << std::format("{:>4} {:>8.2f}\n", year, N);
 ```
 
-The format string is checked at compile time, the result is independent of any stream state (no forgotten `std::fixed` affecting later lines), and the rounding is exact and identical on every platform, which makes output files reproducible (see <Concept id="output-formatting" />). C++23 adds `std::print` <Std v="c++23" />, which formats and writes in one step:
+The format string is checked at compile time, the result is independent of any stream state (no forgotten `std::fixed` affecting later lines), and the rounding is exact and identical on every platform, which makes output files reproducible (see <Concept id="output-formatting" />). C++23 adds `std::print`, which formats and writes in one step:
 
 ```cpp
 #include <print>                                   // C++23
@@ -98,13 +97,13 @@ std::print("{:>4} {:>8.2f}\n", year, N);           // to standard output
 std::println(file, "{},{:.6g}", t, N);             // to a FILE*, with a newline
 ```
 
-If your compiler lacks `<format>`, the open-source `{fmt}` library offers the same interface for C++11 and later; `std::format` was standardised from it.
+On a compiler without `<format>`, the open-source `{fmt}` library offers the same interface for C++11 and later; `std::format` was standardised from it.
 
-### `std::numbers` <Std v="c++20" />
+### `std::numbers`
 
 Mathematical constants, correctly rounded, with names: `std::numbers::pi`, `std::numbers::e`, `std::numbers::sqrt2`, `std::numbers::ln2`, and versions for other types such as `std::numbers::pi_v<float>`. They replace hand-typed literals and the non-standard `M_PI`.
 
-### Concepts <Std v="c++20" />
+### Concepts
 
 A concept is a named requirement on a template parameter (see <Concept id="templates" />). Instead of accepting any type and failing deep inside the function body, a constrained template states what it needs:
 
@@ -130,7 +129,7 @@ S eulerStep(const S& s, double h, F rates) { return s + h * rates(s); }
 
 A concept checks *types*, not *values*: it can require that a parameter is a floating-point number, but not that it lies between 0 and 1. Value checks still belong in constructors (see <Concept id="constructors" />).
 
-### Designated initialisers <Std v="c++20" />
+### Designated initialisers
 
 Aggregates, such as parameter structs, can be initialised by naming their members:
 
@@ -140,7 +139,7 @@ const Parameters p{.r = 0.9, .K = 400.0, .N0 = 5.0, .years = 12};
 
 Two doubles can no longer be swapped by accident, and the code says what each number is. The designators must appear in the order in which the members are declared, and members you leave out take their default member initialisers. Unlike C, C++ does not allow reordering, nesting designators or mixing named and positional values.
 
-### `std::expected` <Std v="c++23" />
+### `std::expected`
 
 Some failures are expected and should be handled by the caller rather than thrown as exceptions: a missing value in a parameter file, a line that does not parse. A `std::expected<T, E>` holds either a value of type `T` or an error of type `E`:
 
@@ -162,7 +161,7 @@ if (!r) std::cerr << "error: " << r.error() << '\n';
 else std::cout << "rate " << *r << '\n';
 ```
 
-The error travels with the result, and the caller must unwrap the value before using it, which is the natural moment to check for an error. Support is still uneven (see the table), so check your compilers before adopting it; exceptions remain a perfectly good choice for errors that should stop the run (see <Concept id="exceptions" />).
+The error travels with the result, and the caller must unwrap the value before using it, which is the natural moment to check for an error. The table gives the first compiler versions that provide it. Exceptions remain a good choice for errors that should stop the run (see <Concept id="exceptions" />).
 
 ### Computing at compile time: `constexpr` and `consteval`
 
@@ -173,18 +172,31 @@ constexpr double netReproductiveRate(double fecundity, double survival) { return
 static_assert(netReproductiveRate(2.5, 0.5) > 1.0, "the default parameters must allow growth");
 ```
 
-C++20 widened what such functions may do <Std v="c++20" />: they may use `std::vector` and `std::string` internally, and `consteval` marks a function that must run at compile time. This is useful for lookup tables and fixed derived constants. Do not overdo it: most model parameters come from input files at run time.
+C++20 widened what such functions may do: they may use `std::vector` and `std::string` internally, and `consteval` marks a function that must run at compile time. C++23 adds `if consteval`, which lets one function take a different branch when it is being evaluated at compile time. This is useful for lookup tables and fixed derived constants. Do not overdo it: most model parameters come from input files at run time.
+
+### Matrices and grids: `std::mdspan` and `operator[](i, j)`
+
+C++23 adds `std::mdspan` (header `<mdspan>`), a non-owning view that gives a flat block of memory several dimensions. Like a `std::span`, it owns nothing. It suits projection matrices and spatial grids kept in one `std::vector`:
+
+```cpp
+#include <mdspan>                                 // C++23
+std::vector<double> cells(rows * cols);
+std::mdspan grid(cells.data(), rows, cols);       // a rows-by-cols view of the vector
+grid[i, j] = 0.5;                                 // multidimensional subscript
+```
+
+The multidimensional subscript `m[i, j]` is also new in C++23: a class can define `double& operator[](std::size_t i, std::size_t j)`, so that its own matrix type is indexed the same way. Library support for `<mdspan>` is newer than for the other features in this lesson, so check it before relying on it.
 
 ### Small conveniences worth knowing
 
-- `std::erase_if(v, predicate)` <Std v="c++20" /> removes matching elements from a vector in one call, replacing the erase-remove idiom.
-- `map.contains(key)` <Std v="c++20" /> asks whether a key exists without inserting it, as `operator[]` would.
-- Defaulted comparisons <Std v="c++20" />: `bool operator==(const State&) const = default;` (see <Concept id="operator-overloading" />).
-- `std::views::enumerate` and `std::ranges::to` <Std v="c++23" /> give an index alongside each element, and collect a view into a container.
+- `std::erase_if(v, predicate)` removes matching elements from a vector in one call, replacing the erase-remove idiom.
+- `map.contains(key)` asks whether a key exists without inserting it, as `operator[]` would.
+- Defaulted comparisons: `bool operator==(const State&) const = default;` (see <Concept id="operator-overloading" />).
+- `std::views::enumerate` gives an index alongside each element. It needs a standard library from GCC 15 or later; GCC 14 does not have it.
 
 ## A minimal example
 
-The program uses six C++20 features in a small logistic model: a parameter struct initialised with designators, a concept-constrained update, a span over the last five years, a filtered view, `std::format` for output and `std::numbers::pi` for the area of a circular study plot.
+The program uses six C++20 features, all part of this site's baseline, in a small logistic model: a parameter struct initialised with designators, a concept-constrained update, a span over the last five years, a filtered view, `std::format` for output and `std::numbers::pi` for the area of a circular study plot.
 
 <Example file="architecture/modern_logistic_cpp20.cpp" mark="23,34,41,44-51,53" />
 
@@ -253,13 +265,13 @@ Select each part of a format string to see what it controls.
 
 ## In biological modelling
 
-Adopting newer features is a project decision, not a matter of style. Ask:
+The features in this lesson are the baseline of this site, but your own project may have to build with older compilers. Using them is a project decision, not a matter of style. Ask:
 
 - **Where must the model compile?** Your laptop, the cluster, a collaborator's machine, a continuous-integration service. The oldest compiler among them sets the limit. Record the required standard in the build files and the README (see <Concept id="testing-reproducibility" />).
 - **Does the feature remove a real risk?** Designated initialisers in parameter structs and `std::format` in output code prevent errors that are easy to make and hard to spot. `std::span` makes function interfaces honest. These are the strongest candidates.
 - **Does it make the model easier or harder to read for your collaborators?** A long view pipeline may impress a C++ expert and baffle the ecologist who has to check the model against its description.
 
-A reasonable policy for many projects: write the model in C++17, and use C++20 features where the whole team's compilers support them and the gain is clear.
+A reasonable policy for many projects: write the model in C++23 where the compilers of the whole team support it. If one of them does not, C++20 provides most of the features in this lesson. Only `std::expected`, `std::print`, `std::mdspan` and the C++23 additions to ranges need C++23.
 
 ## Common mistakes
 
@@ -268,8 +280,35 @@ A reasonable policy for many projects: write the model in C++17, and use C++20 f
 - **Iterating a `filter` view through a const reference.** It does not compile, because the view caches its first match. Pass views by value or by forwarding reference.
 - **Expecting concepts to check values.** They constrain types only.
 - **Designated initialisers out of order**, or mixed with positional ones.
-- **Treating `std::print` as available wherever `std::format` is.** It is C++23 and needs newer libraries.
-- **Rewriting working C++17 code for the sake of it.** Modernise where it fixes a problem.
+- **Treating `std::print` as available wherever `std::format` is.** It arrived in C++23, after `std::format`, and needs a newer library; see the table.
+- **Rewriting working older code for the sake of it.** Code written in C++17 or earlier remains correct. Modernise where it fixes a problem.
+
+## What C++26 adds
+
+The ISO committee finished the technical work on C++26 in March 2026, and the formal ISO publication follows. GCC 16.1, released on 30 April 2026, has experimental C++26 support, selected with `-std=c++26`. GCC 16 also changed its default language mode from GNU C++17 to GNU C++20, which is one more reason to state the standard explicitly. The examples on this site do not use C++26, and the site's CI does not compile any. The snippets below are labelled C++26 and are not checked.
+
+Several additions matter for models. <Std v="c++26" /> *Contracts* (`pre`, `post` and `contract_assert`) let a function state its conditions in its declaration, which suits the parameter checks that models need. GCC 16.1 includes them as an experimental feature.
+
+```cpp
+// C++26. Not compiled by this site's CI.
+double logisticStep(double N, double r, double K)
+    pre(K > 0.0)
+    post(result: result >= 0.0);
+```
+
+A related change concerns uninitialised variables: reading an uninitialised local is no longer undefined behaviour but *erroneous behaviour*. The value is defined by the implementation, and compilers may diagnose the read. It is still a bug. The standard library also gains a *hardened* form, which checks preconditions such as a valid index.
+
+<Std v="c++26" /> *Static reflection* lets a program inspect its own types and members at compile time. GCC 16.1 enables it with `-std=c++26 -freflection`. A typical use would be to list the members of a parameter struct without writing the list by hand. The placeholder name `_` marks a value that is deliberately unused.
+
+The new library components <Std v="c++26" /> fit scientific work. `std::simd` provides data-parallel arithmetic, `std::linalg` is a BLAS-style interface for vector and matrix operations, `std::submdspan` takes a slice of an `std::mdspan`, and `std::inplace_vector` is a vector with a fixed capacity and no heap allocation. `std::execution` (senders and receivers) describes asynchronous work.
+
+```cpp
+// C++26. Not compiled by this site's CI.
+std::inplace_vector<double, 8> stageDensities;   // capacity fixed at 8
+const auto [peakYear, _] = findPeak(N);           // `_`: the second value is not used
+```
+
+Until all your compilers support these features, keep to C++23.
 
 ## Practice
 

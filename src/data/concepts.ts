@@ -3,10 +3,10 @@ import type { ConceptNode } from './types.ts';
 // Concept nodes of the atlas. Ids are stable: they appear in URLs
 // (/atlas/?node=<id>) and in learners' locally stored progress.
 // `lesson` is a slug in src/content/lessons; `anchor` is an <Anchor id>
-// inside that lesson. `manual` lists Groningen manual section ids.
+// inside that lesson.
 
 export const concepts: ConceptNode[] = [
-  // ── Program anatomy (Modules 1, 7) ────────────────────────────────────────
+  // ── Program anatomy ────────────────────────────────────────
   { id: 'programs-and-algorithms', title: 'Programs and algorithms', label: 'Programs', domain: 'anatomy', kind: 'concept', level: 'beginner',
     lesson: 'what-is-a-program', manual: ['M1.1', 'M0.readme'],
     summary: 'A program is a precise list of instructions; an algorithm is the strategy those instructions implement.',
@@ -36,7 +36,7 @@ export const concepts: ConceptNode[] = [
     summary: 'Names, layout, comments and interfaces that let a reader check the code against the model.',
     goals: ['Apply consistent naming and formatting', 'Comment code at the level of the model'] },
 
-  // ── Numeric computation (Modules 2, 3) ────────────────────────────────────
+  // ── Numeric computation ────────────────────────────────────
   { id: 'variables', title: 'Variables and types', label: 'Variables', domain: 'numeric', kind: 'concept', level: 'beginner',
     lesson: 'variables-and-types', manual: ['M2.1', 'M11.1'],
     summary: 'A variable is a named, typed piece of memory: int for counts, double for continuous quantities.',
@@ -94,7 +94,7 @@ export const concepts: ConceptNode[] = [
     summary: 'Translating mathematical notation into C++ expressions, and the common transcription errors.',
     goals: ['Transcribe an equation and check it against a hand calculation'] },
 
-  // ── Control flow (Modules 4, 5) ───────────────────────────────────────────
+  // ── Control flow ───────────────────────────────────────────
   { id: 'if-else', title: 'if and else', domain: 'control', kind: 'concept', level: 'beginner',
     lesson: 'conditionals', manual: ['M4.1', 'M11.2'],
     summary: 'Execute code only when a condition holds; chain alternatives with else if.',
@@ -124,7 +124,7 @@ export const concepts: ConceptNode[] = [
     summary: 'Leave a loop early or skip to the next pass, and why goto is rarely right.',
     goals: ['Stop a simulation when an absorbing state is reached'] },
 
-  // ── Functions (Module 6) ──────────────────────────────────────────────────
+  // ── Functions ──────────────────────────────────────────────────
   { id: 'functions', title: 'Defining functions', label: 'Functions', domain: 'functions', kind: 'concept', level: 'beginner',
     lesson: 'functions', manual: ['M6.1', 'M6.2', 'M11.3'],
     summary: 'A function packages a computation behind a name, parameters and a return value.',
@@ -158,7 +158,7 @@ export const concepts: ConceptNode[] = [
     summary: 'A function that calls itself, with a base case that stops it.',
     goals: ['Write a recursion that terminates'] },
 
-  // ── Data structures (Modules 5, 8, 10, 12) ────────────────────────────────
+  // ── Data structures ────────────────────────────────
   { id: 'std-vector', title: 'std::vector', domain: 'data', kind: 'concept', level: 'beginner',
     lesson: 'vectors', manual: ['M5.2', 'M11.4'],
     summary: 'A resizable, contiguous sequence of values of one type.',
@@ -236,7 +236,7 @@ export const concepts: ConceptNode[] = [
     summary: 'sort, find, max_element, accumulate, count_if: tested building blocks for data processing.',
     goals: ['Summarise a trajectory with standard algorithms'] },
 
-  // ── Input and output (Module 9) ───────────────────────────────────────────
+  // ── Input and output ───────────────────────────────────────────
   { id: 'file-streams', title: 'File streams', domain: 'io', kind: 'concept', level: 'beginner',
     lesson: 'file-io', manual: ['M9.1', 'M11.5'],
     summary: 'std::ofstream and std::ifstream read and write files exactly like cout and cin.',
@@ -266,14 +266,14 @@ export const concepts: ConceptNode[] = [
     summary: 'Tidy CSV trajectories with a header and the metadata needed to reproduce them.',
     goals: ['Write a trajectory that R or Python can read', 'Record parameters and seed with the data'] },
 
-  // ── Program architecture (Modules 7, 11, 13; engineering) ─────────────────
+  // ── Program architecture ─────────────────
   { id: 'multiple-files', title: 'Headers and source files', label: 'Multiple files', domain: 'architecture', kind: 'concept', level: 'intermediate',
     lesson: 'multiple-files', manual: ['M7.5'],
     summary: 'Declarations in headers, definitions in sources, include guards, separate compilation.',
     goals: ['Split a model into header and source files'] },
   { id: 'procedural-review', title: 'A complete procedural simulation', label: 'Procedural synthesis', domain: 'architecture', kind: 'integration', level: 'beginner',
     lesson: 'procedural-review', manual: ['M11.1', 'M11.2', 'M11.3', 'M11.4', 'M11.5'],
-    summary: 'A synthesis: state, update rule, parameters and output assembled into one program.',
+    summary: 'State, update rule, parameters and output assembled into one program.',
     goals: ['Assemble a procedural simulation from earlier constructs'] },
   { id: 'constructors', title: 'Constructors', domain: 'architecture', kind: 'concept', level: 'intermediate',
     lesson: 'constructors', manual: ['M13.2'],
@@ -304,11 +304,11 @@ export const concepts: ConceptNode[] = [
     summary: 'Measure before optimising: release builds, profilers, data layout and allocations.',
     goals: ['Find the hot spot of a slow simulation'] },
   { id: 'modern-cpp', title: 'Modern C++ for modelling', label: 'Modern C++', domain: 'architecture', kind: 'concept', level: 'seasoned', optional: true,
-    lesson: 'modern-cpp', manual: [], standard: 'c++23',
-    summary: 'Selected C++20/23 features that make models safer and clearer: span, ranges, format, numbers.',
+    lesson: 'modern-cpp', manual: [],
+    summary: 'C++23 features the site\'s examples use, and what C++26 adds.',
     goals: ['Recognise which features need which compiler'] },
 
-  // ── Algorithm design (Module 14) — destination ────────────────────────────
+  // ── Algorithm design ────────────────────────────
   { id: 'algorithms-landmark', title: 'Algorithm design', domain: 'algorithms', kind: 'landmark', level: 'beginner',
     manual: ['M14.1', 'M14.2', 'M14.3'],
     summary: 'Destination: translate a biological hypothesis into equations, a procedure and a program.',
@@ -358,7 +358,7 @@ export const concepts: ConceptNode[] = [
     summary: 'Renormalised iteration converges to the dominant eigenvalue and eigenvector.',
     goals: ['Compute λ with a convergence test and an iteration cap'] },
 
-  // ── Numerical integration (Module 15) — destination ───────────────────────
+  // ── Numerical integration ───────────────────────
   { id: 'ode-landmark', title: 'Numerical integration', domain: 'ode', kind: 'landmark', level: 'intermediate',
     manual: ['M15.1', 'M15.2', 'M15.3', 'M15.adv'],
     summary: 'Destination: approximate continuous-time models and know how good the approximation is.',
@@ -388,7 +388,7 @@ export const concepts: ConceptNode[] = [
     summary: 'Estimate the local error with an embedded pair and adjust the step to meet a tolerance.',
     goals: ['Implement accept/reject step control'] },
 
-  // ── Stochastic modelling (Module 16) — destination ────────────────────────
+  // ── Stochastic modelling ────────────────────────
   { id: 'stochastic-landmark', title: 'Stochastic modelling', domain: 'stochastic', kind: 'landmark', level: 'intermediate',
     manual: ['M16.1', 'M16.2', 'M16.3'],
     summary: 'Destination: model chance events and analyse their distribution across replicates.',
@@ -426,7 +426,7 @@ export const concepts: ConceptNode[] = [
     summary: 'A stochastic model is a distribution of outcomes; one run is a sample of size one.',
     goals: ['Summarise replicate runs and extinction probabilities'] },
 
-  // ── Individual-based modelling (Module 17) — destination ──────────────────
+  // ── Individual-based modelling ──────────────────
   { id: 'ibm-landmark', title: 'Individual-based modelling', domain: 'ibm', kind: 'landmark', level: 'intermediate',
     manual: ['M17.1'],
     summary: 'Destination: populations built from individuals whose interactions produce emergent patterns.',
@@ -456,7 +456,7 @@ export const concepts: ConceptNode[] = [
     summary: 'Test limits where the IBM must agree with a mean-field model, and test implementation choices.',
     goals: ['Compare an IBM with its mean-field limit'] },
 
-  // ── Scientific inference (original synthesis) ─────────────────────────────
+  // ── Scientific inference (synthesis) ─────────────────────────────
   { id: 'inference-landmark', title: 'Scientific inference', domain: 'inference', kind: 'landmark', level: 'intermediate',
     manual: [],
     summary: 'Synthesis: from simulation runs to qualified scientific conclusions.',
@@ -502,7 +502,7 @@ export const concepts: ConceptNode[] = [
     summary: 'Independent replicates on many cores with independent random streams.',
     goals: ['Run replicates concurrently without correlated random numbers'] },
 
-  // ── Capstones (original integration projects) ─────────────────────────────
+  // ── Capstones (integration projects) ─────────────────────────────
   { id: 'capstone-a', title: 'Capstone A · A first ecological model', label: 'Capstone A', domain: 'algorithms', kind: 'capstone', level: 'beginner',
     manual: [], summary: 'A complete procedural simulation of a harvested population.',
     goals: ['Combine variables, functions, loops, storage and output'] },

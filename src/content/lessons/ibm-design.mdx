@@ -11,7 +11,6 @@ objectives:
   - Implement a neighbourhood interaction on a torus and a crowding-dependent survival rule
   - Add births and deaths to a container without letting newborns reproduce or skipping the dead
   - Develop a model incrementally, testing each rule before adding the next
-standard: c++17
 references:
   - "cppreference.com: std::vector, std::remove_if, std::erase_if"
 ---
@@ -73,7 +72,7 @@ The program below builds six plants, counts each one's neighbours and prints its
 
 <Example file="ibm/design_crowding.cpp" mark="32-41" />
 
-Notice that neighbourhood is not transitive. Plants 1 and 2 are both neighbours of plant 0 but not of each other, so plant 0 has two neighbours and each of the others one. No aggregate description of "density" captures that.
+Neighbourhood is not transitive. Plants 1 and 2 are both neighbours of plant 0 but not of each other, so plant 0 has two neighbours and each of the others one. No aggregate description of "density" captures that.
 
 Comparing $dx^2 + dy^2$ with $R^2$ avoids a square root per pair. Even so, counting neighbours by scanning every other plant costs time proportional to $N^2$ per year. That is fine for hundreds of plants; for tens of thousands, divide the plot into square cells of side at least $R$ and examine only the nine cells around each plant (the browser version of this model, `src/lib/simulations/ibm.ts`, does this). See <Concept id="performance" />.
 
@@ -97,7 +96,7 @@ Removing the dead has its own trap. Calling `erase` inside an index loop and the
 
 <Example file="ibm/design_remove_dead.cpp" mark="31,37-44" />
 
-- **Erase-remove.** `std::remove_if` moves the survivors forward, keeping their order, and returns where the leftover tail begins; `erase` then cuts the tail. The order is preserved, which matters if your schedule or output depends on it. <Std v="c++20" /> `std::erase_if(plants, predicate)` does both steps in one call.
+- **Erase-remove.** `std::remove_if` moves the survivors forward, keeping their order, and returns where the leftover tail begins; `erase` then cuts the tail. The order is preserved, which matters if your schedule or output depends on it. `std::erase_if(plants, predicate)` does both steps in one call.
 - **Swap-and-pop.** Overwrite a dead individual with the last one and shrink the vector. Each removal costs one copy, but the survivors are reordered, so use it only when order is irrelevant (for example, when individuals are shuffled every step anyway). Note that the index must not advance after a swap, because the plant moved into the slot has not been checked yet.
 
 <Callout kind="pitfall" title="References into a growing vector">
@@ -106,7 +105,7 @@ Removing the dead has its own trap. Calling `erase` inside an index loop and the
 
 ### Building the model one rule at a time
 
-The manual's working method for individual-based simulation is to alternate two phases: add one piece of functionality, then test it, and move on only when the test passes. For the plant model a sensible sequence is:
+Develop an individual-based model by alternating two phases: add one piece of functionality, then test it, and move on only when the test passes. For the plant model a sensible sequence is:
 
 1. **The individual.** Construct a few plants, including awkward ones (a position of $1.03$, a negative age), and print them.
 2. **The neighbourhood.** Place plants in a configuration you can count by hand, as in `design_crowding.cpp`, including a pair that interacts across the edge.

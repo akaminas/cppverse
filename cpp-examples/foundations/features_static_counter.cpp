@@ -1,5 +1,5 @@
 // Title: A static local variable keeps its value between calls
-// Standard: C++17
+// Standard: C++23
 // next_id hands out identification numbers to new individuals. Its counter
 // is initialised once and then persists from one call to the next.
 

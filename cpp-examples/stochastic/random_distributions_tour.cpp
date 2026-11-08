@@ -1,5 +1,5 @@
 // Title: Distributions for biological chance events
-// Standard: C++17
+// Standard: C++23
 // One engine feeds several distributions: survival (Bernoulli), survivors
 // of a cohort (binomial), clutch size (Poisson), waiting time (exponential,
 // given by its RATE) and body mass (normal, given by mean and standard

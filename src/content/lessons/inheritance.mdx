@@ -11,24 +11,23 @@ objectives:
   - Write an abstract base class with a virtual destructor and store derived objects in a vector of std::unique_ptr
   - Express the same design with std::variant and std::visit, and with a template parameter
   - Decide between inheritance, variants, templates and composition for a given model
-standard: c++17
 references:
   - "cppreference.com: Derived classes; virtual function specifier; abstract class"
   - "cppreference.com: std::variant; std::visit"
-  - "C++ Core Guidelines: C.120–C.139 (class hierarchies)"
+  - "C++ Core Guidelines: C.120-C.139 (class hierarchies)"
 ---
 
 ## What it is
 
-**Inheritance** defines a new class, the *derived* class, in terms of an existing one, the *base* class. The derived class has all the members of the base and adds or changes some. `class Breeding : public Event` reads "a `Breeding` is an `Event`".
+Inheritance defines a new class, the *derived* class, in terms of an existing one, the *base* class. The derived class has all the members of the base and adds or changes some. `class Breeding : public Event` reads "a `Breeding` is an `Event`".
 
-**Polymorphism** is what makes this useful: code written for the base class can work with any derived class without knowing which one it has. A *virtual function* declared in the base is looked up at run time, so `event.apply(pop)` runs `Breeding::apply` for a breeding event and `Harvest::apply` for a harvest, through the same line of code.
+Polymorphism is what makes this useful: code written for the base class can work with any derived class without knowing which one it has. A *virtual function* declared in the base is looked up at run time, so `event.apply(pop)` runs `Breeding::apply` for a breeding event and `Harvest::apply` for a harvest, through the same line of code.
 
 This lesson is optional. Many good models never use inheritance, and the second half of the lesson is about the alternatives.
 
 ## Why it matters
 
-Models often contain *several kinds of the same thing*: event types in a seasonal schedule, movement rules, environmental drivers, types of individuals or patches. Without some form of polymorphism, every loop over such things grows a `switch` statement on the kind, and adding a kind means finding and editing every one of those switches.
+Models often contain several kinds of the same thing: event types in a seasonal schedule, movement rules, environmental drivers, types of individuals or patches. Without some form of polymorphism, every loop over such things grows a `switch` statement on the kind, and adding a kind means finding and editing every one of those switches.
 
 Inheritance is also how many libraries are organised, so you need to be able to read it. But it is easy to overuse. A model of three plant functional types that differ only in their growth rates needs one `Plant` class with a parameter, not a class hierarchy. Knowing the alternatives lets you choose the simplest design that fits.
 
@@ -54,17 +53,17 @@ private:
 };
 ```
 
-- **`public` inheritance** (`: public Event`) is the "is-a" relation: a `Harvest` can be used wherever an `Event&` or `Event*` is expected. Other kinds of inheritance exist but are rarely what you want.
-- **`virtual`** in the base makes a function overridable: a call through a base reference or pointer runs the version of the object's actual type.
-- **`= 0`** makes the function *pure virtual*: the base provides no implementation, and the class becomes **abstract**. You cannot create a plain `Event`, only objects of derived classes that override every pure virtual function.
-- **`override`** in the derived class states the intent to override. If the signature does not match the base exactly (a missing `const`, a different parameter type), the compiler reports an error instead of silently creating a new, unrelated function. Always write it.
-- **`final`** on a class forbids further derivation; on a function, further overriding. It documents that the hierarchy ends here.
+- `public` inheritance (`: public Event`) is the "is-a" relation: a `Harvest` can be used wherever an `Event&` or `Event*` is expected. Other kinds of inheritance exist but are rarely what you want.
+- `virtual` in the base makes a function overridable: a call through a base reference or pointer runs the version of the object's actual type.
+- `= 0` makes the function *pure virtual*: the base provides no implementation, and the class becomes *abstract*. You cannot create a plain `Event`, only objects of derived classes that override every pure virtual function.
+- `override` in the derived class states the intent to override. If the signature does not match the base exactly (a missing `const`, a different parameter type), the compiler reports an error instead of silently creating a new, unrelated function. Always write it.
+- `final` on a class forbids further derivation; on a function, further overriding. It documents that the hierarchy ends here.
 - A derived class's constructor initialises its base first, by calling a base constructor in its initialiser list (`: Event()` is implicit here), and then its own members.
 - `protected` members are accessible to derived classes but not to outside code. Prefer keeping data private, even from derived classes, and giving the base a protected or public interface.
 
 ### The virtual destructor
 
-If derived objects are ever deleted through a pointer to the base, which is exactly what a `std::unique_ptr<Event>` does, the base's destructor must be virtual. Otherwise only the base part is destroyed, which is undefined behaviour. The rule is simple: **a class with virtual functions gets a virtual destructor**, usually `virtual ~Event() = default;`.
+If derived objects are ever deleted through a pointer to the base, which is exactly what a `std::unique_ptr<Event>` does, the base's destructor must be virtual. Otherwise only the base part is destroyed, which is undefined behaviour. The rule is simple: a class with virtual functions gets a virtual destructor, usually `virtual ~Event() = default;`.
 
 ### Polymorphic containers
 
@@ -154,13 +153,13 @@ copy.describe();`}
 
 ### `std::variant` and `std::visit`
 
-When the set of kinds is fixed and known when you write the model, a `std::variant` (C++17, `<variant>`) is often simpler. A variant holds exactly one value of one of a list of types. The event types become plain structs with no base class, and `std::visit` calls a function with whichever alternative the variant currently holds:
+When the set of kinds is fixed and known when you write the model, a `std::variant` (from `<variant>`) is often simpler. A variant holds exactly one value of one of a list of types. The event types become plain structs with no base class, and `std::visit` calls a function with whichever alternative the variant currently holds:
 
 <Example file="architecture/inheritance_variant_events.cpp" mark="17-21,43,46,51-57" />
 
 The output is identical to that of the class-hierarchy version. The differences lie elsewhere:
 
-- The events are stored **by value** in the vector: no heap allocation per event, no pointers, and the schedule can be copied like any vector.
+- The events are stored by value in the vector: no heap allocation per event, no pointers, and the schedule can be copied like any vector.
 - The generic lambda `[&pop, year](const auto& e) { ... }` is compiled once for each alternative. If one of them lacks `apply` or `name`, the program does not compile, so a missing case cannot slip through.
 - Adding a new *kind* means adding it to the variant's type list; adding a new *operation* is just another visit, without touching the structs. With virtual functions it is the other way round: new kinds are easy, new operations mean editing every class.
 
@@ -202,20 +201,20 @@ struct Forager {
 
 ## In biological modelling
 
-- **Discrete-event and scheduled models.** Events of different kinds in one timeline (births, deaths, migrations, management actions) are the textbook case for polymorphism. A variant usually suffices; a hierarchy pays off if the set of events must stay open, for example in a framework used by several projects.
-- **Different kinds of agents.** Plants and herbivores in the same model have different state and different rules. Rather than a common `Agent` base with a virtual `step()`, keep a separate container per kind (`std::vector<Plant>`, `std::vector<Herbivore>`) and update each with its own loop. The interactions between kinds are then explicit, and each container is compact and fast to scan (see <Concept id="ibm-logic" />).
-- **Strategies in evolutionary games.** As in <Concept id="object-design" />, a strategy is usually data (a reply table, a probability), not a subclass.
-- **Environmental drivers.** A temperature signal that is constant, seasonal or read from a file is a good fit for a small interface with a virtual `value(t)`, or for a `std::function<double(double)>`, because the choice is made once and calls are few.
+- Discrete-event and scheduled models: events of different kinds in one timeline (births, deaths, migrations, management actions) are the textbook case for polymorphism. A variant usually suffices; a hierarchy pays off if the set of events must stay open, for example in a framework used by several projects.
+- Different kinds of agents: plants and herbivores in the same model have different state and different rules. Rather than a common `Agent` base with a virtual `step()`, keep a separate container per kind (`std::vector<Plant>`, `std::vector<Herbivore>`) and update each with its own loop. The interactions between kinds are then explicit, and each container is compact and fast to scan (see <Concept id="ibm-logic" />).
+- Strategies in evolutionary games: as in <Concept id="object-design" />, a strategy is usually data (a reply table, a probability), not a subclass.
+- Environmental drivers: a temperature signal that is constant, seasonal or read from a file is a good fit for a small interface with a virtual `value(t)`, or for a `std::function<double(double)>`, because the choice is made once and calls are few.
 
 ## Common mistakes
 
-- **No virtual destructor** in a base class that is used through pointers.
-- **Leaving out `override`.** A mismatched signature then silently declares a new function.
-- **Slicing.** Copying a derived object into a base-class object, including by storing it in a `std::vector<Base>`, loses the derived part.
-- **Calling virtual functions in constructors or destructors.** During the base's constructor the derived part does not exist yet, so the base version runs.
-- **Inheritance for code reuse only.** If "a D is a B" is not true, use composition or a free function.
-- **Deep hierarchies.** `Organism` → `Animal` → `Vertebrate` → `Mammal` → `Rodent` mirrors taxonomy, not the model; each level makes changes harder. Model hierarchies should rarely be more than one level deep.
-- **Subclasses for parameter values.** Types that differ only in numbers should be one type with different data.
+- No virtual destructor in a base class that is used through pointers.
+- Leaving out `override`: a mismatched signature then silently declares a new function.
+- Slicing: copying a derived object into a base-class object, including by storing it in a `std::vector<Base>`, loses the derived part.
+- Calling virtual functions in constructors or destructors: during the base's constructor the derived part does not exist yet, so the base version runs.
+- Inheritance for code reuse only: if "a D is a B" is not true, use composition or a free function.
+- Deep hierarchies: `Organism` → `Animal` → `Vertebrate` → `Mammal` → `Rodent` mirrors taxonomy, not the model; each level makes changes harder. Model hierarchies should rarely be more than one level deep.
+- Subclasses for parameter values: types that differ only in numbers should be one type with different data.
 
 ## Practice
 

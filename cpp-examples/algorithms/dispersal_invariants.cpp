@@ -1,5 +1,5 @@
 // Title: Asserting model invariants
-// Standard: C++17
+// Standard: C++23
 // A source patch and a sink patch linked by dispersal. assert checks three
 // invariants: the dispersal fraction is a probability, densities are never
 // negative, and dispersal moves individuals without creating or losing any.

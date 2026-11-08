@@ -1,5 +1,5 @@
 // Title: Memory-one strategies meeting in a repeated donation game
-// Standard: C++17
+// Standard: C++23
 // A strategy is an immutable value: a first move and a reply to each outcome
 // of the previous round. The game's parameters are a separate struct and play()
 // is a free function, so strategies know nothing about payoffs or populations.

@@ -1,5 +1,5 @@
 // Title: Removing the dead with erase-remove and with swap-and-pop
-// Standard: C++17
+// Standard: C++23
 // Two correct ways to delete dead individuals from a std::vector. The
 // erase-remove idiom keeps the survivors in their original order; swap-and-pop
 // does less copying but changes the order of the survivors.

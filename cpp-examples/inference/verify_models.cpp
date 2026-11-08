@@ -1,5 +1,5 @@
 // Title: Verification tests for two population models
-// Standard: C++17
+// Standard: C++23
 // Each test compares a simulation with something known independently of the
 // code: a closed-form solution, a fixed point, an invariant, or the theoretical
 // order of convergence of a numerical method. The program returns a failure

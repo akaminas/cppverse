@@ -1,5 +1,5 @@
 // Title: Seedlings must not reproduce in the year of their birth
-// Standard: C++17
+// Standard: C++23
 // A plot has 10 microsites. Each plant sets one seed, which establishes if a
 // microsite is still free. The buggy loop re-reads plants.size(), so it also
 // visits the seedlings it has just appended. The correct loop fixes the

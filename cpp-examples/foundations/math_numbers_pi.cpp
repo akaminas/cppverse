@@ -1,5 +1,5 @@
 // Title: pi from <numbers>
-// Standard: C++20
+// Standard: C++23
 // C++20 provides mathematical constants such as std::numbers::pi, so pi no
 // longer needs to be typed by hand or computed as std::acos(-1.0).
 

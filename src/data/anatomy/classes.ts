@@ -63,7 +63,7 @@ export const anatomies: Record<string, Anatomy> = {
         label: 'size_',
         role: 'Data member',
         explain:
-          'The state of each Population object. The trailing underscore is a common convention that marks data members (the manual uses an m prefix instead); it also frees the name size for the member function.',
+          'The state of each Population object. The trailing underscore is a common convention that marks data members; it also frees the name size for the member function.',
       },
       default: {
         label: '= 0',

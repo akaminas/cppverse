@@ -1,5 +1,5 @@
 // Title: A small model written with C++20 features
-// Standard: C++20
+// Standard: C++23
 // Designated initialisers name the parameters; a concept restricts a template
 // to floating-point types; std::span passes part of a trajectory without
 // copying; a ranges view filters it; std::format and std::numbers do the rest.

@@ -1,5 +1,5 @@
 // Title: Creating and changing vectors
-// Standard: C++17
+// Standard: C++23
 // The common ways to create a std::vector, and the member functions that
 // add, remove and inspect elements.
 

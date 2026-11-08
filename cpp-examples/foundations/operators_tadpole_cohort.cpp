@@ -1,5 +1,5 @@
 // Title: Compound assignment and increment
-// Standard: C++17
+// Standard: C++23
 // A cohort of tadpoles loses a fixed fraction each week. Compound assignment
 // and ++ express such updates compactly; prefix and postfix ++ differ in the
 // value they hand back.

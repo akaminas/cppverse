@@ -29,7 +29,7 @@ Together they describe a *half-open range*, written $[\,\text{begin}, \text{end}
 
 ## Why it matters
 
-Indices work for vectors, but they do not work for lists, sets or maps, and they do not say anything about *which container* they belong to. Iterators give all containers one common interface. This is what lets the standard algorithms (sort, find, count, accumulate; see <Concept id="standard-algorithms" />) work with any container: each algorithm takes a pair of iterators and processes the range between them. Container members such as `insert`, `erase` and `splice` also take positions as iterators.
+Indices work for vectors, but they do not work for lists, sets or maps, and they do not say anything about *which container* they belong to. Iterators give all containers one common interface. This is what lets the standard algorithms (sort, find, count, accumulate; see <Concept id="standard-algorithms" />) work with any container: each algorithm takes a pair of iterators and processes the range between them. Container members such as `insert`, `erase` and `splice` also take positions as iterators. The `std::ranges` versions of the algorithms, available since C++20, take a whole container and obtain the pair of iterators themselves, so `std::ranges::sort(v)` replaces `std::sort(v.begin(), v.end())`.
 
 For models, iterators matter most in one situation: removing individuals from a population *while* walking through it. Done naively, this skips individuals or crashes; done with the idiom below, it is short and correct.
 
@@ -37,7 +37,7 @@ For models, iterators matter most in one situation: removing individuals from a 
 
 ### A loop with an iterator
 
-The iterator types are nested in each container class, so their full names are long: `std::vector<double>::iterator`. In practice `auto` is used to let the compiler deduce the type from `begin()` (see <Concept id="auto-range-for" />):
+The iterator types are nested in each container class, so their full names are long: `std::vector<double>::iterator`. In practice `auto` lets the compiler deduce the type from `begin()` (see <Concept id="auto-range-for" />):
 
 ```cpp
 for (auto it = masses.begin(); it != masses.end(); ++it) {
@@ -170,7 +170,7 @@ Step through the erase loop. The panel shows the vector and the position `it` re
 
 ## In biological modelling
 
-- **Mortality, emigration and harvesting.** Removing individuals from a population container during a sweep is the erase idiom. For a vector, removing many individuals one by one is slow (each `erase` shifts the rest); the one-pass alternative is `std::remove_if` followed by a single `erase`, or `std::erase_if(population, predicate)` in C++20 (<Concept id="standard-algorithms" />).
+- **Mortality, emigration and harvesting.** Removing individuals from a population container during a sweep is the erase idiom. For a vector, removing many individuals one by one is slow (each `erase` shifts the rest); the one-pass alternative is `std::remove_if` followed by a single `erase`, or `std::erase_if(population, predicate)`, which does both in one call (<Concept id="standard-algorithms" />).
 - **Births during a sweep.** Never `push_back` into a vector you are traversing with iterators or references: a reallocation invalidates them. Collect newborns in a separate vector and append them after the sweep, which also keeps newborns from being processed in the step in which they were born.
 - **Positions in lookups.** Searches return iterators: `std::find` returns the position of the first match, or `end()` if there is none. Always compare the result with `end()` before dereferencing it.
 - **Ranges of a trajectory.** Iterator pairs select part of a trajectory, for example to discard a burn-in: `std::vector<double> settled(N.begin() + 100, N.end());`.

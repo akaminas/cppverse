@@ -1,5 +1,5 @@
 // Title: Comparing floating-point values with a tolerance
-// Standard: C++17
+// Standard: C++23
 // 0.1 + 0.2 is not exactly 0.3 in binary floating point, so == reports
 // false; a comparison with a tolerance gives the intended answer.
 

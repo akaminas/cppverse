@@ -86,11 +86,11 @@ GCC reports `narrowing conversion of '4.5e+0' from 'double' to 'int'`, Clang `ty
 Empty braces give a zero of the right type: `int n{};` is 0, `double x{};` is 0.0. Beware the empty parentheses `int n();`: that does *not* declare a variable but a function called `n`, and the error appears later, where `n` is used.
 
 <Callout kind="pitfall" title="Uninitialised variables">
-`int survivors;` inside a function creates a variable with an *indeterminate* value: whatever bits happened to be in that memory. Reading it is undefined behaviour. The program may print 0, or 32767, or something different on each run, and the optimiser may assume the read never happens. Compilers warn about some cases (`-Wall` includes `-Wuninitialized`), but not all. The only reliable rule is to initialise every variable when you declare it. (Variables declared outside any function, and `static` ones, are set to zero, but you should not rely on that either.)
+`int survivors;` inside a function creates a variable with an *indeterminate* value: whatever bits happened to be in that memory. Up to C++23, reading it is undefined behaviour. The program may print 0, or 32767, or something different on each run, and the optimiser may assume the read never happens. Compilers warn about some cases (`-Wall` includes `-Wuninitialized`), but not all. The only reliable rule is to initialise every variable when you declare it. C++26 changes the status of such a read: it is no longer undefined behaviour but *erroneous behaviour*, meaning the value is indeterminate but defined by the implementation, and compilers may diagnose it. <Std v="c++26" /> It is still a bug, and the rule stays the same. (Variables declared outside any function, and `static` ones, are set to zero, but you should not rely on that either.)
 </Callout>
 
 <Callout kind="manual" title="Three equivalent forms?">
-The manual presents the three forms of initialisation as equivalent. For simple values they behave alike, but braces reject narrowing conversions, which is why this site prefers them where a conversion could silently lose information. The manual's advice to declare variables late is sound; the main reason is clarity and safety rather than speed.
+Older code often treats the three forms of initialisation as equivalent. For simple values they behave alike, but braces reject narrowing conversions, which is why this site prefers them where a conversion could silently lose information. Declaring variables late is also sound advice; the main reason is clarity and safety rather than speed.
 </Callout>
 
 <Anchor id="input" />

@@ -39,7 +39,7 @@ Select the parts of this definition to see what each does:
 
 The labels `public:` and `private:` divide the members into the *interface*, available to everyone, and the *hidden* part, available only inside the class. Each label applies until the next one. A common layout puts the public member functions first, because they are what a reader of the class needs, and the private data last.
 
-Private does not mean secret or secure; it means that the compiler rejects any use from outside the class:
+Private is not a security feature. It only means that the compiler rejects any use from outside the class:
 
 <Example file="data/class_private_access.cpp" mark="16" />
 
@@ -57,8 +57,8 @@ Member functions can be defined in two places. A short function can be written d
 
 A data member can be given an initial value where it is declared: `int size_ = 0;`. Every new object then starts in a valid state. Without it, a `Population` created as `Population beetles;` would contain an uninitialised `int`, and the first `addBirths` would add to whatever bits happened to be in memory.
 
-<Callout kind="manual" title="Initialise every data member">
-The manual's first class example adds to a private member that is never initialised, so its output is undefined. Since C++11 a default member initialiser (`double reserve = 0.0;`) fixes this in one line. The usual alternative, a *constructor* that sets the members when the object is created, is the subject of <Concept id="constructors" />. The manual also leaves its reading member functions without `const`; mark them `const` as shown here.
+<Callout kind="manual" title="Initialise every data member, and mark readers const">
+A class that adds to a private member that is never initialised has an undefined result. Since C++11 a default member initialiser (`double reserve = 0.0;`) fixes this in one line. The usual alternative, a *constructor* that sets the members when the object is created, is the subject of <Concept id="constructors" />. Reading member functions should also be marked `const`, as shown here.
 </Callout>
 
 ### Interface, implementation, application
@@ -164,7 +164,7 @@ When is a struct enough, and when does a class help? A useful rule:
 - **A struct** when every combination of member values is acceptable, or when the type is a passive record: a parameter set, a sample, the output of a function. `struct Parameters { double r; double K; };` needs no protection worth the extra code.
 - **A class** when some combinations are invalid, or when members depend on each other. A population size that must stay non-negative; a probability that must stay in [0, 1]; a landscape whose vector of patches must always have `rows * cols` elements; a population of individuals that keeps a running total of biomass that must equal the sum over individuals. The class makes the rule part of the type.
 
-Classes also give the code the shape of the model. An individual-based model reads naturally as interacting objects: `plant.grow(light)`, `plant.isAlive()`, `patch.colonise(seeds)` (see <Concept id="individual-representation" />). Once the member functions of each class are correct, the main loop can be written, and checked, at the level of the biology.
+Classes also let the code follow the structure of the model. An individual-based model reads naturally as interacting objects: `plant.grow(light)`, `plant.isAlive()`, `patch.colonise(seeds)` (see <Concept id="individual-representation" />). Once the member functions of each class are correct, the main loop can be written, and checked, at the level of the biology.
 
 ## Common mistakes
 

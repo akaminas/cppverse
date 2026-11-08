@@ -1,5 +1,5 @@
 // Title: Counting close pairs by brute force and with a spatial grid
-// Standard: C++17
+// Standard: C++23
 // Scatters N points in the unit square and counts the pairs closer than R twice:
 // by comparing every pair, O(N^2), and by sorting points into grid cells at
 // least R wide so that only the 3 x 3 block of cells around each point is searched.

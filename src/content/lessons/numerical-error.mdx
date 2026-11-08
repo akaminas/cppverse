@@ -15,16 +15,16 @@ lab: ode
 references:
   - "Hairer, Nørsett and Wanner (1993). Solving Ordinary Differential Equations I: Nonstiff Problems. Springer."
   - "Hairer and Wanner (1996). Solving Ordinary Differential Equations II: Stiff and Differential-Algebraic Problems. Springer."
-  - "Goldberg (1991). What every computer scientist should know about floating-point arithmetic. ACM Computing Surveys 23: 5–48."
+  - "Goldberg (1991). What every computer scientist should know about floating-point arithmetic. ACM Computing Surveys 23: 5-48."
 ---
 
 ## What it is
 
 A numerical solution of an ODE is never exact. It can go wrong in three ways:
 
-1. **Truncation error.** A method replaces the true change over a step by a formula built from a few slopes. What the formula leaves out is the truncation error. It is a property of the method and shrinks as the step $h$ shrinks.
-2. **Round-off error.** Every arithmetic operation in `double` precision is rounded to about 16 significant digits (see <Concept id="numeric-limits" />). Each step adds a little rounding, and more steps add more.
-3. **Instability.** With too large a step, small errors can be amplified from step to step until the numerical solution has nothing to do with the model.
+1. Truncation error. A method replaces the true change over a step by a formula built from a few slopes. What the formula leaves out is the truncation error. It is a property of the method and shrinks as the step $h$ shrinks.
+2. Round-off error. Every arithmetic operation in `double` precision is rounded to about 16 significant digits (see <Concept id="numeric-limits" />). Each step adds a little rounding, and more steps add more.
+3. Instability. With too large a step, small errors can be amplified from step to step until the numerical solution has nothing to do with the model.
 
 This lesson shows how to measure the first, recognise the second and avoid the third, and how to check a simulation when the true solution is unknown.
 
@@ -135,12 +135,12 @@ The unknown $\mathbf{x}_{n+1}$ appears on both sides, so each step requires solv
 
 ### Artefact or biology?
 
-Numerical problems often look like interesting dynamics. Some warning signs, and the checks that settle them:
+Numerical problems often look like interesting dynamics. These are some warning signs, with the checks that settle them:
 
-- **Oscillations where the model cannot oscillate.** The solution of a single autonomous first-order ODE is always monotone: it cannot pass the same value twice in different directions. Any oscillation in a simulated logistic or elimination model is therefore an artefact. Euler's method applied to the logistic equation with $h > 2/r$ even produces cycles and chaos, because with a large step the update is the discrete logistic map (see <Concept id="discrete-time" />), a different model.
-- **Impossible values.** Negative population sizes, concentrations or proportions in a model whose right-hand side keeps them positive point at the method.
-- **Results that change with h.** Halve the step. A biological pattern survives; an artefact changes or vanishes.
-- **Results that change with the method.** Run the same model with RK4 and with Euler at a small step. Converged answers agree.
+- Oscillations where the model cannot oscillate. The solution of a single autonomous first-order ODE is always monotone: it cannot pass the same value twice in different directions. Any oscillation in a simulated logistic or elimination model is therefore an artefact. Euler's method applied to the logistic equation with $h > 2/r$ even produces cycles and chaos, because with a large step the update is the discrete logistic map (see <Concept id="discrete-time" />), a different model.
+- Impossible values. Negative population sizes, concentrations or proportions in a model whose right-hand side keeps them positive point at the method.
+- Results that change with h. Halve the step. A biological pattern survives; an artefact changes or vanishes.
+- Results that change with the method. Run the same model with RK4 and with Euler at a small step. Converged answers agree.
 
 ## A minimal example
 
@@ -233,18 +233,18 @@ With $h = 0.05$ days, the final proportion susceptible, about 0.107209, agrees w
 
 ## In biological modelling
 
-- **Make convergence part of every study.** Before interpreting a result, run it with the chosen step and with half that step (or a tighter tolerance). Report the step size and the change you observed. This takes minutes and is what reviewers mean by "numerically verified".
-- **Check invariants and benchmarks.** Population totals in closed compartment models, mass balance in nutrient or pharmacokinetic models, equilibria you can compute by hand, and special cases with closed forms are all cheap, independent tests (see <Concept id="verification" />).
-- **Know your fastest timescale.** It sets the step-size limit for explicit methods. If it is many orders of magnitude faster than the processes you care about, consider whether the fast variable can be set to its quasi-equilibrium, or use a stiff solver.
-- **Interpret with the error in mind.** Differences between scenarios that are smaller than the numerical error, measured by your convergence test, are not results.
+- Make convergence part of every study. Before interpreting a result, run it with the chosen step and with half that step (or a tighter tolerance). Report the step size and the change you observed. This takes minutes and is what reviewers mean by "numerically verified".
+- Check invariants and benchmarks. Population totals in closed compartment models, mass balance in nutrient or pharmacokinetic models, equilibria you can compute by hand, and special cases with closed forms are all cheap, independent tests (see <Concept id="verification" />).
+- Know your fastest timescale. It sets the step-size limit for explicit methods. If it is many orders of magnitude faster than the processes you care about, consider whether the fast variable can be set to its quasi-equilibrium, or use a stiff solver.
+- Interpret with the error in mind. Differences between scenarios that are smaller than the numerical error, measured by your convergence test, are not results.
 
 ## Common mistakes
 
-- **Judging accuracy from one run.** A smooth, plausible trajectory may still be far from converged. Only a comparison across step sizes measures the error.
-- **Testing only on autonomous or linear problems.** Some bugs, such as wrong time offsets in the stages of RK4, are invisible on the logistic equation. Include a non-autonomous test.
-- **Expecting conservation to prove accuracy.** Runge-Kutta methods conserve linear invariants at any step size. A conserved total shows the code is consistent, not that $h$ is small enough.
-- **Shrinking h without limit.** Below the round-off floor, smaller steps make results worse and runs slower. A higher-order method is the better route to high accuracy.
-- **Reading negative concentrations or populations as biology.** In a model that cannot produce them, they are almost always a step that is too large.
+- Judging accuracy from one run: a smooth, plausible trajectory may still be far from converged. Only a comparison across step sizes measures the error.
+- Testing only on autonomous or linear problems: some bugs, such as wrong time offsets in the stages of RK4, are invisible on the logistic equation. Include a non-autonomous test.
+- Expecting conservation to prove accuracy: Runge-Kutta methods conserve linear invariants at any step size. A conserved total shows the code is consistent, not that $h$ is small enough.
+- Shrinking h without limit: below the round-off floor, smaller steps make results worse and runs slower. A higher-order method is the better route to high accuracy.
+- Reading negative concentrations or populations as biology: in a model that cannot produce them, they are almost always a step that is too large.
 
 ## Practice
 

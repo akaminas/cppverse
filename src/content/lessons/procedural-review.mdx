@@ -16,22 +16,22 @@ references:
 
 ## What it is
 
-You now know enough C++ to write a complete, honest simulation: one that takes its parameters from outside, refuses nonsense, runs a model, writes a well-documented output file and checks its own result. This lesson assembles such a program from the pieces of the earlier lessons. It introduces almost nothing new; instead it shows how the pieces fit together, and where each one came from.
+You now know enough C++ to write a complete simulation that takes its parameters from outside, refuses nonsense, runs a model, writes a documented output file and checks its own result. This lesson assembles such a program from the pieces of the earlier lessons. It introduces almost nothing new. It shows how the pieces fit together and where each one came from.
 
-The program is *procedural*: it is organised around functions that act on data held in structs. The next part of the course, starting with <Concept id="classes" />, organises programs around objects instead, and this program is the baseline against which that design can be judged.
+The program is *procedural*: it is organised around functions that act on data held in structs. The lessons that start with <Concept id="classes" /> organise programs around objects instead, and this program is the baseline against which that design can be judged.
 
 ## Why it matters
 
-Almost every simulation, however large, has the same skeleton:
+Almost every simulation, however large, has the same structure:
 
-1. **parameters**, fixed during a run;
-2. a **state**, which changes;
-3. an **update rule** that maps the state at time $t$ to the state at $t + 1$;
-4. a **loop** that applies the rule and records the trajectory;
-5. **input** and **validation** of the parameters;
-6. **output** of the trajectory, with enough metadata to reproduce it.
+1. parameters, fixed during a run;
+2. a state, which changes;
+3. an update rule that maps the state at time $t$ to the state at $t + 1$;
+4. a loop that applies the rule and records the trajectory;
+5. input and validation of the parameters;
+6. output of the trajectory, with enough metadata to reproduce it.
 
-Recognising the skeleton makes unfamiliar model code readable, and keeping to it makes your own code checkable.
+Recognising this structure makes unfamiliar model code readable, and keeping to it makes your own code easier to check.
 
 ## How it works in C++
 
@@ -64,7 +64,7 @@ $$
 
 <Example file="architecture/two_stage_sim.cpp" />
 
-The example is run with the arguments `5 0.25 0.5 40`: $b = 5$, $s_j = 0.25$, $s_a = 0.5$ and 40 generations, so that $R_0 = 2.5$, $A^* = 75$ and $J^* = 150$. After 40 generations the population is within 0.02 individuals of that equilibrium, which is good evidence that the update rule implements the equations. Here is the whole run:
+The example is run with the arguments `5 0.25 0.5 40`: $b = 5$, $s_j = 0.25$, $s_a = 0.5$ and 40 generations, so that $R_0 = 2.5$, $A^* = 75$ and $J^* = 150$. After 40 generations the population is within 0.02 individuals of that equilibrium, which is good evidence that the update rule implements the equations. The figure shows the whole run:
 
 <Figure id="procedural-review-stages" />
 
@@ -72,7 +72,7 @@ Select a term of the equations to see the line that implements it, or a highligh
 
 <MathCode id="procedural-review-step" />
 
-Read `main` (lines 82 to 110) first: it is an outline of the experiment. It converts the arguments, validates them, simulates, writes the file and reports. Every step is a call to a function with a name that says what it does, and everything that can go wrong ends in the same `catch` block, which reports the problem on `std::cerr` and returns `EXIT_FAILURE`.
+Read `main` (lines 82 to 110) first, because it is an outline of the experiment. It converts the arguments, validates them, simulates, writes the file and reports. Every step is a call to a function with a name that says what it does, and everything that can go wrong ends in the same `catch` block, which reports the problem on `std::cerr` and returns `EXIT_FAILURE`.
 
 ### Where each part comes from
 
@@ -93,16 +93,16 @@ Read `main` (lines 82 to 110) first: it is an outline of the experiment. It conv
 | `std::ofstream`, opening, closing and checking | 66-67, 78-79 | <Concept id="file-streams" />, <Concept id="stream-state" /> |
 | Metadata, long format and full precision in the CSV file | 68-76 | <Concept id="trajectory-output" />, <Concept id="output-formatting" /> |
 
-If any row is unfamiliar, follow its link before going on; the rest of this lesson assumes all of them.
+If any row is unfamiliar, follow its link before going on, since the rest of this lesson assumes all of them.
 
-The program makes two design choices:
+The program makes two design choices.
 
-- **The model knows nothing about input and output.** `step` and `simulate` neither read nor print. They can be tested, reused in a parameter sweep, or moved into their own file pair (<Concept id="multiple-files" />) without change.
-- **Validation happens once, early.** After `validate(p)` the rest of the program may assume sensible parameters. The test is written as "all conditions hold" rather than "any condition fails", so that a `nan` parameter, for which every comparison is false, is rejected too.
+- The model knows nothing about input and output. `step` and `simulate` neither read nor print. They can be tested, reused in a parameter sweep, or moved into their own file pair (<Concept id="multiple-files" />) without change.
+- Validation happens once, early. After `validate(p)` the rest of the program may assume sensible parameters. The test is written as "all conditions hold" rather than "any condition fails", so that a `nan` parameter, for which every comparison is false, is rejected too.
 
 ## What else the review adds
 
-The manual's review also gathers a few smaller features that did not fit elsewhere. Each is worth knowing when you read other people's code.
+A few smaller features did not fit in the earlier lessons. Each is worth knowing when you read other people's code.
 
 ### Three ways to initialise
 
@@ -115,7 +115,7 @@ int clutch3{7.6};    // brace initialisation: error, narrowing from double to in
 The three forms are not equivalent. Braces refuse *narrowing* conversions, those that may lose information, which is why this site prefers them. One more trap: `Parameters p();` with empty parentheses does not create an object at all but declares a function returning `Parameters`. Write `Parameters p;` or `Parameters p{};`. See <Concept id="initialisation" />.
 
 <Callout kind="manual" title="Not all equivalent">
-The course manual presents the three initialisation forms as equivalent. They differ in exactly the case that matters for models, a `double` value stored in an integer variable, where only the brace form reports the mistake.
+Older material often treats the three initialisation forms as equivalent. They differ in exactly the case that matters for models, a `double` value stored in an integer variable, where only the brace form reports the mistake.
 </Callout>
 
 ### Unsigned literals
@@ -162,7 +162,7 @@ samples.push_back({20, 72.70});                        // braces do the same
 std::pair first{0, 10.0};                              // C++17 deduces pair<int, double>
 ```
 
-`std::make_pair` creates a pair whose types are deduced from the arguments. It is common in older code; braces and C++17 class template argument deduction make it rarely necessary now. See <Concept id="pairs" />.
+`std::make_pair` creates a pair whose types are deduced from the arguments. It is common in older code, but braces and C++17 class template argument deduction rarely make it necessary now. See <Concept id="pairs" />.
 
 ### A vector from part of another
 
@@ -238,17 +238,17 @@ const std::vector<int> middle(nests.begin() + 1, nests.end() - 1);`}
 
 ## In biological modelling
 
-This program is a template you can reuse. Changing the model means changing `Parameters`, `State`, `step`, `validate` and the column names; the loop, the input handling and the output machinery stay as they are. The same skeleton carries through the first capstone (<Concept id="capstone-a" />), and the matrix models of <Concept id="matrix-models" /> are the linear relatives of this model.
+This program is a template you can reuse. Changing the model means changing `Parameters`, `State`, `step`, `validate` and the column names; the loop, the input handling and the output machinery stay as they are. The same structure carries through the first capstone (<Concept id="capstone-a" />), and the matrix models of <Concept id="matrix-models" /> are the linear relatives of this model.
 
-The final check against $R_0$ and the equilibrium is the most valuable part of the output. A simulation that reproduces a result derived independently from the equations has passed a first test of <Concept id="verification" />; one that does not is wrong somewhere, however plausible its figures look.
+The final check against $R_0$ and the equilibrium is the most useful part of the output. A simulation that reproduces a result derived independently from the equations has passed a first test of <Concept id="verification" />; one that does not is wrong somewhere, however plausible its figures look.
 
 ## Common mistakes
 
-- **A model function that prints.** Keep input and output out of `step` and `simulate`, so that they can be tested and reused.
-- **Validation scattered through the program**, or missing altogether. Validate once, right after reading.
-- **Updating in place.** Writing `s.adults = …` before computing the recruits from `s.adults` changes the model.
-- **Unexplained magic numbers.** Every number in the update rule should be a named parameter with a unit and a comment.
-- **Trusting the output without a check.** Compare with something you can derive: an equilibrium, a closed form, a limiting case.
+- A model function that prints. Keep input and output out of `step` and `simulate`, so that they can be tested and reused.
+- Validation scattered through the program, or missing altogether. Validate once, right after reading.
+- Updating in place. Writing `s.adults = …` before computing the recruits from `s.adults` changes the model.
+- Unexplained magic numbers. Every number in the update rule should be a named parameter with a unit and a comment.
+- Trusting the output without a check. Compare with something you can derive: an equilibrium, a closed form, a limiting case.
 
 ## Practice
 

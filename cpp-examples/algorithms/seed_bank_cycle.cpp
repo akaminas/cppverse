@@ -1,5 +1,5 @@
 // Title: The annual cycle of a plant with a seed bank
-// Standard: C++17
+// Standard: C++23
 // One year of an annual plant, decomposed into the steps of its life cycle:
 // germination, survival to flowering, seed set and winter survival of the
 // seed bank. Densities are expected numbers per square metre.

@@ -1,5 +1,5 @@
 // Title: Blocks, scope and shadowing
-// Standard: C++17
+// Standard: C++23
 // A name exists from its declaration to the end of the enclosing block.
 // An inner declaration with the same name hides (shadows) the outer one.
 

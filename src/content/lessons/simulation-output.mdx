@@ -27,13 +27,13 @@ The file is the hand-over point between the simulation, written in C++, and the 
 
 ## Why it matters
 
-A result is only as useful as the file it lives in. Three things go wrong surprisingly often:
+A result is only as useful as the file it lives in. Three problems are common:
 
 - **The file cannot be read without manual editing**: columns run together, the header is missing, or explanatory text is mixed into the data.
 - **The numbers are rounded**: printed with six digits, two runs that differ in the eighth digit look identical, and a population approaching its carrying capacity appears to reach it.
 - **Nobody knows which run it was**: the parameters are in a notebook, or in the source code as it was three versions ago.
 
-A well-written output file prevents all three. It is also the cheapest form of reproducibility: if every file says which program and which parameters produced it, any figure can be traced back to its origin.
+A well-written output file prevents all three. It is also the cheapest form of reproducibility. If every file says which program and which parameters produced it, any figure can be traced back to its origin.
 
 ## How it works in C++
 

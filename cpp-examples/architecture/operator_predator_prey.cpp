@@ -1,5 +1,5 @@
 // Title: Arithmetic on a predator-prey state
-// Standard: C++17
+// Standard: C++23
 // Overloaded operators let a Lotka-Volterra update read like its mathematics:
 // s += (h / 2) * (k1 + k2) is one step of Heun's method. The member += does the
 // work; the non-members + and scalar * are built from it, and << prints a state.

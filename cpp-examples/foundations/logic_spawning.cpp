@@ -1,5 +1,5 @@
 // Title: Naming conditions with bool
-// Standard: C++17
+// Standard: C++23
 // Relational operators produce bool values; && and ! combine them.
 // std::boolalpha prints bool values as true and false instead of 1 and 0.
 

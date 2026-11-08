@@ -8,7 +8,7 @@
 //   <name>.args  command-line arguments (one line)
 // Header lines parsed from each source file:
 //   // Title: …
-//   // Standard: C++17 | C++20 | C++23
+//   // Standard: C++23 | C++26
 //   // Expect: compile-error   (programs that demonstrate a compiler error)
 
 const sources = import.meta.glob('/cpp-examples/**/*.{cpp,hpp}', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
@@ -20,7 +20,7 @@ export interface Example {
   name: string;
   title: string;
   code: string;
-  standard: 'c++17' | 'c++20' | 'c++23';
+  standard: 'c++23' | 'c++26';
   expectCompileError: boolean;
   expected?: string;
   stdin?: string;
@@ -36,7 +36,7 @@ export function getExample(file: string): Example {
   const code = sources[key];
   if (code === undefined) throw new Error(`Unknown C++ example "${file}". Available: ${Object.keys(sources).join(', ')}`);
   const base = key.replace(/\.(cpp|hpp)$/, '');
-  const std = (header(code, 'Standard') ?? 'C++17').toLowerCase().replace(/\s/g, '') as Example['standard'];
+  const std = (header(code, 'Standard') ?? 'C++23').toLowerCase().replace(/\s/g, '') as Example['standard'];
   const dir = key.slice(0, key.lastIndexOf('/') + 1);
   const name = file.split('/').pop()!;
   const includes = [...code.matchAll(/#include\s+"([^"]+)"/g)].map((m) => m[1]);
@@ -45,7 +45,7 @@ export function getExample(file: string): Example {
     name,
     title: header(code, 'Title') ?? name,
     code,
-    standard: ['c++17', 'c++20', 'c++23'].includes(std) ? std : 'c++17',
+    standard: ['c++23', 'c++26'].includes(std) ? std : 'c++23',
     expectCompileError: /compile-error/i.test(header(code, 'Expect') ?? ''),
     expected: companions[`${base}.out`],
     stdin: companions[`${base}.in`],

@@ -1,5 +1,5 @@
 // Title: Last in, first out; first in, first out
-// Standard: C++17
+// Standard: C++23
 // A forager retraces its path home with a stack: the patch visited last is
 // left first. Birds at a feeder are served in order of arrival with a queue.
 

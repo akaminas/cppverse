@@ -1,5 +1,5 @@
 // Title: Using a name outside its block
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // germinated is declared inside the inner block, so line 15 cannot see it.
 

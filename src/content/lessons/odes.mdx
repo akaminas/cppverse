@@ -36,9 +36,9 @@ A *solution* of the ODE is a function $N(t)$ whose derivative equals the right-h
 
 Three distinctions tell you what to expect from an equation and which tools apply.
 
-- **Order** is the highest derivative that appears. The logistic equation contains only $dN/dt$, so it is *first order*. An equation with an acceleration $d^2z/dt^2$ is second order.
-- **Linear or nonlinear.** An equation is linear when the unknown function and its derivatives appear only to the first power and are not multiplied together. First-order elimination of a drug from plasma, $dC/dt = -kC$, is linear. The logistic equation is nonlinear because $N(1 - N/K)$ contains $N^2$; the SIR model below is nonlinear because it contains the product $SI$.
-- **Autonomous or non-autonomous.** An equation is autonomous when time does not appear explicitly on the right-hand side: the rate depends on the state alone. The logistic equation is autonomous. Make the transmission rate of an infection follow the seasons, $\beta(t) = \beta_0\,[1 + a\cos(2\pi t / 365)]$, and the model becomes non-autonomous, because the same state now changes at different rates in January and in July.
+- The *order* is the highest derivative that appears. The logistic equation contains only $dN/dt$, so it is *first order*. An equation with an acceleration $d^2z/dt^2$ is second order.
+- Linear or nonlinear. An equation is linear when the unknown function and its derivatives appear only to the first power and are not multiplied together. First-order elimination of a drug from plasma, $dC/dt = -kC$, is linear. The logistic equation is nonlinear because $N(1 - N/K)$ contains $N^2$; the SIR model below is nonlinear because it contains the product $SI$.
+- Autonomous or non-autonomous. An equation is autonomous when time does not appear explicitly on the right-hand side: the rate depends on the state alone. The logistic equation is autonomous. Make the transmission rate of an infection follow the seasons, $\beta(t) = \beta_0\,[1 + a\cos(2\pi t / 365)]$, and the model becomes non-autonomous, because the same state now changes at different rates in January and in July.
 
 ### Systems of equations
 
@@ -98,8 +98,8 @@ Most models of interest have no such formula. The SIR model has none for $S(t)$,
 
 Keep two things apart from the start:
 
-1. **The biological model** is the right-hand side $\mathbf{f}(t, \mathbf{x})$ with its parameters. It encodes your assumptions: logistic density dependence, mass-action transmission, first-order elimination.
-2. **The numerical method** (Euler, Runge-Kutta, an adaptive solver) is a recipe for turning that right-hand side into an approximate trajectory. It knows nothing about biology, and it introduces errors of its own.
+1. The biological model is the right-hand side $\mathbf{f}(t, \mathbf{x})$ with its parameters. It encodes your assumptions: logistic density dependence, mass-action transmission, first-order elimination.
+2. The numerical method (Euler, Runge-Kutta, an adaptive solver) is a recipe for turning that right-hand side into an approximate trajectory. It knows nothing about biology, and it introduces errors of its own.
 
 A good program mirrors this separation. The model lives in one function that only computes rates; the method lives in another that only advances time. You can then change the method without touching the biology, and vice versa. It also tells you how to interpret a surprising result: if a pattern appears with one step size or method and disappears with another, it is a property of the method, not of the model.
 
@@ -107,9 +107,9 @@ A good program mirrors this separation. The model lives in one function that onl
 
 Two decisions turn a model into code: how to store the state, and how to write the right-hand side.
 
-**The state** is a list of numbers, one per variable. A `std::vector<double>` (see <Concept id="std-vector" />) is the flexible choice: its size is set at run time, so one stepper can serve models with one, three or thirty variables. A `std::array<double, 3>` (see <Concept id="array-bitset" />) fixes the size at compile time, which suits a program built around a single model.
+The state is a list of numbers, one per variable. A `std::vector<double>` (see <Concept id="std-vector" />) is the flexible choice: its size is set at run time, so one stepper can serve models with one, three or thirty variables. A `std::array<double, 3>` (see <Concept id="array-bitset" />) fixes the size at compile time, which suits a program built around a single model.
 
-**The right-hand side** is a function that takes the current time and state and returns the vector of rates. It reads the state and changes nothing. Parameters either travel in a `struct` passed by `const` reference or are captured by a lambda, as later lessons show. A convenient shared signature is
+The right-hand side is a function that takes the current time and state and returns the vector of rates. It reads the state and changes nothing. Parameters either travel in a `struct` passed by `const` reference or are captured by a lambda, as later lessons show. A convenient shared signature is
 
 ```cpp
 using State = std::vector<double>;
@@ -203,7 +203,7 @@ State seedRates(double /*t*/, const State& x, double c) {
 
 ## In biological modelling
 
-The ODE lessons on this site return to three models, chosen because each has a known answer to test methods against:
+The ODE lessons on this site return to three models. Each has a known answer to test methods against:
 
 | Model | Equations | Parameters | Benchmark |
 |---|---|---|---|
@@ -217,11 +217,11 @@ When you build your own model, write its right-hand side first and check it befo
 
 ## Common mistakes
 
-- **Mixing the update into the model.** The right-hand side returns rates; it should never change the state or advance time. Take the state by `const` reference so the compiler enforces this.
-- **Forgetting units.** Rates have units of state per unit time. If $\beta$ is per day and the step is in hours, every result is wrong by a factor of 24. Write the units of each parameter next to its declaration.
-- **Dropping the time argument.** A model written as `rates(x)` cannot later become seasonal without changing every numerical method. Accept `t` from the start.
-- **Losing a variable when reducing the order.** A second-order equation becomes *two* first-order equations; a third-order one becomes three. The state vector must hold each new variable.
-- **Treating a closed form as the rule.** That the logistic equation can be solved is a fortunate exception. Expect to integrate numerically, and keep closed forms for testing.
+- Mixing the update into the model: the right-hand side returns rates; it should never change the state or advance time. Take the state by `const` reference so the compiler enforces this.
+- Forgetting units: rates have units of state per unit time. If $\beta$ is per day and the step is in hours, every result is wrong by a factor of 24. Write the units of each parameter next to its declaration.
+- Dropping the time argument: a model written as `rates(x)` cannot later become seasonal without changing every numerical method. Accept `t` from the start.
+- Losing a variable when reducing the order: a second-order equation becomes *two* first-order equations; a third-order one becomes three. The state vector must hold each new variable.
+- Treating a closed form as the rule: that the logistic equation can be solved is a fortunate exception. Expect to integrate numerically, and keep closed forms for testing.
 
 ## Practice
 

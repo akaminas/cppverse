@@ -1,5 +1,5 @@
 // Title: The SIR epidemic integrated with RK4
-// Standard: C++17
+// Standard: C++23
 // Proportions susceptible (S), infectious (I) and recovered (R):
 //     dS/dt = -beta S I,   dI/dt = beta S I - gamma I,   dR/dt = gamma I.
 // Two checks verify the integration: S + I + R stays 1, and the final

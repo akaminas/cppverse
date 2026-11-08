@@ -1,5 +1,5 @@
 // Title: Passing a random-number engine instead of hiding it
-// Standard: C++17
+// Standard: C++23
 // survivors draws from the engine it is given. Each replicate creates its
 // own engine from a printed seed, so any run can be repeated exactly.
 

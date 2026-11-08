@@ -10,14 +10,13 @@ objectives:
   - Compute and interpret the elasticities of the growth rate λ of a stage-structured model
   - Recognise interactions between parameters and explain why local analysis can miss them
   - Describe parameter sweeps, Morris screening and Sobol indices, and choose parameter ranges defensibly
-standard: c++17
 lab: matrix
 references:
   - "Caswell, H. (2001). Matrix Population Models, 2nd ed. Sinauer. Chapter 9."
-  - "de Kroon, H., Plaisier, A., van Groenendael, J. & Caswell, H. (1986). Elasticity: the relative contribution of demographic parameters to population growth rate. Ecology 67: 1427–1431."
-  - "Crouse, D. T., Crowder, L. B. & Caswell, H. (1987). A stage-based population model for loggerhead sea turtles and implications for conservation. Ecology 68: 1412–1423."
+  - "de Kroon, H., Plaisier, A., van Groenendael, J. & Caswell, H. (1986). Elasticity: the relative contribution of demographic parameters to population growth rate. Ecology 67: 1427-1431."
+  - "Crouse, D. T., Crowder, L. B. & Caswell, H. (1987). A stage-based population model for loggerhead sea turtles and implications for conservation. Ecology 68: 1412-1423."
   - "Saltelli, A. et al. (2008). Global Sensitivity Analysis: The Primer. Wiley."
-  - "Morris, M. D. (1991). Factorial sampling plans for preliminary computational experiments. Technometrics 33: 161–174."
+  - "Morris, M. D. (1991). Factorial sampling plans for preliminary computational experiments. Technometrics 33: 161-174."
 ---
 
 ## What it is
@@ -92,7 +91,7 @@ The figure scales each parameter from half to one and a half times its baseline,
 
 <Figure id="sensitivity-analysis-sweeps" />
 
-Two features matter. The curves are not straight lines, so the elasticity at the baseline describes small changes well and large ones only roughly. And only some curves cross λ = 1 within the range: raising stasis by about a quarter, or flowering or reflowering by more than a third, would on its own halt the decline, whereas no change within this range in fecundity, seedling survival or reversion would.
+Two features stand out. The curves are not straight lines, so the elasticity at the baseline describes small changes well and large ones only roughly. And only some curves cross λ = 1 within the range: raising stasis by about a quarter, or flowering or reflowering by more than a third, would on its own halt the decline, whereas no change within this range in fecundity, seedling survival or reversion would.
 
 Ranked, the elasticities at the baseline are:
 
@@ -142,7 +141,7 @@ Two parameters *interact* when the effect of one depends on the value of the oth
 
 <Figure id="sensitivity-analysis-interaction" />
 
-At the baseline seedling survival of 0.12, λ reaches 1 only at a fecundity of about 7; with seedling survival doubled, half that fecundity suffices. A field study that measured fecundity carefully but borrowed seedling survival from another site could misjudge the population's fate in either direction. Notice also that this interaction vanishes on a logarithmic scale, where the product becomes a sum; whether parameters "interact" can depend on the scale of the output.
+At the baseline seedling survival of 0.12, λ reaches 1 only at a fecundity of about 7; with seedling survival doubled, half that fecundity suffices. A field study that measured fecundity carefully but borrowed seedling survival from another site could misjudge the population's fate in either direction. This interaction also vanishes on a logarithmic scale, where the product becomes a sum; whether parameters "interact" can depend on the scale of the output.
 
 ### Global approaches
 

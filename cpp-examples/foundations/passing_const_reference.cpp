@@ -1,5 +1,5 @@
 // Title: Reading a sample through a const reference
-// Standard: C++17
+// Standard: C++23
 // mean and count_above read the whole sample without copying it, and const
 // guarantees that they cannot change it. to_kilograms is meant to modify
 // its argument, so it takes a plain reference. The masses are illustrative.

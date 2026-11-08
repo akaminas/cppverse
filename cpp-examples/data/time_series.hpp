@@ -1,5 +1,5 @@
 // Title: A class template for time series (header)
-// Standard: C++17
+// Standard: C++23
 // TimeSeries<T> stores one value of type T per time step. The whole
 // template, including its member function definitions, lives in the header.
 

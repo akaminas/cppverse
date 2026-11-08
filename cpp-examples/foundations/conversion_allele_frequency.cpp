@@ -1,5 +1,5 @@
 // Title: Allele frequency from genotype counts
-// Standard: C++17
+// Standard: C++23
 // Counts are integers; frequencies are not. Dividing two ints discards the
 // fraction, so one operand is converted to double before the division.
 

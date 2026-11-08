@@ -1,5 +1,5 @@
 // Title: A silent error in a survival estimate
-// Standard: C++17
+// Standard: C++23
 // Both versions compile without a warning and run without crashing, but the
 // first divides two integers, so the estimated survival is truncated to 0.
 

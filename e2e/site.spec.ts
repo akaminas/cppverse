@@ -39,7 +39,7 @@ test.describe('landing and navigation', () => {
     expect(JSON.parse(stored!).profile.level).toBe('intermediate');
   });
 
-  for (const path of ['atlas/', 'curriculum/', 'models/', 'models/stochastic/', 'pathways/', 'progress/', 'sources/', 'about/', 'capstones/', 'capstones/capstone-d/', 'learn/hello-world/']) {
+  for (const path of ['atlas/', 'curriculum/', 'models/', 'models/stochastic/', 'progress/', 'sources/', 'about/', 'capstones/', 'capstones/capstone-d/', 'learn/hello-world/']) {
     test(`direct URL ${path} loads without errors`, async ({ page }) => {
       const errors: string[] = [];
       page.on('pageerror', (e) => errors.push(String(e)));
@@ -84,10 +84,46 @@ test.describe('atlas', () => {
     await expect(page.locator('.atlas-detail-title')).not.toHaveText('for loops');
   });
 
+  test('lines between concepts appear only for a selected concept', async ({ page }) => {
+    await page.goto('atlas/');
+    await hydrated(page.locator('.atlas'));
+    await expect(page.locator('.atlas-edge')).toHaveCount(0);
+    await page.goto('atlas/?node=gillespie');
+    await hydrated(page.locator('.atlas'));
+    expect(await page.locator('.atlas-edge').count()).toBeGreaterThan(0);
+  });
+
+  test('the Landscape, Domains and Concepts buttons highlight and do not move the map', async ({ page }) => {
+    await page.goto('atlas/');
+    await hydrated(page.locator('.atlas'));
+    const view = () => page.locator('.atlas-svg > g').getAttribute('transform');
+    const before = await view();
+    for (const [name, cls] of [['Domains', /sem-2/], ['Concepts', /sem-3/], ['Landscape', /sem-1/]] as const) {
+      await page.locator('.atlas-altitude').getByRole('button', { name }).click();
+      await expect(page.locator('.atlas')).toHaveClass(cls);
+    }
+    expect(await view()).toBe(before);
+  });
+
   test('a pathway highlights its route and names the next step', async ({ page }) => {
     await page.goto('atlas/?goal=gillespie');
     await expect(page.locator('.atlas')).toHaveClass(/has-route/);
     await expect(page.locator('.atlas-route')).toContainText('Next:');
+  });
+});
+
+test.describe('destinations and goals', () => {
+  test('one page holds the destinations and the goals that lead to them, and there is no separate pathways item', async ({ page }) => {
+    await page.goto('models/');
+    await expect(page.getByRole('heading', { level: 1, name: 'What do you want to learn?' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 3, name: 'Learn Gillespie simulation' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Pathways' })).toHaveCount(0);
+  });
+
+  test('the about page names the maker and no longer ends the organisation section with the route sentence', async ({ page }) => {
+    await page.goto('about/');
+    await expect(page.getByRole('link', { name: 'Meet the creator' })).toHaveAttribute('href', 'https://akaminas.github.io/');
+    await expect(page.locator('main')).not.toContainText('nothing is locked');
   });
 });
 
@@ -182,7 +218,7 @@ test.describe('accessibility in both themes', () => {
   test.use({ reducedMotion: 'reduce' });
 
   for (const colour of ['light', 'dark'] as const) {
-    for (const path of ['./', 'atlas/', 'curriculum/', 'learn/hello-world/', 'learn/vectors/', 'models/', 'models/stochastic/', 'capstones/capstone-d/', 'pathways/', 'start/', 'progress/', 'about/', 'sources/', 'deep/']) {
+    for (const path of ['./', 'atlas/', 'curriculum/', 'learn/hello-world/', 'learn/vectors/', 'models/', 'models/stochastic/', 'capstones/capstone-d/', 'start/', 'progress/', 'about/', 'sources/', 'deep/']) {
       test(`no serious accessibility violations on ${path} in the ${colour} theme`, async ({ page }) => {
         test.setTimeout(120_000);
         await page.addInitScript((c) => localStorage.setItem('cpp-atlas:theme', c), colour);

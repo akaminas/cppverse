@@ -1,5 +1,5 @@
 // Title: A stochastic SIR epidemic with Gillespie's direct method
-// Standard: C++17
+// Standard: C++23
 // Infection (S + I -> 2 I) has propensity beta S I / N and recovery
 // (I -> R) has propensity gamma I. The state is recorded every 10 days, so
 // that runs with different seeds can be compared at the same times. When

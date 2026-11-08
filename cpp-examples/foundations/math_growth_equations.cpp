@@ -1,5 +1,5 @@
 // Title: Three biological equations in C++
-// Standard: C++17
+// Standard: C++23
 // Von Bertalanffy growth, Q10 temperature scaling and a Hill function, each
 // transcribed from its equation. Parameter values are illustrative.
 

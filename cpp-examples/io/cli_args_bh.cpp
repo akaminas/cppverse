@@ -1,5 +1,5 @@
 // Title: Model parameters from the command line
-// Standard: C++17
+// Standard: C++23
 // Usage: cli_args_bh [R0] [M] [N0] [generations]
 // Arguments that are left out keep their defaults; malformed ones stop the program.
 

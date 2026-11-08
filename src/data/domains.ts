@@ -159,7 +159,7 @@ export const domains: Domain[] = [
     kind: 'synthesis',
     family: 'mauve',
     modules: [],
-    summary: 'Original synthesis: simulation experiments, analysis, verification, validation and conclusions.',
+    summary: 'Simulation experiments, analysis, verification, validation and conclusions.',
     column: 4,
     row: 0,
   },

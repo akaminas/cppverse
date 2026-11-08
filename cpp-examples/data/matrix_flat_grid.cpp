@@ -1,5 +1,5 @@
 // Title: A grid stored in one flat vector
-// Standard: C++17
+// Standard: C++23
 // A landscape of 3 x 5 patches kept in a single vector. The patch in row r
 // and column c is element r * cols + c.
 

@@ -1,5 +1,5 @@
 // Title: Values as template parameters, defaults and static_assert
-// Standard: C++17
+// Standard: C++23
 // total works for a std::array of any length N, deduced at compile time.
 // mean has a default result type, double, and rejects non-numeric elements.
 

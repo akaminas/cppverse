@@ -1,5 +1,5 @@
 // Title: Characters are small integers
-// Standard: C++17
+// Standard: C++23
 // A char holds one character, stored as a numeric code. Arithmetic on codes
 // turns grid-column letters into indices; escape sequences write special
 // characters such as tabs and quotes.

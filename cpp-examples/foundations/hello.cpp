@@ -1,5 +1,5 @@
 // Title: Hello, world
-// Standard: C++17
+// Standard: C++23
 // The smallest complete C++ program: it prints one line of text.
 
 #include <iostream>

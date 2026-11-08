@@ -1,5 +1,5 @@
 // Title: A minimal test runner for the parts of a model
-// Standard: C++17
+// Standard: C++23
 // Unit tests for the components of the plant model (torus distance, wrapping,
 // the survival rule) and an analytical test: at the mean-field equilibrium N*,
 // survival times (1 + f) must equal 1. A failed check gives a non-zero exit

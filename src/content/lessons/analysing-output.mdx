@@ -10,10 +10,9 @@ objectives:
   - Read and summarise replicates by group in R (readr, dplyr) or Python (pandas)
   - Distinguish standard deviation, standard error and quantile bands, and choose the one that answers the question
   - Estimate how many replicates are needed for a given Monte Carlo error
-standard: c++17
 lab: gillespie
 references:
-  - "Wickham, H. (2014). Tidy data. Journal of Statistical Software 59(10): 1–23."
+  - "Wickham, H. (2014). Tidy data. Journal of Statistical Software 59(10): 1-23."
   - "Wickham, H., Çetinkaya-Rundel, M. & Grolemund, G. (2023). R for Data Science, 2nd ed. O’Reilly."
   - "McKinney, W. (2022). Python for Data Analysis, 3rd ed. O’Reilly."
 ---
@@ -26,13 +25,13 @@ This lesson is about the hand-over between the two: what the C++ program should 
 
 ## Why it matters
 
-Keeping the halves apart pays off at once:
+Keeping the halves apart has three practical benefits:
 
-- **Rerunning is expensive; replotting is not.** If the program writes raw replicate output, you can change a summary or a figure without simulating again.
-- **Summaries can be checked.** A script that reads the raw table and computes a mean is a record of how the number was obtained. A mean typed into a spreadsheet is not.
-- **Nothing is lost.** A program that writes only the mean of 1000 replicates has thrown away the variability, the extremes, the extinctions and any chance of noticing that something went wrong in one replicate.
+- Rerunning is expensive; replotting is not. If the program writes raw replicate output, you can change a summary or a figure without simulating again.
+- Summaries can be checked. A script that reads the raw table and computes a mean is a record of how the number was obtained. A mean typed into a spreadsheet is not.
+- Nothing is lost. A program that writes only the mean of 1000 replicates has thrown away the variability, the extremes, the extinctions and any chance of noticing that something went wrong in one replicate.
 
-The second half of the lesson deals with the question every stochastic result raises: how much of what you see is the model, and how much is the luck of the draw?
+The second half of the lesson takes up a question every stochastic result raises: how much of what you see is the model, and how much is the luck of the draw?
 
 ## How it works in C++
 
@@ -192,11 +191,11 @@ Monte Carlo error is the *only* uncertainty that more replicates remove. Uncerta
 
 ### Presenting variability honestly
 
-- **Say how many replicates** every summary is based on, and which interval a band shows.
-- **Show the spread, not only the centre.** A mean line without a band invites the reader to treat a stochastic model as deterministic.
-- **Show some individual replicates** when their shape matters: a mean can rise smoothly while no single population does.
-- **Report extinction separately.** With absorbing states, the mean over all replicates mixes zeros with surviving populations. State whether a mean includes the extinct replicates, and give the fraction extinct alongside it.
-- **Do not shrink bands by adding replicates.** If the question is about variability among populations, a standard error band that narrows with $n$ answers a different question.
+- Say how many replicates every summary is based on, and which interval a band shows.
+- Show the spread, not only the centre. A mean line without a band invites the reader to treat a stochastic model as deterministic.
+- Show some individual replicates when their shape matters: a mean can rise smoothly while no single population does.
+- Report extinction separately. With absorbing states, the mean over all replicates mixes zeros with surviving populations. State whether a mean includes the extinct replicates, and give the fraction extinct alongside it.
+- Do not shrink bands by adding replicates. If the question is about variability among populations, a standard error band that narrows with $n$ answers a different question.
 
 <Check
   id="sd-or-se"
@@ -262,10 +261,10 @@ Some summaries are easier in C++ than afterwards. If a run produces millions of 
 A figure showing mean ± standard error from 10,000 replicates has bars almost too thin to see, and readers take them to mean that the outcome is predictable. It is not: the bars only show that the *mean* is known precisely. If you plot standard errors, say so in the subtitle, and consider whether the question is really about variability.
 </Callout>
 
-- **Analysing a wide table by hand.** Copying columns between spreadsheets breaks the link between results and code. Read the raw file in a script.
-- **Averaging over the extinct.** The mean size "of the population" over all replicates includes zeros; the mean size of surviving populations is larger. Both can be useful; label which one you report.
-- **Too few replicates for the tails.** A 95 % quantile from 20 replicates is essentially the largest value. Extreme quantiles need hundreds of replicates or more.
-- **Dropping replicates that "failed".** If some runs crash or produce absurd values, that is a finding about the code or the model. Investigate it; do not filter it out quietly.
+- Analysing a wide table by hand: copying columns between spreadsheets breaks the link between results and code. Read the raw file in a script.
+- Averaging over the extinct: the mean size "of the population" over all replicates includes zeros; the mean size of surviving populations is larger. Both can be useful; label which one you report.
+- Too few replicates for the tails: a 95 % quantile from 20 replicates is essentially the largest value. Extreme quantiles need hundreds of replicates or more.
+- Dropping replicates that "failed": if some runs crash or produce absurd values, that is a finding about the code or the model. Investigate it; do not filter it out quietly.
 
 ## Practice
 

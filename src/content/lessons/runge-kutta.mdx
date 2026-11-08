@@ -18,7 +18,7 @@ references:
 
 ## What it is
 
-Euler's method uses one slope per step, the one at the start, and pretends it holds for the whole step (see <Concept id="euler" />). Its error comes from the slope changing within the step. Runge-Kutta methods address exactly that: they evaluate the slope at several trial points inside the step and move along a weighted average of those slopes.
+Euler's method uses one slope per step, the one at the start, and pretends it holds for the whole step (see <Concept id="euler" />). Its error comes from the slope changing within the step. Runge-Kutta methods address that problem: they evaluate the slope at several trial points inside the step and move along a weighted average of those slopes.
 
 ### Heun's method
 
@@ -54,7 +54,7 @@ The right measure of cost is the number of times the model's right-hand side is 
 | Heun | 2 | 2 | ÷ 4 |
 | RK4 | 4 | 4 | ÷ 16 |
 
-RK4 spends four times as much on each step as Euler. But because its error falls so much faster, it can take far larger steps for the same accuracy, and its total cost is usually lower by orders of magnitude. Investing more work per step is cheaper overall. Beyond fourth order the bargain gets worse: a fifth-order method needs at least six evaluations per step, and the number of evaluations keeps outgrowing the order. That is one reason RK4 became the standard fixed-step method.
+RK4 spends four times as much on each step as Euler. But because its error falls so much faster, it can take far larger steps for the same accuracy, and its total cost is usually lower by orders of magnitude. More work per step therefore means less work overall. Beyond fourth order the bargain gets worse: a fifth-order method needs at least six evaluations per step, and the number of evaluations keeps outgrowing the order. That is one reason RK4 became the standard fixed-step method.
 
 ## How it works in C++
 
@@ -88,11 +88,11 @@ The program below gives each method the same *budget* of right-hand-side evaluat
 
 <Example file="ode/rk_equal_cost.cpp" mark="29-45,50-53,62-65" />
 
-RK4 wins at every budget, and its lead widens rapidly: going from 40 to 640 evaluations (16 times the work) reduces Euler's error about 23-fold but RK4's about 80,000-fold. Heun is *worse* than Euler at small budgets and only overtakes it at 320 evaluations. A higher order describes how the error behaves *as $h$ becomes small*; with large steps the error is not yet in that regime, and the leading-order prediction can be badly wrong. Order is a promise about small steps, not a ranking at every step size.
+RK4 wins at every budget, and its lead widens rapidly: going from 40 to 640 evaluations (16 times the work) reduces Euler's error about 23-fold but RK4's about 80,000-fold. Heun is *worse* than Euler at small budgets and only overtakes it at 320 evaluations. A higher order describes how the error behaves *as $h$ becomes small*; with large steps the error is not yet in that regime, and the leading-order prediction can be badly wrong. Order describes the behaviour for small steps. It does not rank the methods at every step size.
 
 ## Explore it
 
-The trajectories tell a slightly different story from the end-point errors in the table.
+The trajectories tell a slightly different story from the end-point errors printed by the program.
 
 <Figure id="runge-kutta-equal-cost" />
 

@@ -1,5 +1,5 @@
 // Title: A first population simulation
-// Standard: C++17
+// Standard: C++23
 // Five generations of the Beverton–Holt model, printed as they are computed.
 
 #include <iomanip>

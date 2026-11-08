@@ -34,9 +34,9 @@ int main(int argc, char* argv[])
 
 ## Why it matters
 
-A model whose parameters are written into the source code must be edited and recompiled for every new value. That is slow, and worse, it destroys the record: a week later nobody knows which values produced which output file.
+A model whose parameters are written into the source code must be edited and recompiled for every new value. That is slow, and it also destroys the record: a week later nobody knows which values produced which output file.
 
-Reading parameters at start-up changes that:
+Reading parameters at start-up avoids both problems:
 
 - **No recompilation.** The same executable runs every scenario. A script can call it a hundred times with different values.
 - **A record of what was run.** The command line, or the parameter file it names, documents the run. Copy it next to the output, or write the values into the output file's header (see <Concept id="trajectory-output" />).
@@ -100,7 +100,7 @@ Reading it takes the stream tools from <Concept id="file-streams" />: read a key
 `readParameters` reports problems by throwing `std::runtime_error`, and `main` catches it, prints the message with the file name and returns `EXIT_FAILURE`. Every exit path passes through `main`, so local objects are cleaned up properly. When no argument is given, the program falls back on `bh_params.txt`. The line written to `std::clog` is a progress message: it goes to standard error and does not mix with the results.
 
 <Callout kind="manual" title="Global parameters and exit">
-The course manual stores the parameters in global variables and leaves the program with `exit()` when a key is unknown. Grouping them in a struct that the reader returns makes the data flow visible and lets you hold two parameter sets at once; returning from `main` instead of calling `exit()` lets files close normally.
+Older code often stores parameters in global variables and calls `exit()` when a key is unknown. Group them in a struct that the reader returns. That makes the data flow visible and lets you hold two parameter sets at once. Return from `main` (or throw an exception that `main` catches) instead of calling `exit()`, so that files close normally.
 </Callout>
 
 ## Explore it
@@ -158,7 +158,7 @@ A typical workflow combines both mechanisms: the command line names a parameter 
 
 Keep the parameter file with the results. Copying it into the output folder, or echoing every value into the metadata lines of the output file, means that any figure can be traced back to the exact values that produced it.
 
-For programs with many options, libraries such as CLI11 or cxxopts parse named options (`--R0 2.5 --generations 20`) with help messages and type checking. They are worth using once a program has more than a handful of settings.
+For programs with many options, libraries such as CLI11 or cxxopts parse named options (`--R0 2.5 --generations 20`) with help messages and type checking. Use one once a program has more than a handful of settings.
 
 ## Common mistakes
 

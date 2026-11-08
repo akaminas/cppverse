@@ -188,7 +188,7 @@ export default function AtlasPanel(props: Props) {
             </p>
             <h2 className="atlas-detail-title">{selected.title}</h2>
             <div className="atlas-tags">
-              <span className="tag">{LEVEL_LABEL[selected.level]}</span>
+              <span className={`lvl lvl-${selected.level}`}>{LEVEL_LABEL[selected.level]}</span>
               {selected.optional && <span className="tag">Optional branch</span>}
               {selected.standard && <span className="tag">{selected.standard.toUpperCase()}</span>}
               {completed.has(selected.id) ? (
@@ -324,12 +324,13 @@ export default function AtlasPanel(props: Props) {
                 ))}
               </ul>
               <p>
-                Zoom with the wheel, pinch or the buttons; drag to pan. The scale control at the bottom left moves between the landscape,
-                one domain and every concept.
+                Zoom with the wheel, pinch or the buttons; drag to pan. The three buttons at the bottom left do not zoom: they highlight
+                the landscape, the domains or the concepts. Click a domain title to light up that domain. Lines appear only for the
+                concept you select.
               </p>
               <p className="atlas-keys">
                 <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>Enter</kbd> open · <kbd>Esc</kbd> clear · <kbd>+</kbd> <kbd>−</kbd> zoom ·{' '}
-                <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> scale · <kbd>0</kbd> fit · <kbd>/</kbd> search
+                <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> highlight · <kbd>0</kbd> fit · <kbd>/</kbd> search
               </p>
             </details>
           </div>

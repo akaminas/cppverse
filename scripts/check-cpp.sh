@@ -20,7 +20,7 @@ while IFS= read -r -d '' src; do
   rel=${src#"$ROOT/cpp-examples/"}
   grep -q "int main(" "$src" || continue
   std=$(grep -m1 -iE '^// *Standard:' "$src" | sed -E 's/^.*[Ss]tandard: *//' | tr 'A-Z' 'a-z' | tr -d ' \r')
-  std=${std:-c++17}
+  std=${std:-c++23}
   dir=$(dirname "$src")
   base="${src%.cpp}"
   name=$(basename "$base")

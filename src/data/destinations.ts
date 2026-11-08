@@ -38,7 +38,7 @@ export const destinations: Destination[] = [
     eyebrow: 'Destination',
     capability: 'Implement continuous-time models with numerical methods, and know how accurate the result is.',
     intro: [
-      'Most continuous-time models in biology have no closed-form solution, so they are solved numerically. The model, a set of rates of change, is distinct from the numerical method that approximates its solution.',
+      'Most continuous-time models in biology have no closed-form solution, so they are solved numerically. The model, a set of rates of change, is separate from the numerical method that approximates its solution.',
       'This destination builds Euler and Runge-Kutta integrators behind a common interface, measures their errors against exact solutions, shows when large steps create artefacts, and introduces adaptive step-size control.',
     ],
     assemblies: ['ode'],
@@ -53,7 +53,7 @@ export const destinations: Destination[] = [
     capability: 'Implement probabilistic processes and Gillespie simulations, and analyse them across replicates.',
     intro: [
       'In small populations, chance events (who is born, who dies, who infects whom) shape outcomes. A stochastic model describes a distribution of possible histories, and a simulation samples from it.',
-      'This destination covers pseudo-random generators and seeds, the C++ random library, weighted choices, Gillespie’s exact algorithm for event-driven processes, and the analysis of replicate ensembles.',
+      'This destination covers pseudo-random generators and seeds, the C++ random library, weighted choices, Gillespie\'s exact algorithm for event-driven processes, and the analysis of replicate ensembles.',
     ],
     assemblies: ['stochastic'],
     lab: 'gillespie',
@@ -77,11 +77,11 @@ export const destinations: Destination[] = [
     id: 'inference',
     landmark: 'inference-landmark',
     module: null,
-    eyebrow: 'Synthesis · original to this site',
-    capability: 'Design simulation experiments, analyse their output, and draw appropriately qualified scientific conclusions.',
+    eyebrow: 'Synthesis',
+    capability: 'Design simulation experiments, analyse their output, and draw scientific conclusions that state their limits.',
     intro: [
       'A working simulation is only the start of a study. The four destinations converge here: computational experiments with replicates and recorded seeds, analysis of the output in R or Python, verification and validation, and conclusions that state what the model can and cannot support.',
-      'This region is an original synthesis of this site.',
+      'The lessons here concern the scientific use of simulations rather than new language features.',
     ],
     assemblies: [],
     capstones: ['capstone-f'],

@@ -11,21 +11,20 @@ objectives:
   - Attach standard errors to replicate estimates and choose the number of replicates
   - Compare replicate means with the deterministic model and explain when they differ
   - Give every replicate its own reproducible seed
-standard: c++17
 lab: gillespie
 references:
-  - "Kendall DG (1948) On the generalized “birth-and-death” process. Annals of Mathematical Statistics 19: 1–15"
-  - "Kurtz TG (1970) Solutions of ordinary differential equations as limits of pure jump Markov processes. Journal of Applied Probability 7: 49–58"
+  - "Kendall DG (1948) On the generalized “birth-and-death” process. Annals of Mathematical Statistics 19: 1-15"
+  - "Kurtz TG (1970) Solutions of ordinary differential equations as limits of pure jump Markov processes. Journal of Applied Probability 7: 49-58"
   - "Allen LJS (2010) An Introduction to Stochastic Processes with Applications to Biology, 2nd ed. CRC Press"
 ---
 
 ## What it is
 
-A deterministic model makes one prediction. A stochastic model makes a *distribution* of predictions: every run of a Gillespie simulation (<Concept id="gillespie" />) is one draw from it. A **replicate** is one run with its own random numbers, and a **replicate ensemble** is a set of such runs with identical parameters. Everything we want to know about the model, such as the expected population size, the spread of outcomes or the probability of extinction, is estimated from the ensemble.
+A deterministic model makes one prediction. A stochastic model makes a *distribution* of predictions: every run of a Gillespie simulation (<Concept id="gillespie" />) is one draw from it. A **replicate** is one run with its own random numbers, and a **replicate ensemble** is a set of such runs with identical parameters. Everything one wants to know about the model, such as the expected population size, the spread of outcomes or the probability of extinction, is estimated from the ensemble.
 
 ## Why it matters
 
-A single run is a sample of size one. It tells you that an outcome is *possible*, not how likely it is. Here are 40 runs of the same birth-death model, with $b = 1$ and $d = 0.8$ per individual per year and $N_0 = 5$ individuals:
+A single run is a sample of size one. It tells you that an outcome is *possible*, not how likely it is. The figure shows 40 runs of the same birth-death model, with $b = 1$ and $d = 0.8$ per individual per year and $N_0 = 5$ individuals:
 
 <Figure id="stochastic-replicates-members" />
 
@@ -75,7 +74,7 @@ $$
 \operatorname{SE}(\hat p_0) = \sqrt{\frac{\hat p_0 (1 - \hat p_0)}{n}} .
 $$
 
-The program prints both, as `se_mean` and `se_p`. Roughly 95 % of the time, an estimate lies within two standard errors of the true value. Both standard errors shrink like $1/\sqrt{n}$: **four times as many replicates halve the error**. That gives a direct way to choose $n$. To estimate an extinction probability near 0.15 with a standard error of 0.01, solve $\sqrt{0.15 \times 0.85 / n} = 0.01$, which gives $n \approx 1300$. More replicates beyond what the question needs cost time without changing the conclusion.
+The program prints both, as `se_mean` and `se_p`. Roughly 95 % of the time, an estimate lies within two standard errors of the true value. Both standard errors shrink like $1/\sqrt{n}$: **four times as many replicates halve the error**. That gives a direct way to choose $n$. To estimate an extinction probability near 0.15 with a standard error of 0.01, solve $\sqrt{0.15 \times 0.85 / n} = 0.01$, which gives $n \approx 1300$. Replicates beyond what the question needs cost time without changing the conclusion.
 
 Summaries such as these, and figures of them, are often easier to make in R or Python from the program's output (<Concept id="output-analysis" />, <Concept id="uncertainty" />).
 

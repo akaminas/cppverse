@@ -1,5 +1,5 @@
 // Title: Summarising a trajectory with standard algorithms
-// Standard: C++17
+// Standard: C++23
 // The logistic map x(t+1) = r x(t) (1 - x(t)) with r = 2.8 overshoots its
 // equilibrium and settles in damped oscillations. Standard algorithms find
 // the peak and its time, the mean, and when the trajectory has settled.

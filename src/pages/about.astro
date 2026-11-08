@@ -16,40 +16,44 @@ import { url } from '../lib/url';
     </p>
     <h2>How it is organised</h2>
     <p>
-      The <a href={url('/atlas/')}>atlas</a> is a map of the curriculum. The foundations of the language lie to the west; the four
-      modelling destinations rise to the east: algorithm design, numerical integration, stochastic modelling and individual-based
-      modelling. A final region, scientific inference, is original to this site and connects
-      the destinations to experiments, analysis and interpretation.
+      The <a href={url('/atlas/')}>atlas</a> is a map of the curriculum. The foundations of the language lie to the west, and the four
+      modelling destinations lie to the east: algorithm design, numerical integration, stochastic modelling and individual-based
+      modelling. A final region, scientific inference, is original to this site and connects the destinations to experiments,
+      analysis and interpretation.
     </p>
     <p>
       You can travel in both directions: from a construct you have just learned to the models that use it, or from a model you want to
-      build back to everything it requires. The <a href={url('/start/')}>start page</a> asks two questions and suggests a route;
-      nothing is locked.
+      build back to everything it requires.
     </p>
-    <h2>Curriculum source and attribution</h2>
+    <h2>Curriculum source</h2>
     <p>
-      The curriculum follows <cite>{MANUAL.title}</cite> by {MANUAL.authors.join(', ')} ({MANUAL.institution}).
+      The curriculum follows <cite>{MANUAL.title}</cite> by {MANUAL.authors.join(', ')} ({MANUAL.institution}). Full details are on
+      the <a href={url('/sources/')}>sources page</a>.
     </p>
     <div class="key"><Attribution label="Source" /></div>
-    <p>
-      This is an independent project. It is not an official University of Groningen course and implies no endorsement by the
-      University or the authors. Lessons, examples, figures and exercises are written independently, and the manual’s assignments,
-      exercise solutions and graded projects are not reproduced. Full details are on the <a href={url('/sources/')}>sources page</a>.
-    </p>
     <h2>Design</h2>
     <p>
       Scientific figures and the colours of the code follow the <a href="https://akaminas.github.io/vellum/">Vellum</a> design system.
-      The pages are set in Source Sans Pro and Source Code Pro, and come in a light and a dark theme: the button in the header
-      switches between them, and the first visit follows your system setting.
+      The text is set in Calibri (or Carlito, its open twin, where Calibri is not installed) and the code in Source Code Pro. The pages
+      come in a light and a dark theme: the button in the header switches between them, and the first visit follows your system setting.
     </p>
     <h2>Your data</h2>
     <p>
       There are no accounts and no tracking. Your level, goals, bookmarks and progress are stored only in your browser; the
       <a href={url('/progress/')}>progress page</a> exports, imports and deletes them.
     </p>
+    <section class="maker" aria-labelledby="maker-title">
+      <p class="maker-label">The maker</p>
+      <h2 id="maker-title">Designed, drawn and coded by Alexandros Kaminas</h2>
+      <p>PhD researcher at TRÊS, University of Groningen, modelling complex systems.</p>
+      <p><a class="btn-outline" href="https://akaminas.github.io/">Meet the creator</a></p>
+    </section>
   </div>
 </BaseLayout>
 <style>
   .about h2 { margin-top: 1.8em; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
-  .about p { max-width: 68ch; }
+  .maker { margin-top: 3.2em; padding: 24px 28px 8px; background: var(--panel); border-left: 4px solid var(--rule-heavy); border-radius: 0 3px 3px 0; }
+  .maker h2 { margin: 0 0 10px; padding: 0; border: 0; font-size: 1.5rem; }
+  .maker .maker-label { margin: 0 0 4px; font-size: var(--t-small); font-weight: 700; color: var(--v-secondary); }
+  .maker p { text-align: left; }
 </style>

@@ -98,7 +98,7 @@ const checkCounts = lessonCheckCounts();
       <div class="grid grid-3">
         {lessonList.map(({ slug, data }) => (
           <a class="card-link" href={url(`/learn/${slug}/`)}>
-            <span class="eyebrow">{data ? `${data.level}${data.optional ? ' · optional' : ''}` : 'in preparation'}</span>
+            <span class="eyebrow">{data ? <><span class={`lvl-text lvl-${data.level}`}>{data.level}</span>{data.optional ? ' · optional' : ''}</> : 'in preparation'}</span>
             <h3>{data?.title ?? slug}</h3>
             {data && <p class="muted">{data.summary}</p>}
           </a>
@@ -144,11 +144,9 @@ const checkCounts = lessonCheckCounts();
 
     <section class="dest-section lesson-source" aria-label="Source">
       {manual.length > 0 ? (
-        <p>
-          This destination draws on the Groningen course manual. Lessons, examples and laboratories are original.
-        </p>
+        <p>The lessons, examples and laboratories for this destination are original to this site.</p>
       ) : (
-        <p>This synthesis is original material of this site and is not part of the Groningen course.</p>
+        <p>This synthesis is original material of this site.</p>
       )}
     </section>
   </div>

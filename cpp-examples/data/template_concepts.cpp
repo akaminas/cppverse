@@ -1,5 +1,5 @@
 // Title: Constraining a template with a concept
-// Standard: C++20
+// Standard: C++23
 // std::floating_point accepts only floating-point types (float, double,
 // long double), so a call with an int argument is rejected by name.
 

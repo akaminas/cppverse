@@ -9,9 +9,8 @@ objectives:
   - Choose for each data member whether it is public or private, const or modifiable, per object or shared
   - Write const member functions and explain why const objects and const references can call only those
   - Replace setters that merely assign with operations that keep the object valid
-  - Define static data members and static member functions in modern C++17 style
+  - Define static data members and static member functions in modern C++ style
   - Use mutable and friend only where they are justified
-standard: c++17
 references:
   - "cppreference.com: Access specifiers; static members; cv-qualified member functions"
   - "cppreference.com: friend declaration; mutable specifier"
@@ -26,7 +25,7 @@ A class decides who may see and change its members. Three keywords control this:
 - **`const`** after a member function's parameter list says that the function only *reads* the object.
 - **`static`** says that a member belongs to the *class*, shared by every object, rather than to each object separately.
 
-Two more keywords are deliberate exceptions to these rules: `mutable` lets a member change inside a const function, and `friend` lets a non-member function see private members. Together they let you design, member by member, how much of an object the rest of the program can touch. This is *encapsulation*, introduced in <Concept id="classes" />.
+Two more keywords are deliberate exceptions to these rules: `mutable` lets a member change inside a const function, and `friend` lets a non-member function see private members. Together they let you decide, member by member, how much of an object the rest of the program can touch. This is *encapsulation*, introduced in <Concept id="classes" />.
 
 ## Why it matters
 
@@ -63,7 +62,7 @@ void setDiameterCm(double d);
 double& diameterCm();
 ```
 
-Option (a) is the safest: if the value never changes after creation, provide no way to change it. Option (c) looks tidy but gives the game away: `tree.diameterCm() = -3.0;` compiles, because the caller holds a reference to the private member itself. It is public access in disguise, and every invariant the class tried to keep is gone.
+Option (a) is the safest: if the value never changes after creation, provide no way to change it. Option (c) looks tidy but defeats the purpose: `tree.diameterCm() = -3.0;` compiles, because the caller holds a reference to the private member itself. It is public access in disguise, and every invariant the class tried to keep is gone.
 
 Option (b) is only better than a public member if the setter does something: checks the new value, or keeps related members consistent. A setter that just assigns adds typing and no safety. Two better choices exist:
 
@@ -125,7 +124,7 @@ std::cout << Tree::treesCreated();
 Static members follow the same access rules as other members: `nextId_` is private, so only `Tree`'s own functions can change it.
 
 <Callout kind="manual" title="Out-of-class definitions are no longer needed">
-The manual explains that a static data member declared in a class must also be defined once outside it, as in `const double Tree::kMaxDiameterCm = 120.0;` in a .cpp file. That was the rule before C++17, apart from integral `static const` members, which could always be initialised in the class. Since C++17, `static constexpr` members and members declared `inline static` are defined by their declaration in the class, and no separate definition is needed. Older code still contains such definitions, so recognise them; in new code, prefer the in-class forms.
+Older code defines a static data member a second time outside the class, as in `const double Tree::kMaxDiameterCm = 120.0;` in a .cpp file. That was required before C++17, apart from integral `static const` members, which could always be initialised in the class. Since C++17, `static constexpr` members and members declared `inline static` are defined by their declaration in the class, and no separate definition is needed. Recognise the old form when you meet it, but prefer the in-class forms in new code.
 </Callout>
 
 ### `mutable`: changing a member in a const function
@@ -259,7 +258,7 @@ Choose, for each data member, along three independent lines:
 | const or modifiable? | modifiable but private, changed only through meaningful operations; `const` members make objects hard to store in vectors |
 | per object or shared? | per object for state; `static constexpr` only for true constants such as unit conversions |
 
-Static members are tempting for parameters ("every tree has the same maximum diameter"), and the manual's own example stores the shared payoff parameters of a game that way. That works as long as there is only ever one value. The moment you want to compare two sites, two species or two parameter sets in one program, or run a <Concept id="sensitivity">sensitivity analysis</Concept>, a static parameter is a global variable with a class name in front. Keep values that might ever vary in a parameter struct that the population or simulation holds and passes on, and reserve `static` for true constants.
+Static members are tempting for parameters ("every tree has the same maximum diameter"), and storing the shared payoff parameters of a game that way is a common choice. It works as long as there is only ever one value. If you later want to compare two sites, two species or two parameter sets in one program, or run a <Concept id="sensitivity">sensitivity analysis</Concept>, a static parameter is a global variable with a class name in front. Keep values that might ever vary in a parameter struct that the population or simulation holds and passes on, and reserve `static` for true constants.
 
 The same applies to static counters. A counter that numbers individuals is convenient, but it is shared state that survives from one replicate to the next. A member counter in the `Population` (or `Simulation`) object gives each replicate its own numbering, so a run with a given seed produces the same identifiers every time.
 

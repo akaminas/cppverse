@@ -1,5 +1,5 @@
 // Title: A misspelt variable name
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // Line 11 uses a name that was never declared (a typo), so compilation stops.
 

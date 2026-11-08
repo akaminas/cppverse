@@ -12,9 +12,9 @@ objectives:
   - Keep updates simultaneous with temporary variables, a new state object or a second vector
   - Explain how an update-order bug changed the stability of a host-parasitoid model, and the conclusion drawn from it
 references:
-  - "Nicholson, A. J. and Bailey, V. A. (1935) The balance of animal populations. Part I. Proceedings of the Zoological Society of London 105, 551–598."
-  - "Beddington, J. R., Free, C. A. and Lawton, J. H. (1975) Dynamic complexity in predator–prey models framed in difference equations. Nature 255, 58–60."
-  - "Huberman, B. A. and Glance, N. S. (1993) Evolutionary games and computer simulations. Proceedings of the National Academy of Sciences USA 90, 7716–7718."
+  - "Nicholson, A. J. and Bailey, V. A. (1935) The balance of animal populations. Part I. Proceedings of the Zoological Society of London 105, 551-598."
+  - "Beddington, J. R., Free, C. A. and Lawton, J. H. (1975) Dynamic complexity in predator-prey models framed in difference equations. Nature 255, 58-60."
+  - "Huberman, B. A. and Glance, N. S. (1993) Evolutionary games and computer simulations. Proceedings of the National Academy of Sciences USA 90, 7716-7718."
 ---
 
 ## What it is
@@ -54,7 +54,7 @@ The canonical host-parasitoid program contains both versions:
 
 In `simultaneousStep` (lines 30 to 34), both new values are stored in `const` local variables computed from `now`, and a new `State` is returned. Nothing is overwritten while the equations are being evaluated.
 
-In `sequentialStep` (lines 37 to 42), line 39 overwrites `s.H`, and line 40 then reads `s.H` again, so the parasitoid equation sees the *new* hosts. Notice that the author did think about update order: line 38 saves the old `P` before anything changes. They protected one variable and forgot the other. This is the typical form of the bug.
+In `sequentialStep` (lines 37 to 42), line 39 overwrites `s.H`, and line 40 then reads `s.H` again, so the parasitoid equation sees the *new* hosts. The author did think about update order here: line 38 saves the old `P` before anything changes. One variable is protected and the other is forgotten. This is the typical form of the bug.
 
 ### Three ways to keep an update simultaneous
 

@@ -1,5 +1,5 @@
 // Title: Developmental stage from accumulated degree-days
-// Standard: C++17
+// Standard: C++23
 // An else-if chain tests its conditions from the top and runs only the
 // first branch whose condition is true. The thresholds are illustrative.
 

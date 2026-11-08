@@ -1,5 +1,5 @@
 // Title: An individual that cannot start in an invalid state
-// Standard: C++17
+// Standard: C++23
 // The constructors check their arguments and throw if the new object would be
 // invalid. A delegating constructor creates newborns, and default member
 // initialisers give the remaining members the same start values in every case.

@@ -9,7 +9,6 @@ import LessonProgress from '../components/progress/LessonProgress';
 import { lessonContext } from '../lib/lesson-context';
 import { lessonCheckCounts } from '../lib/atlas-data';
 import { url } from '../lib/url';
-import { CITATION } from '../data/citation';
 
 interface Props {
   entry: CollectionEntry<'lessons'>;
@@ -36,11 +35,11 @@ const checks = checkCounts[slug] ?? 0;
       <h1>{d.title}</h1>
       <p class="lead">{d.summary}</p>
       <p class="lesson-facts">
-        <span>{LEVEL[d.level]}</span>
+        <span class={`lvl lvl-${d.level}`}>{LEVEL[d.level]}</span>
         <span aria-hidden="true">·</span>
         <span>{d.minutes} minutes</span>
         <span aria-hidden="true">·</span>
-        <span class:list={['std-badge', { 'is-new': d.standard !== 'c++17' }]}>{d.standard.toUpperCase()}</span>
+        <span class:list={['std-badge', { 'is-new': d.standard === 'c++26' }]}>{d.standard.toUpperCase()}</span>
         {checks > 0 && (<><span aria-hidden="true">·</span><span>{checks} {checks === 1 ? 'knowledge check' : 'knowledge checks'}</span></>)}
       </p>
       {ctx.destinations.length > 0 && ctx.destinations.length < 5 && (
@@ -120,17 +119,7 @@ const checks = checkCounts[slug] ?? 0;
         )}
 
         <footer class="lesson-source">
-          {ctx.manual.length > 0 ? (
-            <>
-              <p>
-                <strong>Source.</strong> This lesson teaches material from the Groningen course manual. The text, examples and
-                exercises here are written independently.
-              </p>
-              <p class="muted">{CITATION}.</p>
-            </>
-          ) : (
-            <p><strong>Source.</strong> Original material of this site, connecting the Groningen curriculum to scientific practice.</p>
-          )}
+          {ctx.manual.length === 0 && <p><strong>Source.</strong> Original material of this site.</p>}
           {d.references.length > 0 && (
             <ul class="lesson-refs">{d.references.map((r) => <li>{r}</li>)}</ul>
           )}

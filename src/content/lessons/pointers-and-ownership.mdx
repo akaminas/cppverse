@@ -11,10 +11,9 @@ objectives:
   - Describe RAII and use std::unique_ptr and std::make_unique for objects that need a single owner
   - Recognise dangling pointers, including pointers into a vector that has grown
   - Represent relations between individuals with indices into a container of values
-standard: c++17
 references:
   - "cppreference.com: Pointer declaration; std::unique_ptr; std::shared_ptr"
-  - "C++ Core Guidelines: R.1–R.37 (resource management), F.7, F.60"
+  - "C++ Core Guidelines: R.1-R.37 (resource management), F.7, F.60"
 ---
 
 ## What it is
@@ -29,7 +28,7 @@ This lesson covers both: enough about pointers to read any C++ code, and the mod
 
 You will meet pointers in older model code, in C libraries such as GSL, in `main(int argc, char* argv[])` (see <Concept id="command-line" />), and behind the scenes of every container. You need to be able to read them.
 
-You rarely need to *write* them. Modern C++ hides addresses behind references, containers and smart pointers, and model code written that way has no ownership bugs at all. Knowing why lets you recognise the few situations in which a pointer really is the right tool, and the many in which a `std::vector` of values is better.
+You rarely need to *write* them. Modern C++ hides addresses behind references, containers and smart pointers, so model code written that way avoids ownership bugs. Knowing why lets you recognise the few situations in which a pointer really is the right tool, and the many in which a `std::vector` of values is better.
 
 ## How it works in C++
 
@@ -203,10 +202,10 @@ Indices have their own rule: they stay valid as long as no element *before* them
 
 ### When a pointer or a `unique_ptr` is the right tool
 
-- **Objects of different types in one container**, the classic case for `std::vector<std::unique_ptr<Event>>` (see <Concept id="inheritance" />).
-- **A large component that may be absent**, such as an optional high-resolution habitat map, owned by a `unique_ptr` that is empty when the map is not used.
-- **Objects that must not move in memory**, for example because a library keeps their address.
-- **Tree structures**, such as a phylogeny in which each node owns its children: `std::vector<std::unique_ptr<Node>> children;`. A flat vector of nodes with child and parent indices works too, and is often simpler and faster.
+- Objects of different types in one container, the classic case for `std::vector<std::unique_ptr<Event>>` (see <Concept id="inheritance" />).
+- A large component that may be absent, such as an optional high-resolution habitat map, owned by a `unique_ptr` that is empty when the map is not used.
+- Objects that must not move in memory, for example because a library keeps their address.
+- Tree structures, such as a phylogeny in which each node owns its children: `std::vector<std::unique_ptr<Node>> children;`. A flat vector of nodes with child and parent indices works too, and is often simpler and faster.
 
 A non-owning pointer is fine where lifetimes are plainly nested: an individual's behaviour function may receive a `const Landscape*` to a landscape that outlives the whole simulation.
 

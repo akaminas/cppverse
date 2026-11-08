@@ -1,5 +1,5 @@
 // Title: Counting sequencing reads without overflow
-// Standard: C++17
+// Standard: C++23
 // A sequencing run can yield more reads and bases than a 32-bit integer can
 // hold. 64-bit integers are large enough; unsigned 32-bit arithmetic does
 // not fail, it silently wraps around and gives a wrong count.

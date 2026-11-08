@@ -24,7 +24,7 @@ This lesson builds one such class, `Census`, which keeps the counts of every sur
 
 ## Why it matters
 
-Real model state is rarely a single number. A metapopulation is a collection of patches; a population in an individual-based model is a collection of individuals; a field data set is a collection of records. If the collection is a public vector, any code can add a duplicate plot, remove an individual without updating a running total, or reorder the records that another part of the program relies on. Wrapping the collection in a class lets you decide which operations exist and keep the collection consistent, exactly as <Concept id="classes" /> did for a single number.
+Model state is rarely a single number. A metapopulation is a collection of patches, a population in an individual-based model is a collection of individuals, and a field data set is a collection of records. If the collection is a public vector, any code can add a duplicate plot, remove an individual without updating a running total, or reorder records that another part of the program relies on. Wrapping the collection in a class lets you decide which operations exist and keep the collection consistent, as <Concept id="classes" /> did for a single number.
 
 ## How it works in C++
 
@@ -32,11 +32,11 @@ Real model state is rarely a single number. A metapopulation is a collection of 
 
 <Example file="data/composite_census.cpp" mark="14-18,26,33-41" />
 
-The class has three ingredients:
+The class has three parts.
 
-- **A nested type.** `struct Record { … };` is defined *inside* `Census`, under `public:`. Inside the class it is simply `Record`; everywhere else its full name is `Census::Record`, as in `const std::vector<Census::Record> spring` in `main`. The nested name makes clear that a `Record` is a census record and not some other record, and it keeps the name `Record` free for other classes.
-- **A private container.** `std::vector<Record> records_` holds the data. Because it is private, the only ways to change it are the member functions, here only `add`.
-- **Member functions that work on the whole collection.** `add` stores a copy of a record, `find` looks one up, `totalAdults` summarises them, and `size` reports how many there are.
+- The nested type: `struct Record { … };` is defined *inside* `Census`, under `public:`. Inside the class it is simply `Record`; everywhere else its full name is `Census::Record`, as in `const std::vector<Census::Record> spring` in `main`. The nested name shows that a `Record` is a census record and keeps the name `Record` free for other classes.
+- The private container: `std::vector<Record> records_` holds the data. Because it is private, it can be changed only through the member functions, here only `add`.
+- Member functions that work on the whole collection: `add` stores a copy of a record, `find` looks one up, `totalAdults` summarises them, and `size` reports how many there are.
 
 The vector manages its own memory, so the class needs no special code for copying or destruction: copying a `Census` copies its vector and every record in it, and destroying a `Census` destroys them too (see <Concept id="object-semantics" />).
 
@@ -48,7 +48,7 @@ In `bool Census::find(const std::string& plot, Record& result) const`, the param
 
 ### Choosing parameter types
 
-The functions in this program use all three ways of passing an object, each for a reason:
+The functions in this program pass objects in three ways, each for a reason:
 
 | Parameter | Meaning | Example |
 |---|---|---|
@@ -76,7 +76,7 @@ std::optional<Census::Record> Census::lookup(const std::string& plot) const {
 // use: if (const auto rec = census.lookup("PLOT07")) { std::cout << rec->adults; }
 ```
 
-The result cannot be used by accident when it is empty, and the caller no longer needs a placeholder object. For new code, prefer it to an in/out parameter.
+An empty result cannot be used by accident, and the caller no longer needs a placeholder object. For new code, prefer it to an in/out parameter.
 </Callout>
 
 ## Explore it
@@ -142,20 +142,20 @@ std::cout << r.plot << ' ' << r.adults << '\\n';`}
 
 ## In biological modelling
 
-Composite types appear throughout larger models:
+Composite types appear in many larger models.
 
-- **Populations of individuals.** `class Population { public: struct Individual { double mass; int age; }; … private: std::vector<Individual> members_; };` with member functions `reproduce`, `applyMortality` and `meanMass`. The vector stays private, so no other code can, for example, remove individuals without updating summary statistics.
-- **Metapopulations.** A `Landscape` class owning a vector of `Patch` objects and a distance matrix, with a member function for dispersal that guarantees individuals are neither created nor lost on the way.
-- **Data sets.** As here: a class that owns the records of a survey and answers questions about them.
+- Populations of individuals: `class Population { public: struct Individual { double mass; int age; }; … private: std::vector<Individual> members_; };` with member functions `reproduce`, `applyMortality` and `meanMass`. The vector stays private, so no other code can, for example, remove individuals without updating summary statistics.
+- Metapopulations: a `Landscape` class that owns a vector of `Patch` objects and a distance matrix, with a dispersal member function that guarantees individuals are neither created nor lost.
+- Data sets: as here, a class that owns the records of a survey and answers questions about them.
 
-Two design rules carry over to all of them. Keep the container private and expose operations that mean something in the model. And let functions that only read take the object by `const&`, so that the compiler checks which parts of the program may change the state.
+Two design rules apply to all of them. Keep the container private and expose operations that mean something in the model. Let functions that only read take the object by `const&`, so that the compiler checks which parts of the program may change the state.
 
 ## Common mistakes
 
-- **Using the result of a failed lookup.** Check the `bool` (or the `std::optional`) first.
-- **Unqualified nested names outside the class**, such as `Record` in `main` or in a return type in front of `Census::`.
-- **Returning a reference to a private element** (`Record& get(std::size_t i)`) and thereby handing out unlimited write access. Return a copy or a `const Record&`, and be aware that a reference into a vector becomes invalid if the vector later grows (see <Concept id="iterators" />).
-- **Passing the whole class by value** to a function that only reads it.
+- Using the result of a failed lookup. Check the `bool` (or the `std::optional`) first.
+- Unqualified nested names outside the class, such as `Record` in `main` or in a return type in front of `Census::`.
+- Returning a reference to a private element (`Record& get(std::size_t i)`), which hands out unlimited write access. Return a copy or a `const Record&`, and remember that a reference into a vector becomes invalid if the vector later grows (see <Concept id="iterators" />).
+- Passing the whole class by value to a function that only reads it.
 
 ## Practice
 

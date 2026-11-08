@@ -1,5 +1,5 @@
 // Title: Precedence and associativity decide the grouping
-// Standard: C++17
+// Standard: C++23
 // The same numbers and operators give different results depending on how
 // they are grouped. Parentheses make the intended grouping explicit.
 

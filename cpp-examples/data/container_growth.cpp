@@ -1,5 +1,5 @@
 // Title: Watching a vector grow
-// Standard: C++17
+// Standard: C++23
 // Prints size() and capacity() whenever appending an element forces a
 // reallocation, then repeats the experiment after reserve(). Growth factors
 // differ between standard libraries, so the output differs between compilers.

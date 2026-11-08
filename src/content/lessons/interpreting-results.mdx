@@ -10,16 +10,15 @@ objectives:
   - Trace a pattern back to the model assumptions and parameter values that produce it
   - Check whether numerical approximation, implementation choices or chance could explain a result
   - Write a conclusion qualified by the model's assumptions, and say what cannot be inferred
-standard: c++17
 lab: discrete
 references:
   - "Otto, S. P. & Day, T. (2007). A Biologist’s Guide to Mathematical Modeling in Ecology and Evolution. Princeton University Press."
-  - "Grimm, V. et al. (2014). Towards better modelling and decision support: documenting model development, testing, and analysis using TRACE. Ecological Modelling 280: 129–139."
+  - "Grimm, V. et al. (2014). Towards better modelling and decision support: documenting model development, testing, and analysis using TRACE. Ecological Modelling 280: 129-139."
 ---
 
 ## What it is
 
-A simulation gives you numbers: a population size in each generation, a table of replicates, a curve. *Interpreting* the output means deciding what those numbers tell you about biology. It is the step at which a model becomes science, and the step at which most mistakes in modelling papers are made.
+A simulation gives you numbers: a population size in each generation, a table of replicates, a curve. *Interpreting* the output means deciding what those numbers tell you about biology. It is the step at which a model becomes science, and a step where mistakes are easy to make.
 
 A good interpretation answers seven questions, in this order:
 
@@ -121,14 +120,14 @@ The host-parasitoid model of <Concept id="update-order" /> tracks hosts $H$ and 
 
 <Figure id="update-order" />
 
-The first run cycles persistently; the second settles to a steady state. If you had only the second run, question 1 would give a confident answer, "host and parasitoid coexist at a stable equilibrium", and it would be wrong about the model you intended. The equilibrium comes from question 4: an implementation choice that is not part of the model.
+The first run cycles persistently; the second settles to a steady state. If you had only the second run, question 1 would give a confident answer, "host and parasitoid coexist at a stable equilibrium", and it would be wrong about the model you intended. Question 4 exposes the problem: the equilibrium comes from an implementation choice that is not part of the model.
 
 In general, before interpreting a pattern, ask whether something other than the biology could produce it: the update order, a time step that is too large (<Concept id="numerical-error" />), a bug, or a starting condition that has not yet worn off. A result that changes when an implementation detail changes is a result about the code.
 
 <Check
   id="artefact"
   kind="interpret"
-  question="A colleague’s host-parasitoid simulation settles to a stable equilibrium, and they want to conclude that parasitoids stabilise the host population. What should they do first?"
+  question="A colleague's host-parasitoid simulation settles to a stable equilibrium, and they want to conclude that parasitoids stabilise the host population. What should they do first?"
   options={[
     "Run the simulation for longer, to be sure the equilibrium persists",
     "Check that the code updates hosts and parasitoids from the same generation, and test the code against known results",
@@ -153,8 +152,7 @@ The third example is stochastic. In the linear birth-death process (<Concept id=
 1. **Pattern.** The expected population size (dashed) grows from 5 to about 11 in four years. The replicates spread widely around it: some exceed 50, and several fall to zero, after which they stay there.
 2. **Assumptions.** Birth and death rates are the same for every individual and never change: no density dependence, no seasons, no good or bad years. All the variation comes from the chance timing of individual births and deaths, called *demographic stochasticity*.
 3. **Parameters.** Because $b \gt d$ the expected size grows; with $b \lt d$ it would decline. Extinction risk falls steeply as the starting population increases.
-4. **Approximation.** Gillespie's method (<Concept id="gillespie" />) simulates this process exactly,
- and the extinction fraction has been checked against an exact formula (<Concept id="verification" />).
+4. **Approximation.** Gillespie's method (<Concept id="gillespie" />) simulates this process exactly, and the extinction fraction has been checked against an exact formula (<Concept id="verification" />).
 5. **Variability.** Five of these forty replicates went extinct by year 4. With forty replicates that fraction, 0.125, is itself uncertain: a rough 95 % range is 0.02 to 0.23 (<Concept id="uncertainty" />). For this model the exact probability is known, 0.154.
 6. **Claim.** *Under demographic stochasticity alone, a population of five with these birth and death rates has about a 15 % chance of dying out within four years, even though its expected size more than doubles.*
 7. **Not inferred.** The real extinction risk of any species, which also depends on environmental variation, density dependence and catastrophes, all absent here. Nor does the growing mean mean that a *typical* population grows steadily: the average hides the populations that vanished.
@@ -201,7 +199,7 @@ Use this list every time you interpret a simulation, whether your own or one in 
 | Small populations have a 12.5 % extinction risk. | Under demographic stochasticity alone, with $b = 1$ and $d = 0.8$ per year, 5 of 40 simulated populations of five died out within four years (exact probability 0.154). |
 | Our model shows that the species is safe. | The model, with parameters from one site and no environmental variation, predicts growth; the prediction has not been tested against independent data. |
 
-The well-qualified versions are longer, but every extra clause carries information a reader needs. They are also more interesting: each qualification suggests the next experiment.
+The well-qualified versions are longer, but every extra clause carries information a reader needs. Each qualification also suggests the next experiment.
 
 ## Common mistakes
 
@@ -227,8 +225,7 @@ If a model cannot produce a pattern, finding that pattern absent is not a result
 
 <details>
 <summary>Hint for exercise 1</summary>
-Near the equilibrium the ratio approaches $1/R_0$: 0.8333 for $R_0 = 1.2$ and 0.2 for $R_0 = 5$. With $R_0 = 5$ the ratio reaches 0.2000 within ten generations: the population closes 80 % of the gap each generation. With $R_0 = 1.2$ it is still 0.84 after twelve generations, so extend the loop to see it settle; the gap shrinks by only about a sixth each generation, and the population takes dozens of generations to approach $K$.
- A qualified sentence starts "In the Beverton-Holt model, near equilibrium, …".
+Near the equilibrium the ratio approaches $1/R_0$: 0.8333 for $R_0 = 1.2$ and 0.2 for $R_0 = 5$. With $R_0 = 5$ the ratio reaches 0.2000 within ten generations: the population closes 80 % of the gap each generation. With $R_0 = 1.2$ it is still 0.84 after twelve generations, so extend the loop to see it settle; the gap shrinks by only about a sixth each generation, and the population takes dozens of generations to approach $K$. A qualified sentence starts "In the Beverton-Holt model, near equilibrium, …".
 </details>
 
 <details>

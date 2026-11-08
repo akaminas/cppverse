@@ -1,5 +1,5 @@
 // Title: A small program to build and run
-// Standard: C++17
+// Standard: C++23
 // Growing degree-days for one day: the mean of the daily maximum and minimum
 // temperature minus a base temperature below which a plant does not develop.
 

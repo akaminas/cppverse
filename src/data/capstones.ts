@@ -1,5 +1,4 @@
-// Original capstone projects. They are independent of the Groningen
-// manual's assignments and projects and come without solutions: each
+// These capstone projects are original and come without solutions. Each
 // states a question, a model, milestones, verification criteria and
 // deliverables, so learners can check their own work.
 
@@ -156,7 +155,7 @@ export const capstones: Record<string, Capstone> = {
     level: 'seasoned',
     question: 'In a spatially structured population, how does mean dispersal distance affect equilibrium abundance and extinction risk, and why?',
     context:
-      'This capstone asks you to carry a question through the whole workflow: model, algorithm, implementation, verification, experimental design, replicates, analysis, visualisation and a qualified conclusion. Build on the plant model of the individual-based laboratory or design your own.',
+      'In this capstone you carry a question through the whole workflow: model, algorithm, implementation, verification, experimental design, replicates, analysis, visualisation and a qualified conclusion. Build on the plant model of the individual-based laboratory or design your own.',
     model: ['Individuals on a torus with local competition and Gaussian seed dispersal (as in the laboratory) or a model of your own design with the same ingredients.'],
     equations: ['P(\\text{survive}) = \\frac{s_0}{1 + c\\,n_i}'],
     milestones: [

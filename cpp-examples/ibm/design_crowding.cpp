@@ -1,5 +1,5 @@
 // Title: Valid plants and their crowding on a torus
-// Standard: C++17
+// Standard: C++23
 // A Plant is constructed in a valid state: its position is wrapped onto the
 // unit torus and a negative age is rejected. A plant's crowding is the number
 // of other plants within radius R, measured along the shortest path on the

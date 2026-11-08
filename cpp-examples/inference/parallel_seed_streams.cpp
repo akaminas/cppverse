@@ -1,5 +1,5 @@
 // Title: One engine per replicate, derived from a master seed
-// Standard: C++17
+// Standard: C++23
 // Replicate r gets its own std::mt19937_64, seeded through a std::seed_seq
 // built from the master seed and r. Its result then depends only on
 // (master seed, r): it is the same whether replicates run in sequence, in

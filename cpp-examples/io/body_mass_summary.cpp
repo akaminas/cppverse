@@ -1,5 +1,5 @@
 // Title: Summarising body masses read from a file
-// Standard: C++17
+// Standard: C++23
 // Reads body masses (g) from vole_masses.txt with the loop while (in >> mass),
 // prints the sample size, mean and standard deviation, and writes them to a file.
 

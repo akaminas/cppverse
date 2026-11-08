@@ -14,28 +14,13 @@ import { url } from '../lib/url';
       <div class="sec-head"><h2 id="primary">Primary source</h2></div>
       <div class="measure">
         <p>
-          The curriculum follows <cite>{MANUAL.title}</cite> by {MANUAL.authors.join(', ')} ({MANUAL.institution}). It determines the
-          C++ knowledge taught here, the order of concepts, and the four modelling destinations.
+          The curriculum follows <cite>{MANUAL.title}</cite> by {MANUAL.authors.join(', ')} ({MANUAL.institution}). It sets the
+          C++ knowledge taught here, the order of the concepts and the four modelling destinations.
         </p>
         <div class="key"><Attribution label="Required attribution" /></div>
         <p>
-          C++ Atlas is an independent educational project. It is not an official University of Groningen course and is not endorsed
-          by the University of Groningen or the manual’s authors. All lesson text, examples, figures, laboratories and exercises are
-          written independently.
-        </p>
-        <h3>What is not reproduced</h3>
-        <p>
-          The manual’s exercises, their solutions, the weekly programming assignments, the project specifications and their solutions
-          are not published here, nor are modified versions of them. The manual’s own example programs and biological examples are not
-          reused either; the site uses its own models (Beverton-Holt, host-parasitoid, a three-stage plant, logistic, elimination and
-          SIR equations, birth-death and SIR Gillespie processes, and a spatial plant IBM).
-        </p>
-        <h3>Where this site corrects or updates the manual</h3>
-        <p>
-          Where the manual describes behaviour that is outdated or incorrect for modern C++, lessons teach the current behaviour and
-          say so. Examples: <code>std::vector&lt;T&gt;(n)</code> value-initialises its elements; signed integer overflow is undefined
-          behaviour; integer division truncates toward zero on every compiler since C++11; whether plain <code>char</code> is signed is
-          implementation-defined; exceptions are caught by <code>const&amp;</code> and live in <code>&lt;stdexcept&gt;</code>.
+          C++ Atlas is an independent educational project. Its lessons, examples, figures, laboratories and exercises are written
+          from scratch, and it is not endorsed by the source's authors.
         </p>
       </div>
     </section>
@@ -43,9 +28,10 @@ import { url } from '../lib/url';
     <section class="src-section" aria-labelledby="supporting">
       <div class="sec-head"><h2 id="supporting">Supporting sources</h2></div>
       <ul class="measure">
-        <li><cite>Mastering Modern C++23: A Complete Guide to the Latest Standard</cite>: used selectively for modern syntax, safer idioms and compiler-support notes. The site keeps C++17 as its baseline and labels newer features.</li>
-        <li><cite>Modern C++ in the Real World</cite>: used for software-engineering practice relevant to scientific models (organisation, testing, debugging, profiling, reproducibility).</li>
+        <li><cite>Mastering Modern C++23: A Complete Guide to the Latest Standard</cite>: used for modern syntax, safer idioms and compiler-support notes. The examples are written for C++23, and newer C++26 features are labelled as such.</li>
+        <li><cite>Modern C++ in the Real World</cite>: used for software-engineering practice that matters for scientific models (organisation, testing, debugging, profiling, reproducibility).</li>
         <li><a href="https://en.cppreference.com/">cppreference.com</a>: the reference for language and library behaviour.</li>
+        <li><a href="https://isocpp.org/">isocpp.org</a>: news on the C++26 standard and on compiler support.</li>
         <li><a href="https://akaminas.github.io/vellum/">Vellum</a>: the design system for colour, typography and every scientific figure (MIT-licensed code; tokens copied verbatim).</li>
       </ul>
     </section>
@@ -55,12 +41,11 @@ import { url } from '../lib/url';
       <ul class="measure">
         <li>Vellum tokens and code: MIT licence, © 2026 Alexandros Kaminas.</li>
         <li>
-          Fonts, self-hosted: Source Sans Pro (<a href={url('/fonts/OFL-SourceSans.txt')}>SIL Open Font License 1.1</a>) and Source Code Pro
-          (<a href={url('/fonts/OFL-SourceCode.txt')}>SIL Open Font License 1.1</a>) on most pages; TeX Gyre Pagella
-          (<a href={url('/fonts/GUST-FONT-LICENSE.txt')}>GUST Font License</a>) and Lato (<a href={url('/fonts/OFL-Lato.txt')}>SIL Open Font License 1.1</a>)
-          on the landing page and the atlas.
+          Fonts, self-hosted: Carlito (<a href={url('/fonts/OFL-Carlito.txt')}>SIL Open Font License 1.1</a>), an open font with the same metrics as Calibri, and Source Code Pro
+          (<a href={url('/fonts/OFL-SourceCode.txt')}>SIL Open Font License 1.1</a>); on the landing page and the atlas also TeX Gyre Pagella
+          (<a href={url('/fonts/GUST-FONT-LICENSE.txt')}>GUST Font License</a>) and Lato (<a href={url('/fonts/OFL-Lato.txt')}>SIL Open Font License 1.1</a>).
         </li>
-        <li>Course manual: {CITATION}. Its content is not redistributed.</li>
+        <li>Curriculum source: {CITATION}.</li>
       </ul>
     </section>
   </div>

@@ -14,9 +14,14 @@ Copyright 2006, 2009 for TeX Gyre extensions by B. Jackowski and J. M. Nowacki (
 users groups). Licensed under the GUST Font License:
 <https://www.gust.org.pl/projects/e-foundry/licenses>
 
-## Source Sans Pro (`source-sans-pro-*.woff2`) and Source Code Pro (`source-code-pro-400.woff2`)
+## Carlito (`carlito-*.woff2`)
+
+Copyright 2013 The Carlito Project Authors (https://github.com/googlefonts/carlito). Licensed under the
+SIL Open Font License, Version 1.1 (text in `public/fonts/OFL-Carlito.txt`). Carlito is metrically
+compatible with Calibri; the site names Calibri first and falls back to Carlito. These are the Latin
+subsets from the Fontsource package.
+
+## Source Code Pro (`source-code-pro-400.woff2`)
 
 Copyright Adobe (http://www.adobe.com/), with Reserved Font Name "Source". Licensed under the SIL
-Open Font License, Version 1.1 (texts in `public/fonts/OFL-SourceSans.txt` and
-`public/fonts/OFL-SourceCode.txt`). These are the Latin subsets served by education.rstudio.com,
-whose typography the standard pages follow.
+Open Font License, Version 1.1 (text in `public/fonts/OFL-SourceCode.txt`).

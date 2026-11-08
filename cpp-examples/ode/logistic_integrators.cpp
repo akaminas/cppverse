@@ -1,5 +1,5 @@
 // Title: Euler, Heun and RK4 on the logistic equation
-// Standard: C++17
+// Standard: C++23
 // The model, dN/dt = r N (1 - N/K), is kept separate from the numerical
 // methods that approximate it. Each method is a "stepper" with the same
 // interface, so they can be swapped and compared against the exact solution

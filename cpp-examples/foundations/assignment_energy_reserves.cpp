@@ -1,5 +1,5 @@
 // Title: Assignment updates a state
-// Standard: C++17
+// Standard: C++23
 // A small bird's fat reserves change through one winter day. Each assignment
 // replaces the old value of the variable by a new value computed from it.
 

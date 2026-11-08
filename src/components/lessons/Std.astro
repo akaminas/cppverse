@@ -1,5 +1,6 @@
 ---
-interface Props { v: 'c++17' | 'c++20' | 'c++23' }
+// A badge for a language standard newer than the site's C++23 baseline.
+interface Props { v: 'c++23' | 'c++26' }
 const { v } = Astro.props;
 ---
-<span class:list={['std-badge', { 'is-new': v !== 'c++17' }]} title={v === 'c++17' ? 'Works with any C++17 compiler' : `Needs ${v.toUpperCase()} support (GCC 13+, Clang 17+, MSVC 19.3x+ for most features)`}>{v.toUpperCase()}</span>
+<span class:list={['std-badge', { 'is-new': v === 'c++26' }]} title={v === 'c++26' ? 'C++26: needs a very recent compiler (experimental)' : 'Compiles with a C++23 compiler'}>{v.toUpperCase()}</span>

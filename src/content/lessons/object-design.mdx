@@ -11,37 +11,36 @@ objectives:
   - Represent a pairwise interaction as a function of two objects and a set of parameters
   - Refine a class design as the simulation is built, and test each piece early
   - Weigh the benefits and costs of object-oriented models against data-oriented alternatives
-standard: c++17
 references:
   - "Axelrod R (1984) The Evolution of Cooperation. Basic Books"
-  - "Nowak MA (2006) Five rules for the evolution of cooperation. Science 314: 1560–1563"
-  - "C++ Core Guidelines: C.1–C.8 (classes and class hierarchies)"
+  - "Nowak MA (2006) Five rules for the evolution of cooperation. Science 314: 1560-1563"
+  - "C++ Core Guidelines: C.1-C.8 (classes and class hierarchies)"
 ---
 
 ## What it is
 
 The previous lessons covered the mechanics of a class: <Concept id="constructors" />, <Concept id="access-control">access and const</Concept>, <Concept id="operator-overloading">operators</Concept>. *Object design* is the step before the mechanics: deciding which objects a model consists of, what each one knows (its state), what each one does (its behaviour) and how they interact.
 
-A well-designed object takes care of its own details, so that the code using it can work at the level of the biology: "let these two strategies play", "update the frequencies", rather than "copy the fourth element of this array into that variable". The rest of this lesson builds such a design for a classic question in evolutionary biology, step by step, and then asks when objects help and when they get in the way.
+A well-designed object manages its own details, so that the code using it can work at the level of the biology ("let these two strategies play", "update the frequencies") rather than "copy the fourth element of this array into that variable". The rest of this lesson builds such a design step by step for a classic question in evolutionary biology, and then asks when objects help and when they get in the way.
 
 ## Why it matters
 
-The first version of any design is wrong in some way. That is not a failure: you learn what a model needs by building it. What matters is that the design makes change cheap. If parameters are scattered through classes, adding a second parameter set means editing every class; if they live in one place, it means editing one line. If each object can be tested on its own, a refactoring can be checked in minutes.
+The first version of any design is wrong in some way, because you learn what a model needs by building it. The aim is a design that makes change cheap. If parameters are scattered through classes, adding a second parameter set means editing every class; if they live in one place, it means editing one line. If each object can be tested on its own, a refactoring can be checked in minutes.
 
-Design decisions also determine which questions a model can answer. A design that stores a strategy's frequency inside the strategy object cannot easily represent two populations using the same strategies; a design that fixes the payoffs as constants cannot easily run a sensitivity analysis. Thinking about responsibilities early saves rewriting later.
+Design decisions also determine which questions a model can answer. A design that stores a strategy's frequency inside the strategy object cannot easily represent two populations using the same strategies; a design that fixes the payoffs as constants cannot easily run a sensitivity analysis. Deciding responsibilities early reduces rewriting later.
 
 ## How it works in C++
 
 ### The biological question
 
-Cooperation is costly to the cooperator and beneficial to others, so why does it persist under natural selection? One classic framework is the *prisoner's dilemma*. Here it is in its simplest form, the *donation game*: each of two players either cooperates (pays a cost $c$ so that the partner receives a benefit $b$, with $b > c > 0$) or defects (pays nothing, gives nothing).
+Cooperation is costly to the cooperator and beneficial to others, so why does it persist under natural selection? One classic framework is the *prisoner's dilemma*. Its simplest form is the *donation game*: each of two players either cooperates (pays a cost $c$ so that the partner receives a benefit $b$, with $b > c > 0$) or defects (pays nothing, gives nothing).
 
 | | partner cooperates | partner defects |
 |---|---|---|
 | **I cooperate** | $b - c$ | $-c$ |
 | **I defect** | $b$ | $0$ |
 
-Whatever the partner does, defecting pays more, yet two cooperators each earn $b - c > 0$ while two defectors earn nothing. When the same two players meet repeatedly, the *iterated* game, a player can make its move depend on what happened before, and strategies that reward cooperation and punish defection, such as *tit-for-tat*, can do well. Evolutionary tournaments of such strategies are a classic way to study reciprocity.
+Whatever the partner does, defecting pays more, yet two cooperators each earn $b - c > 0$ while two defectors earn nothing. When the same two players meet repeatedly, the *iterated* game, a player can make its move depend on what happened before, and strategies that reward cooperation and punish defection, such as *tit-for-tat*, can do well. Evolutionary tournaments of such strategies are a standard way to study reciprocity.
 
 ### Step 1: find the objects
 
@@ -49,7 +48,7 @@ A useful first pass is to list the nouns and verbs in a description of the model
 
 > Each **strategy** decides its **move** from the previous **round**. Two strategies **play a match** of several rounds under the rules of a **game**, which assign **payoffs**. The **population** consists of strategies at different **frequencies**, which **change** between **generations** according to their mean payoffs.
 
-Candidate objects: a strategy, a game (its parameters and payoff rule), a match result, and a population of frequencies. Candidate operations: a strategy replies to a round, a match is played, the population is updated. Not every noun needs a class; a move is a simple enumeration, and a match is an operation rather than a thing that persists.
+Candidate objects: a strategy, a game (its parameters and payoff rule), a match result, and a population of frequencies. Candidate operations: a strategy replies to a round, a match is played, the population is updated. Not every noun needs a class: a move is a simple enumeration, and a match is an operation rather than a thing that persists.
 
 ### Step 2: represent a strategy
 
@@ -66,9 +65,9 @@ struct Strategy {
 };
 ```
 
-Three design choices are hidden here. An `enum class` rather than a `bool` makes `Move::defect` impossible to confuse with `true`. The strategy is an *immutable value*: once created it never changes, so it can be copied, stored and shared freely, and a strategy can never be "half updated". And `reply` is `const`, because deciding a move does not change the strategy.
+Three design choices are built into this code. An `enum class` rather than a `bool` makes `Move::defect` impossible to confuse with `true`. The strategy is an *immutable value*: once created it never changes, so it can be copied, stored and shared freely, and it can never be "half updated". And `reply` is `const`, because deciding a move does not change the strategy.
 
-If you later expect to add *stochastic* strategies, which cooperate with some probability, a type alias such as `using Response = double;` for the reply type marks the place where the representation will change. Aliases written with `using` (the modern form of `typedef`) are cheap insurance for that kind of change.
+If you later expect to add *stochastic* strategies, which cooperate with some probability, a type alias such as `using Response = double;` for the reply type marks the place where the representation will change. Aliases written with `using` (the modern form of `typedef`) make that kind of change cheap.
 
 ### Step 3: decide where the parameters live
 
@@ -78,17 +77,17 @@ The benefit, the cost and the number of rounds apply to every match. They could 
 - as global constants;
 - in a separate `DonationGame` struct that is passed to the function that plays a match.
 
-The first two tie every strategy to one game forever. The third keeps the strategy ignorant of payoffs, which is the truth: a strategy is a rule for choosing moves, and the game decides what the moves are worth. With a parameter struct, comparing $b/c = 2$ with $b/c = 5$ in one program is a matter of creating two structs.
+The first two tie every strategy to one game permanently. The third keeps the strategy independent of the payoffs, which matches the biology: a strategy is a rule for choosing moves, and the game decides what the moves are worth. With a parameter struct, comparing $b/c = 2$ with $b/c = 5$ in one program is a matter of creating two structs.
 
 ### Step 4: write the interaction
 
-Who should own the code that plays a match? A member function, `a.play(b)`, makes `a` the focal player and `b` its partner: asymmetric, and it suggests that `a` changes. A friend function would need access to private data that strategies do not have. A free function of two strategies and a game is symmetric and says exactly what it needs:
+Who should own the code that plays a match? A member function, `a.play(b)`, makes `a` the focal player and `b` its partner: asymmetric, and it suggests that `a` changes. A friend function would need access to private data that strategies do not have. A free function of two strategies and a game is symmetric and states exactly what it needs:
 
 ```cpp
 MatchResult play(const Strategy& a, const Strategy& b, const DonationGame& g);
 ```
 
-All three parameters are const references: playing a match changes nothing that already exists. It *returns* the result, the mean payoff per round to each player, so the caller decides what to do with it. An operator such as `a * b` would hide the same thing behind a symbol (see <Concept id="operator-overloading" />).
+All three parameters are const references: playing a match changes nothing that already exists. It *returns* the result, the mean payoff per round to each player, so the caller decides what to do with it. An operator such as `a * b` would put the same operation behind a symbol (see <Concept id="operator-overloading" />).
 
 ### Step 5: put the population somewhere
 
@@ -117,19 +116,19 @@ std::vector<std::vector<double>> payoffMatrix(const std::vector<Strategy>& s, co
 void selectionStep(Population& pop, const std::vector<std::vector<double>>& payoff, double baseline);
 ```
 
-This separation, interactions in one function and population dynamics in another, makes each piece testable alone.
+Keeping interactions in one function and population dynamics in another makes each piece testable alone.
 
 ### Step 6: refine while you build
 
-No design survives contact with the full simulation unchanged. Typical refinements in a model like this one:
+Most designs change once the full simulation exists. Typical refinements in a model like this one:
 
-- **Something is missing.** Adding *errors*, where a player occasionally makes the opposite move to the one intended, requires random numbers. The strategy should stay a pure rule, so the random engine becomes a parameter of `play`, not a member of `Strategy`. And because matches are now random, the payoff matrix is no longer exact: it must be averaged over replicate matches or computed analytically.
-- **Something is redundant.** If a quantity can be computed from others when needed, storing it as well means keeping two things consistent. Remove it.
-- **Something is in the wrong place.** If a function keeps reaching into another object's data, the function, or the data, probably belongs elsewhere.
+- Something is missing. Adding *errors*, where a player occasionally makes the opposite move to the one intended, requires random numbers. The strategy should stay a pure rule, so the random engine becomes a parameter of `play`, not a member of `Strategy`. And because matches are now random, the payoff matrix is no longer exact: it must be averaged over replicate matches or computed analytically.
+- Something is redundant. If a quantity can be computed from others when needed, storing it as well means keeping two things consistent. Remove it.
+- Something is in the wrong place. If a function keeps reaching into another object's data, the function, or the data, probably belongs elsewhere.
 
-Move back and forth between the simulation and the classes, and keep each class able to stand on its own. A strategy class that knows nothing about tournaments can be reused unchanged in a spatial model, where neighbours on a lattice play each other.
+Move back and forth between the simulation and the classes, and keep each class usable on its own. A strategy class that knows nothing about tournaments can be reused unchanged in a spatial model, where neighbours on a lattice play each other.
 
-**Test early.** Before the population dynamics exist, check pieces whose answers you know: two unconditional defectors earn 0 per round; two tit-for-tat players earn $b - c$; an unconditional cooperator against a defector earns $-c$. A wrong reply table shows up immediately in such checks, and hardly ever in a plot of frequencies.
+Test early. Before the population dynamics exist, check pieces whose answers you know: two unconditional defectors earn 0 per round; two tit-for-tat players earn $b - c$; an unconditional cooperator against a defector earns $-c$. A wrong reply table shows up immediately in such checks, and hardly ever in a plot of frequencies.
 
 ## A minimal example
 
@@ -141,7 +140,7 @@ Read along a row to see how well that strategy does against each column. TFT and
 
 ## Explore it
 
-Step through the first rounds of a match between tit-for-tat and the alternator. Notice why the program needs the temporary `nextA`: both players must reply to the same round, the same issue as <Concept id="update-order">update order</Concept> in any simulation.
+Step through the first rounds of a match between tit-for-tat and the alternator. Note why the program needs the temporary `nextA`: both players must reply to the same round, the same issue as <Concept id="update-order">update order</Concept> in any simulation.
 
 <Trace id="object-design-match" />
 
@@ -206,17 +205,17 @@ Step through the first rounds of a match between tit-for-tat and the alternator.
 
 ### What objects do well
 
-- **Correspondence with the biology.** Strategies, individuals, patches and populations become things in the code with the same names and responsibilities, which makes the program easier to check against the model description (see <Concept id="individual-representation" />).
-- **Invariants in one place.** A class that keeps its state private can guarantee its rules, such as frequencies that sum to one, and no other code can break them.
-- **Pieces that can be tested and reused.** A strategy that knows nothing about tournaments can be tested alone and reused in a different model.
-- **Extension by data.** In this design, a new strategy is a new line of data, not new code.
+- Correspondence with the biology. Strategies, individuals, patches and populations become things in the code with the same names and responsibilities, which makes the program easier to check against the model description (see <Concept id="individual-representation" />).
+- Invariants in one place. A class that keeps its state private can guarantee its rules, such as frequencies that sum to one, and no other code can break them.
+- Pieces that can be tested and reused. A strategy that knows nothing about tournaments can be tested alone and reused in a different model.
+- Extension by data. In this design, a new strategy is a new line of data, not new code.
 
 ### Where objects get in the way
 
-- **Scattered model logic.** When the update rule is spread over many small member functions in many classes, the equations of the model are hard to see anywhere. A model is easier to verify when its update rule can be read in one place (see <Concept id="update-rule" />).
-- **Hidden coupling.** Objects that hold pointers to each other form a web where a change in one place has effects far away, and copying or saving the model's state becomes difficult (see <Concept id="pointers-ownership" />).
-- **Over-design.** Class hierarchies, accessors and patterns are wasted on a model that a few structs and functions would express more clearly. A procedural design with plain structs, as in <Concept id="procedural-review" />, is often the right choice for a small model.
-- **Performance.** A vector of large objects interleaves every field of every individual in memory. A loop that needs only positions then drags all the other fields through the processor cache as well.
+- Scattered model logic. When the update rule is spread over many small member functions in many classes, the equations of the model are hard to see anywhere. A model is easier to verify when its update rule can be read in one place (see <Concept id="update-rule" />).
+- Hidden coupling. Objects that hold pointers to each other form a web where a change in one place has effects far away, and copying or saving the model's state becomes difficult (see <Concept id="pointers-ownership" />).
+- Over-design. Class hierarchies, accessors and patterns are wasted on a model that a few structs and functions would express more clearly. A procedural design with plain structs, as in <Concept id="procedural-review" />, is often the right choice for a small model.
+- Performance. A vector of large objects interleaves every field of every individual in memory. A loop that needs only positions then drags all the other fields through the processor cache as well.
 
 ### A data-oriented alternative
 
@@ -238,12 +237,12 @@ A neighbour search then reads only `x` and `y`, contiguously, which is fast. The
 
 ## Common mistakes
 
-- **One class that does everything.** A `Simulation` class with fifty members and the whole model in its member functions is little better than a global namespace. Split by responsibility.
-- **Population-level quantities stored in individuals.** Frequencies, totals and means belong to the population. Storing them in each object duplicates them and lets the copies disagree.
-- **Parameters as static members or globals.** They work until the day you need two values in one run.
-- **Updating copies by mistake.** `for (Strategy s : strategies)` iterates over *copies*; any change to `s` is lost at the end of the iteration. Use `const Strategy&` to read and `Strategy&` to change (see <Concept id="auto-range-for" />).
-- **Designing everything up front.** Build the smallest working piece, test it, and let the design grow with the model.
-- **Untested pieces.** A reply table with one swapped entry produces plausible but wrong evolution. Check known results before running the full simulation.
+- One class that does everything. A `Simulation` class with fifty members and the whole model in its member functions is little better than a global namespace. Split by responsibility.
+- Population-level quantities stored in individuals. Frequencies, totals and means belong to the population. Storing them in each object duplicates them and lets the copies disagree.
+- Parameters as static members or globals. They work until the day you need two values in one run.
+- Updating copies by mistake. `for (Strategy s : strategies)` iterates over *copies*; any change to `s` is lost at the end of the iteration. Use `const Strategy&` to read and `Strategy&` to change (see <Concept id="auto-range-for" />).
+- Designing everything up front. Build the smallest working piece, test it, and let the design grow with the model.
+- Untested pieces. A reply table with one swapped entry produces plausible but wrong evolution. Check known results before running the full simulation.
 
 ## Practice
 

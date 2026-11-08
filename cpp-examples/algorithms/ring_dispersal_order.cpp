@@ -1,5 +1,5 @@
 // Title: Update order in a ring of habitat patches
-// Standard: C++17
+// Standard: C++23
 // Nearest-neighbour dispersal around a ring of patches. The correct update
 // reads every patch from the old state. The in-place loop reads a neighbour
 // that has already been updated, so symmetric dispersal drifts to one side.

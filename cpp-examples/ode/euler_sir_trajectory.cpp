@@ -1,5 +1,5 @@
 // Title: Euler's method for the SIR model, with output every 10 days
-// Standard: C++17
+// Standard: C++23
 // A forward-Euler stepper advances S, I and R simultaneously. The driver
 // integrates from one output time to the next and shortens the last step
 // of each interval, so rows appear every 10 days whatever the step h is.

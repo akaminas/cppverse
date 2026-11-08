@@ -1,5 +1,5 @@
 // Title: Is plain char signed?
-// Standard: C++17
+// Standard: C++23
 // The answer depends on the compiler and the processor, so this program
 // prints what your platform does. Its output is not the same everywhere.
 

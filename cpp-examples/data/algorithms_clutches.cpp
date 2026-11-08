@@ -1,5 +1,5 @@
 // Title: Sorting, searching and counting with standard algorithms
-// Standard: C++17
+// Standard: C++23
 // Clutch sizes from a nest survey (illustrative values) processed with
 // algorithms from <algorithm> and <numeric>, and with lambdas written on the spot.
 

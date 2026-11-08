@@ -1,5 +1,5 @@
 // Title: Splicing and sorting a list
-// Standard: C++17
+// Standard: C++23
 // Two groups of tagged animals are merged with splice, which relinks the
 // elements instead of copying them. A list sorts itself with its member sort.
 

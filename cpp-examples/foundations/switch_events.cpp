@@ -1,5 +1,5 @@
 // Title: Dispatching on an event type with switch
-// Standard: C++17
+// Standard: C++23
 // An enum class names the possible events and a switch applies the state
 // change of each one. A stochastic simulation would choose each event at
 // random; here the sequence of events is fixed.

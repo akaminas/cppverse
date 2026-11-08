@@ -29,8 +29,8 @@ A C++ program starts life as plain text. Before it can run, a chain of tools tra
 One command usually runs stages 2 to 4 for you, so it is easy to forget that they are separate. They are worth keeping apart, because each stage has its own kind of error.
 
 ```bash
-g++ -std=c++17 -c growth.cpp -o growth.o     # preprocess and compile only
-g++ -std=c++17 -c output.cpp -o output.o     # another source file
+g++ -std=c++23 -c growth.cpp -o growth.o     # preprocess and compile only
+g++ -std=c++23 -c output.cpp -o output.o     # another source file
 g++ growth.o output.o -o growth              # link the object files
 ./growth                                     # execute
 ```
@@ -47,11 +47,11 @@ Build settings also matter for science. The same source code can run several tim
 
 ### Installing a compiler
 
-You need a C++ compiler, and for projects with more than one file, CMake. The two free compilers used on this site are GCC (`g++`) and Clang (`clang++`); every example is tested with both.
+You need a C++ compiler, and for projects with more than one file, CMake. The two free compilers used on this site are GCC (`g++`) and Clang (`clang++`). Every example is compiled in CI with GCC 14 and Clang 18, using `-std=c++23`, which is the language version this site teaches. Newer compilers also work.
 
 - **Linux.** Install the packages from your distribution, for example `sudo apt install g++ cmake` on Debian or Ubuntu.
 - **macOS.** Run `xcode-select --install` to get Apple's Command Line Tools, which include Clang. On a Mac, the command `g++` is another name for Clang. Install CMake from cmake.org or with Homebrew.
-- **Windows.** Either install [MSYS2](https://www.msys2.org) and, in its UCRT64 terminal, run `pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake`, then add `C:\msys64\ucrt64\bin` to your `PATH`; or install the Windows Subsystem for Linux (`wsl --install`) and follow the Linux instructions inside it. Microsoft's own compiler, part of Visual Studio, also works but uses different flags.
+- **Windows.** Either install [MSYS2](https://www.msys2.org) and, in its UCRT64 terminal, run `pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake`, then add `C:\msys64\ucrt64\bin` to your `PATH`; or install the Windows Subsystem for Linux (`wsl --install`) and follow the Linux instructions inside it. Microsoft's own compiler, part of Visual Studio, also works but uses different flags (for example `/std:c++latest` instead of `-std=c++23`).
 
 Check the installation by opening a new terminal and typing `g++ --version` (or `clang++ --version`).
 
@@ -67,6 +67,8 @@ Save it, open a terminal in the same folder, and type the two commands below. Se
 
 **Use `g++`, not `gcc`.** Both commands run the same compiler, and `gcc` will even compile a `.cpp` file as C++. But `gcc` links only the C library, so the link step fails with a long list of `undefined reference` errors mentioning `std::cout` or `std::basic_ostream`. The same holds for `clang++` versus `clang`.
 
+**Choose the language version.** `-std=c++23` selects C++23. State it explicitly even when the compiler has a default: defaults differ between compilers and versions (GCC 16 changed its default from GNU C++17 to GNU C++20), and a stated version keeps the build reproducible. The ISO committee finished the technical work on C++26 in March 2026, and GCC 16.1 has experimental support for it with `-std=c++26`. The site's examples do not use C++26, and its CI does not compile any.
+
 **Ask for warnings.** `-Wall -Wextra -Wpedantic` costs nothing and catches real mistakes. Adding `-Werror` turns every warning into an error, so that nothing suspicious can slip through; this site's examples are all built that way.
 
 **Debug and Release builds.** While you develop, build without optimisation and with debugging information, `-O0 -g`. The machine code then follows the source closely, so a debugger can stop at any line and show every variable. For real runs, build with `-O2`: the compiler rearranges and simplifies the code, often making simulations several times faster. These two settings are called the *Debug* and *Release* configurations. Apart from the last digits of some floating-point results, a correct program gives the same output in both. If the results differ substantially, suspect a bug such as undefined behaviour (see <Concept id="numeric-limits" />).
@@ -76,10 +78,10 @@ Save it, open a terminal in the same folder, and type the two commands below. Se
 For anything beyond a single file, describe the build once in a file called `CMakeLists.txt` and let CMake run the compiler. A minimal project is a folder containing `main.cpp` and this file:
 
 ```cmake
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
 project(degree_days LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -154,7 +156,7 @@ Run-time errors are the hardest, because no tool reports them. <Concept id="debu
 <Check
   id="which-stage"
   kind="debug"
-  question="A program that uses two source files builds with `g++ -std=c++17 main.cpp -o model`. The output ends with `undefined reference to 'birthRate(double)'`. Which stage failed, and what is the most likely fix?"
+  question="A program that uses two source files builds with `g++ -std=c++23 main.cpp -o model`. The output ends with `undefined reference to 'birthRate(double)'`. Which stage failed, and what is the most likely fix?"
   options={[
     "The preprocessor: an #include is missing",
     "The compiler: birthRate is not declared",
@@ -165,7 +167,7 @@ Run-time errors are the hardest, because no tool reports them. <Concept id="debu
   feedback={[
     "A missing header produces a compile error about an undeclared name, not an undefined reference.",
     "If birthRate were undeclared, the compiler would say so with a file and line number. ‘undefined reference’ means it was declared, so compilation succeeded.",
-    "The definition of birthRate lives in the second source file, which the command leaves out. Adding it (g++ -std=c++17 main.cpp rates.cpp -o model) lets the linker find it.",
+    "The definition of birthRate lives in the second source file, which the command leaves out. Adding it (g++ -std=c++23 main.cpp rates.cpp -o model) lets the linker find it.",
     "The program never ran: without a definition of birthRate, no executable was produced.",
   ]}
 />
@@ -228,7 +230,7 @@ On a computing cluster, compile on the cluster itself. An executable built on a 
 <Practice>
 
 1. Build `toolchain_degree_days.cpp` from the command line and run it. Then add the line `const double frostThreshold = 0.0;` inside `main`, rebuild with `-Wall -Wextra`, and read the warning. Rebuild once more with `-Werror` added. What changes?
-2. Compile the same program in two steps: `g++ -std=c++17 -c toolchain_degree_days.cpp` and then `g++ toolchain_degree_days.o -o degree_days`. Which file does each step produce? Now delete `#include <iostream>` and repeat the first step. Does the error come from the compiler or the linker?
+2. Compile the same program in two steps: `g++ -std=c++23 -c toolchain_degree_days.cpp` and then `g++ toolchain_degree_days.o -o degree_days`. Which file does each step produce? Now delete `#include <iostream>` and repeat the first step. Does the error come from the compiler or the linker?
 3. Make a CMake project from the `CMakeLists.txt` above with `toolchain_degree_days.cpp` as `main.cpp`. Build it as Debug and as Release, and find both executables in the build folder.
 4. In a working program, rename `main` to `mian` and build. Which stage complains, and why does the message not mention a line number?
 

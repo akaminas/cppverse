@@ -1,5 +1,5 @@
 // Title: Splitting CSV lines with std::istringstream and std::getline
-// Standard: C++17
+// Standard: C++23
 // Reads quadrat_counts.csv line by line, splits each line at the commas and
 // converts the count. Malformed lines are reported on std::cerr and skipped.
 

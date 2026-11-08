@@ -1,5 +1,5 @@
 // Title: Positions in a container
-// Standard: C++17
+// Standard: C++23
 // begin() and end() mark a half-open range; *it reads or writes the element
 // at a position; std::distance, std::next and std::advance work with positions.
 

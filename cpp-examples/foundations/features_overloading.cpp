@@ -1,5 +1,5 @@
 // Title: Two overloads of total_biomass
-// Standard: C++17
+// Standard: C++23
 // Both functions answer the same question, so they share a name; at each
 // call the compiler chooses the one whose parameters match the arguments.
 

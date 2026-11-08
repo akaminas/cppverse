@@ -18,7 +18,7 @@ references:
 
 ## What it is
 
-A function is a named piece of code that takes some inputs, does one job and hands back a result. You have been using functions from the start: `main` is one, and `std::exp(x)` is a call to a function from the standard library. This lesson is about writing your own:
+A function is a named piece of code that takes some inputs, does one job and hands back a result. You have been using functions from the start: `main` is one, and `std::exp(x)` is a call to a function from the standard library. This lesson covers writing your own:
 
 ```cpp
 double survival_probability(double daily_mortality, int days) {
@@ -30,11 +30,11 @@ Once defined, `survival_probability(0.05, 30)` can be used anywhere a `double` v
 
 ## Why it matters
 
-Programs that consist of one long `main` become hard to read, hard to change and hard to trust. Functions help in three ways.
+Programs that consist of one long `main` become hard to read, hard to change and hard to trust. Functions help in three ways:
 
-- **Structure.** Functions are to a program what section headings are to a paper. A `main` that reads "initialise, simulate, save" tells the reader at once what the program does; the details are one level down.
-- **Reuse.** A computation needed in several places is written once. When the model changes, it changes in one place, and the copies cannot drift apart.
-- **Testing.** A function with clear inputs and an output can be checked on its own against cases whose answer you know: survival over zero days must be 1; with zero mortality it must be 1 for any number of days. A model built from tested pieces is much easier to trust than one tested only as a whole.
+- Structure. Functions are to a program what section headings are to a paper. A `main` that reads "initialise, simulate, save" tells the reader at once what the program does, and the details are one level down.
+- Reuse. A computation needed in several places is written once. When the model changes, it changes in one place, and the copies cannot drift apart.
+- Testing. A function with clear inputs and an output can be checked on its own against cases whose answer you know: survival over zero days must be 1, and with zero mortality it must be 1 for any number of days. A model built from tested pieces is easier to trust than one tested only as a whole.
 
 ## How it works in C++
 
@@ -46,7 +46,7 @@ A definition has four parts: the *return type*, the *name*, the *parameter list*
 
 Each parameter needs its own type, even when several have the same one: `(double N, double lambda)`, never `(double N, lambda)`. A function with no parameters has an empty list, `()`, and the parentheses are required both in the definition and in every call. (Older code sometimes writes `(void)` for an empty list. That is a habit inherited from C and means the same as `()` in C++.)
 
-`main` follows exactly the same pattern: return type `int`, name `main`, an empty parameter list and a body. What makes it special is that it is the only function called automatically. The program starts there, wherever in the file `main` is written, and every other function runs only when it is called.
+`main` follows exactly the same pattern: return type `int`, name `main`, an empty parameter list and a body. It differs from other functions in being the only one called automatically. The program starts there, wherever in the file `main` is written, and every other function runs only when it is called.
 
 ### Calling a function
 
@@ -62,7 +62,7 @@ A call such as `survival_probability(mortality, 30)` does the following:
 
 Because a call is an expression with a value, it can be used inside larger expressions, including as the argument of another call: `std::cout << survival_probability(m, 10) * survival_probability(m, 20)` prints the survival over 30 days computed in two stages.
 
-The value of a call may also be ignored: `survival_probability(mortality, 30);` on a line of its own is legal, but it computes a number and throws it away. That is pointless for a function like this one, whose only purpose is its result. (C++17 lets you mark such a function `[[nodiscard]]`, and the compiler then warns when its result is discarded.)
+The value of a call may also be ignored: `survival_probability(mortality, 30);` on a line of its own is legal, but it computes a number and throws it away. That is pointless for a function like this one, whose only purpose is its result. Marking such a function `[[nodiscard]]` (available since C++17) makes the compiler warn when its result is discarded.
 
 ### return
 
@@ -81,7 +81,7 @@ A function whose return type is not `void` must return a value on every path thr
 
 ### void functions
 
-Some functions are called for what they *do* rather than what they return: print a header, write a trajectory to a file, run a stage of an experiment. Their return type is `void`, "no value":
+Some functions are called for what they *do* rather than what they return, such as printing a header, writing a trajectory to a file, or running a stage of an experiment. Their return type is `void`, "no value":
 
 ```cpp
 void print_header(double lambda, double N0) {
@@ -103,7 +103,7 @@ The program below has four functions. `main` sets the parameters and then calls 
 
 <Example file="foundations/functions_outline.cpp" mark="18-21" />
 
-Each function does one job. `next_generation` is the model's update rule and nothing else; `simulate` applies it repeatedly; `print_header` describes the run. To change the model, you change `next_generation`. To change how long it runs, you change one argument in `main`. The prototypes at the top are explained next.
+Each function does one job. `next_generation` is the model's update rule and nothing else, `simulate` applies it repeatedly, and `print_header` describes the run. To change the model, you change `next_generation`. To change how long it runs, you change one argument in `main`. The prototypes at the top are explained next.
 
 <Anchor id="prototypes" />
 
@@ -113,7 +113,7 @@ The compiler reads a file from top to bottom, and it accepts a call only to a fu
 
 <Example file="foundations/functions_undeclared.cpp" />
 
-GCC reports "`'next_generation' was not declared in this scope`". There are two fixes. One is to define every function above the functions that call it, so that `main` ends up at the bottom of the file. The other is to *declare* the function first with a **prototype**: the head of the function, followed by a semicolon instead of a body.
+GCC reports "`'next_generation' was not declared in this scope`". There are two fixes. One is to define every function above the functions that call it, so that `main` ends up at the bottom of the file. The other is to *declare* the function first with a *prototype*: the head of the function, followed by a semicolon instead of a body.
 
 ```cpp
 double next_generation(double N, double lambda);   // declaration (prototype)
@@ -121,13 +121,13 @@ double next_generation(double N, double lambda);   // declaration (prototype)
 
 A prototype tells the compiler the function's name, return type and parameter types: everything it needs to check a call. The *definition*, with the body, can then come anywhere later, even in another file. That is how `functions_outline.cpp` can put `main` first.
 
-Some rules:
+Three rules apply to declarations:
 
-- **Parameter names are optional in a prototype**, but the types are not. `double next_generation(double, double);` is valid, but the names document what each argument means, so keep them.
-- **One definition, many declarations.** A function may be declared as often as you like, but it must be defined exactly once in the whole program, and every declaration must agree with the definition. This is part of the *one-definition rule*.
-- **Declarations have scope.** A prototype at the top of the file is visible from that point to the end of the file. A prototype written inside a function body is visible only inside that function, which is rarely what you want.
+- Parameter names are optional in a prototype, but the types are not. `double next_generation(double, double);` is valid, but the names document what each argument means, so keep them.
+- One definition, many declarations. A function may be declared as often as you like, but it must be defined exactly once in the whole program, and every declaration must agree with the definition. This is part of the *one-definition rule*.
+- Declarations have scope. A prototype at the top of the file is visible from that point to the end of the file. A prototype written inside a function body is visible only inside that function, which is rarely what you want.
 
-Prototypes are the basis of splitting a program over several files: the prototypes go in a header file that every part of the program includes, and the definitions go in one source file. See <Concept id="multiple-files" />.
+Prototypes make it possible to split a program over several files: the prototypes go in a header file that every part of the program includes, and the definitions go in one source file. See <Concept id="multiple-files" />.
 
 ## Explore it
 
@@ -195,10 +195,10 @@ int main() {
 
 ## In biological modelling
 
-- **The update rule is a function.** $N_{t+1} = f(N_t)$ becomes `double next_generation(double N, …)`. Written as a function, the rule can be read side by side with the equation, tested on its own, and swapped for another rule without touching the simulation loop. See <Concept id="update-rule" />.
-- **`main` is the experiment.** Set parameters, initialise the state, simulate, save. Each stage is a call; the details live in the functions. A reader, or a reviewer, sees the design of the run in ten lines.
-- **Quantities of the model get names.** Survival probabilities, growth factors, mean body mass of a sample, a dispersal kernel: each is a function whose name is the term used in the paper.
-- **Test against known values.** Before using `survival_probability` in a simulation, check that it returns 1 for zero days and 0.5 at $d = \ln 2 / m$. Functions make such checks possible, and <Concept id="testing-reproducibility" /> makes them routine.
+- The update rule is a function. $N_{t+1} = f(N_t)$ becomes `double next_generation(double N, …)`. Written as a function, the rule can be read side by side with the equation, tested on its own, and swapped for another rule without touching the simulation loop. See <Concept id="update-rule" />.
+- `main` is the experiment. It sets parameters, initialises the state, simulates and saves. Each stage is a call, and the details are in the functions. A reader or reviewer sees the design of the run in ten lines.
+- Quantities of the model get names. Survival probabilities, growth factors, the mean body mass of a sample and a dispersal kernel can each be a function whose name is the term used in the paper.
+- Test against known values. Before using `survival_probability` in a simulation, check that it returns 1 for zero days and 0.5 at $d = \ln 2 / m$. Functions make such checks possible, and <Concept id="testing-reproducibility" /> makes them routine.
 
 <Callout kind="tip" title="Finding where a program fails">
 When a program crashes and you do not know where, print a short marker between the stages in `main`, for example `std::cerr << "simulation done\n";`. The last marker printed tells you which stage failed. Move the markers into that function's body and repeat. (Use `std::cerr`: unlike `std::cout`, its output is not held back in a buffer, so it appears even if the program crashes immediately afterwards.) The lesson on <Concept id="debugging" /> describes better tools.
@@ -206,13 +206,13 @@ When a program crashes and you do not know where, print a short marker between t
 
 ## Common mistakes
 
-- **Calling a function before it is declared.** Define it above the caller or add a prototype.
-- **A prototype that does not match the definition.** A different parameter type declares a *different* function (see <Concept id="overloading-defaults" />), and the linker then reports an undefined reference.
-- **Forgetting a `return` on some path.** Every path through a non-`void` function must return a value.
-- **Leaving out the type of a parameter.** `(double N, lambda)` is an error.
-- **Leaving out the parentheses in a call.** `print_header;` names the function without calling it; the compiler warns that the statement has no effect.
-- **Expecting a function to change its arguments.** Parameters are copies; the next lesson shows how to change the caller's variables when that is really intended.
-- **One huge function.** If a function needs a comment for every block, those blocks probably want to be functions themselves.
+- Calling a function before it is declared. Define it above the caller or add a prototype.
+- A prototype that does not match the definition. A different parameter type declares a *different* function (see <Concept id="overloading-defaults" />), and the linker then reports an undefined reference.
+- Forgetting a `return` on some path. Every path through a non-`void` function must return a value.
+- Leaving out the type of a parameter. `(double N, lambda)` is an error.
+- Leaving out the parentheses in a call. `print_header;` names the function without calling it, and the compiler warns that the statement has no effect.
+- Expecting a function to change its arguments. Parameters are copies, and the next lesson shows how to change the caller's variables when that is really intended.
+- One huge function. If a function needs a comment for every block, those blocks probably want to be functions themselves.
 
 ## Practice
 

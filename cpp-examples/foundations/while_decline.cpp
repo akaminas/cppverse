@@ -1,5 +1,5 @@
 // Title: Generations until a population falls below a threshold
-// Standard: C++17
+// Standard: C++23
 // A while loop runs for as long as its condition holds, so the number of
 // passes need not be known in advance. A cap on the number of generations
 // guarantees that the loop ends even if the population never declines.

@@ -1,5 +1,5 @@
 // Title: Short-circuit evaluation as a guard
-// Standard: C++17
+// Standard: C++23
 // && evaluates its right operand only when the left one is true, so a
 // test of the sample size can protect the division that follows it.
 

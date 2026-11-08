@@ -1,5 +1,5 @@
 // Title: A program with a deliberate error
-// Standard: C++17
+// Standard: C++23
 // Expect: compile-error
 // The statement on line 9 has no semicolon, so the compiler rejects the program.
 

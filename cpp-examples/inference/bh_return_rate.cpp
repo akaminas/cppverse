@@ -1,5 +1,5 @@
 // Title: How fast a Beverton–Holt population approaches equilibrium
-// Standard: C++17
+// Standard: C++23
 // Prints each generation's population N, its distance K - N from the
 // equilibrium K = (R0 - 1) M, and the ratio of successive distances. Near K
 // the ratio approaches 1 / R0: the gap shrinks by that factor every generation.

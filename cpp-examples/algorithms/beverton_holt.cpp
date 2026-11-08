@@ -1,5 +1,5 @@
 // Title: Beverton–Holt population model
-// Standard: C++17
+// Standard: C++23
 // A discrete-time model of a population with compensatory density dependence:
 //     N(t+1) = R0 * N(t) / (1 + N(t) / M)
 // Usage:  beverton_holt [R0] [M] [N0] [generations]

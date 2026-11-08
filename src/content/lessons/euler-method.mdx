@@ -56,7 +56,7 @@ The exact solution at $t = 1$ is $N(1) \approx 4.345$. Euler's estimate is too l
 
 Euler's method is rarely the best choice for serious work, but it is the template for every method that follows. The structure you build here, a model function, a stepper and a driver that advances time and writes output, stays the same when you replace the stepper by a Runge-Kutta method or an adaptive one. It is also the easiest method to reason about, so it is where the main pitfalls of numerical integration are easiest to see: lagging behind the true solution, the cost of small steps, and instability when steps are too large (see <Concept id="numerical-stability" />).
 
-The update $x_{n+1} = x_n + h f(t_n, x_n)$ also looks exactly like a discrete-time model (see <Concept id="time-stepping" />). That resemblance is a warning as much as a convenience. A discrete-time model *is* the biology: its time step is a generation or a breeding season. In Euler's method the step is an artefact of the approximation, and nothing in the results should depend on it once it is small enough.
+The update $x_{n+1} = x_n + h f(t_n, x_n)$ also looks exactly like a discrete-time model (see <Concept id="time-stepping" />). The resemblance can mislead. A discrete-time model *is* the biology: its time step is a generation or a breeding season. In Euler's method the step is an artefact of the approximation, and nothing in the results should depend on it once it is small enough.
 
 ## How it works in C++
 
@@ -112,7 +112,7 @@ The small `1e-9` stops rounding from adding a spurious step when $h$ divides the
 The step size controls accuracy; the output interval controls how much you record. They should be independent: a run with $h = 0.01$ days over a year takes 36,500 steps, but daily output gives 365 rows. One clean design integrates from one output time to the next with the driver above, so output appears at exactly the requested times whatever $h$ is. Another records every $m$-th step, which is simpler but ties the output times to the step. Recording only some of the computed states is often called *decimation* or *thinning*.
 
 <Callout kind="manual" title="Output times">
-The course manual's driver writes a row whenever the integration time has passed the next output time, so rows appear at the first step *after* each requested time and their times depend on $h$. Integrating exactly to each output time, as here, gives rows at the requested times themselves, which makes runs with different step sizes or methods directly comparable.
+A common older pattern writes a row whenever the integration time has passed the next output time, so rows appear at the first step *after* each requested time and their times depend on $h$. The better habit is to integrate exactly to each output time, as here. The rows then fall at the requested times themselves, which makes runs with different step sizes or methods directly comparable.
 </Callout>
 
 ## A minimal example
@@ -187,10 +187,10 @@ With $h = 1$ day the numerical population is still well below the true one at da
 
 ## In biological modelling
 
-- **Choose h from the timescales of the model.** The fastest process sets the scale: $1/r$ for growth, $1/\gamma$ for recovery, $1/k$ for elimination. Start with a step that is a small fraction of the shortest of these, then halve it until the quantities you report stop changing. With $\gamma = 0.2$ per day (an infectious period of five days), a step of 0.3 days already produces the visible error in $S_\infty$ found above.
-- **Change only the model to change the model.** To simulate another system, write its right-hand side and initial state; the stepper and the driver stay as they are. This is what the separation of model and method buys.
-- **Write trajectories to a file.** For real runs, send the rows to a CSV file with an `std::ofstream` rather than the console, and stop with an exception if the file cannot be opened (see <Concept id="trajectory-output" /> and <Concept id="exceptions" />). Record $h$ and the parameters in the file so that the run can be reproduced.
-- **Expect Euler in unexpected places.** Many individual-based and stochastic models contain a hidden Euler step, for example when growth within a time step is computed as rate × duration. The same accuracy and stability considerations apply there.
+- Choose $h$ from the timescales of the model. The fastest process sets the scale: $1/r$ for growth, $1/\gamma$ for recovery, $1/k$ for elimination. Start with a step that is a small fraction of the shortest of these, then halve it until the quantities you report stop changing. With $\gamma = 0.2$ per day (an infectious period of five days), a step of 0.3 days already produces the visible error in $S_\infty$ found above.
+- Change only the model to change the model. To simulate another system, write its right-hand side and initial state; the stepper and the driver stay as they are. Separating the model from the method is what makes this possible.
+- Write trajectories to a file. For real runs, send the rows to a CSV file with an `std::ofstream` rather than the console, and stop with an exception if the file cannot be opened (see <Concept id="trajectory-output" /> and <Concept id="exceptions" />). Record $h$ and the parameters in the file so that the run can be reproduced.
+- Euler's method turns up in other models. Many individual-based and stochastic models contain a hidden Euler step, for example when growth within a time step is computed as rate × duration. The same accuracy and stability considerations apply there.
 
 ## Common mistakes
 

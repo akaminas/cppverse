@@ -1,5 +1,5 @@
 // Title: Sizes and ranges of the built-in types
-// Standard: C++17
+// Standard: C++23
 // Sizes and limits are implementation-defined, so the output depends on the
 // compiler and the platform: run it on your own machine and compare.
 

@@ -12,7 +12,7 @@ objectives:
   - Choose between passing by value, by reference, by const reference and returning a new value
 references:
   - "cppreference.com: Reference declaration"
-  - "C++ Core Guidelines, F.15–F.21: parameter passing"
+  - "C++ Core Guidelines, F.15-F.21: parameter passing"
 ---
 
 ## What it is
@@ -60,8 +60,8 @@ Reference parameters let one function update several variables at once, somethin
 
 Two details of the function matter.
 
-- **Compute first, then assign.** Both new values are computed from the *old* state into temporary variables before either reference is overwritten. Had the function written `juveniles = fecundity * adults;` first, the adult update on the next line would use the new number of juveniles, silently changing the model. See <Concept id="update-order" />.
-- **The call does not show it.** `step(juveniles, adults, 3.0, 0.25, 0.5)` looks exactly like a call by value. Only the declaration of `step` reveals that the first two arguments will be changed. Choose a function name that says so (`step`, `update`, `advance`), and do not use non-const references for parameters that are only read.
+- Compute first, then assign. Both new values are computed from the *old* state into temporary variables before either reference is overwritten. Had the function written `juveniles = fecundity * adults;` first, the adult update on the next line would use the new number of juveniles, silently changing the model. See <Concept id="update-order" />.
+- The call does not show it. `step(juveniles, adults, 3.0, 0.25, 0.5)` looks exactly like a call by value. Only the declaration of `step` reveals that the first two arguments will be changed. Choose a function name that says so (`step`, `update`, `advance`), and do not use non-const references for parameters that are only read.
 
 A non-const reference must be bound to a variable that can be changed. Calling `grow_in_place(40.0, 1.5)` does not compile: there is no variable for the function to update.
 
@@ -96,7 +96,7 @@ Two remarks on the table. First, returning a value is usually clearer than writi
 Finally, keep the order of parameters predictable: the state or main input first, then the parameters that only steer the computation, with any defaulted parameters last (see <Concept id="overloading-defaults" />).
 
 <Callout kind="manual" title="const references for every parameter">
-The manual's style guidelines make pass by const reference the default for every parameter, including numbers, and its examples pass `double` and `int` as `const double&` and `const int&`. Modern guidance, followed on this site, passes cheap built-in types by value and reserves `const&` for objects that are expensive to copy. Both are correct C++; the difference is efficiency and readability.
+Some older code passes every parameter by const reference, including numbers, as `const double&` and `const int&`. Current guidance, followed on this site, passes cheap built-in types by value and reserves `const&` for objects that are expensive to copy. Both are correct C++; the difference is efficiency and readability.
 </Callout>
 
 ## Explore it
@@ -172,19 +172,19 @@ std::cout << a << ' ' << adults << '\\n';`}
 
 ## In biological modelling
 
-- **States updated in place.** A function that advances the state of a model by one step often takes the state by reference: `void step(State& s, const Parameters& p)`. The alternative, `State next(const State& s, const Parameters& p)`, returns a new state and leaves the old one intact, which makes it easy to keep both and is often clearer. Both styles are common; be consistent within a program. See <Concept id="euler" /> for a stepper written in the first style.
-- **Parameter sets and data by const reference.** Parameter sets, observed data and stored trajectories are read by many functions and changed by none: pass them as `const&`. Once parameters are grouped into a struct (see <Concept id="structs" />) this becomes the normal way to hand them around.
-- **Random-number engines by reference.** A random-number engine has an internal state that each draw advances. Passed by value, the function would draw from a copy, and the next call would repeat the same "random" numbers. Engines are therefore always passed by reference (see <Concept id="random-library" />).
-- **Five `double` parameters in a row are a hazard.** In `step(juveniles, adults, 3.0, 0.25, 0.5)` it is easy to swap two survival probabilities without any error from the compiler. Grouping parameters into a named struct removes the risk.
+- States updated in place. A function that advances the state of a model by one step often takes the state by reference: `void step(State& s, const Parameters& p)`. The alternative, `State next(const State& s, const Parameters& p)`, returns a new state and leaves the old one intact, which makes it easy to keep both and is often clearer. Both styles are common; be consistent within a program. See <Concept id="euler" /> for a stepper written in the first style.
+- Parameter sets and data by const reference. Parameter sets, observed data and stored trajectories are read by many functions and changed by none: pass them as `const&`. Once parameters are grouped into a struct (see <Concept id="structs" />) this becomes the normal way to hand them around.
+- Random-number engines by reference. A random-number engine has an internal state that each draw advances. Passed by value, the function would draw from a copy, and the next call would repeat the same "random" numbers. Engines are therefore always passed by reference (see <Concept id="random-library" />).
+- Five `double` parameters in a row are a hazard. In `step(juveniles, adults, 3.0, 0.25, 0.5)` it is easy to swap two survival probabilities without any error from the compiler. Grouping parameters into a named struct removes the risk.
 
 ## Common mistakes
 
-- **Expecting a value parameter to change the caller's variable.** It changes a copy. Return the new value, or use a reference.
-- **Forgetting the `&` in the prototype or the definition.** The declaration and the definition then describe two different functions, and the linker reports one of them as undefined.
-- **Passing large objects by value.** `double mean(std::vector<double> v)` copies the entire vector on every call. Use `const std::vector<double>&`.
-- **Non-const references for parameters that are only read.** They mislead the reader and refuse temporaries. Add `const`.
-- **Overwriting part of a state before computing the rest.** Compute all new values, then assign.
-- **Returning a reference to a local variable.** The local variable is destroyed when the function returns, and the reference refers to nothing; compilers warn about it. Return by value.
+- Expecting a value parameter to change the caller's variable: it changes a copy. Return the new value, or use a reference.
+- Forgetting the `&` in the prototype or the definition: the declaration and the definition then describe two different functions, and the linker reports one of them as undefined.
+- Passing large objects by value: `double mean(std::vector<double> v)` copies the entire vector on every call. Use `const std::vector<double>&`.
+- Non-const references for parameters that are only read: they mislead the reader and refuse temporaries. Add `const`.
+- Overwriting part of a state before computing the rest: compute all new values, then assign.
+- Returning a reference to a local variable: the local variable is destroyed when the function returns, and the reference refers to nothing; compilers warn about it. Return by value.
 
 ## Practice
 

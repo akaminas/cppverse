@@ -1,5 +1,5 @@
 // Title: main as an outline, with prototypes
-// Standard: C++17
+// Standard: C++23
 // Prototypes at the top declare each function, so main can call them before
 // their definitions appear. main then reads as a summary of the model run.
 

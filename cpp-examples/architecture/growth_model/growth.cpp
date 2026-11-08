@@ -1,5 +1,5 @@
 // Title: Von Bertalanffy growth: the implementation
-// Standard: C++17
+// Standard: C++23
 // Definitions of the functions declared in growth.hpp. This file has no main;
 // it is compiled separately and linked with the program that uses it.
 

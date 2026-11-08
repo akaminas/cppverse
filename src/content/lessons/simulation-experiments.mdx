@@ -10,11 +10,10 @@ objectives:
   - Choose between one-factor-at-a-time, full factorial and Latin hypercube designs, and budget the runs
   - Give every replicate a distinct, recorded seed derived with std::seed_seq
   - Write a driver program that runs a whole design and records metadata with the output
-standard: c++17
 lab: gillespie
 references:
   - "Kleijnen, J. P. C. (2015). Design and Analysis of Simulation Experiments, 2nd ed. Springer."
-  - "McKay, M. D., Beckman, R. J. & Conover, W. J. (1979). A comparison of three methods for selecting values of input variables in the analysis of output from a computer code. Technometrics 21: 239–245."
+  - "McKay, M. D., Beckman, R. J. & Conover, W. J. (1979). A comparison of three methods for selecting values of input variables in the analysis of output from a computer code. Technometrics 21: 239-245."
   - "cppreference.com: std::seed_seq and std::mersenne_twister_engine"
 ---
 
@@ -44,9 +43,9 @@ Design also determines what you *can* conclude. If two factors were never varied
 
 Start from the biological question and ask what number would answer it. "Is the population at risk?" is not yet measurable; "the probability that the population is extinct by year 4" is. Good response variables are:
 
-- **defined precisely**, including the time at which they are measured and what counts as an event (extinction is $N = 0$, not "small");
-- **computed by the program**, not judged by eye from a plot;
-- **few**. Decide in advance which response is primary. Every additional response is another chance to find something by accident.
+- defined precisely, including the time at which they are measured and what counts as an event (extinction is $N = 0$, not "small");
+- computed by the program, not judged by eye from a plot;
+- few. Decide in advance which response is primary. Every additional response is another chance to find something by accident.
 
 ### Factors, levels and baselines
 
@@ -58,8 +57,8 @@ Choose levels that span the biologically plausible range, which usually comes fr
 
 A control answers "compared with what?". In simulation there are two kinds:
 
-- a **baseline run** at reference parameters, against which changes are measured;
-- a **mechanism control**: the same model with the mechanism of interest switched off (no density dependence, no dispersal, a deterministic version). If the pattern survives without the mechanism, the mechanism is not what produces it.
+- a baseline run at reference parameters, against which changes are measured;
+- a mechanism control: the same model with the mechanism of interest switched off (no density dependence, no dispersal, a deterministic version). If the pattern survives without the mechanism, the mechanism is not what produces it.
 
 A third, often forgotten, is the **known answer**: a parameter set for which an exact result exists. The birth-death process has Kendall's formula for the extinction probability, so one design point can double as a check that the code is correct (<Concept id="verification" />).
 
@@ -93,9 +92,9 @@ Time one run first. A 3 × 3 factorial with 1000 replicates is 9000 runs; at 2 m
 
 A pseudo-random generator such as `std::mt19937_64` is a deterministic algorithm: given the same *seed* it produces the same sequence of numbers, on every computer, for ever (<Concept id="random-seeds" />). That determinism is what makes a stochastic simulation reproducible, and it imposes three rules on an experiment:
 
-1. **Every replicate gets a distinct seed.** Replicates that share a seed are the same run, counted twice.
-2. **Every seed is recorded with the output it produced.** A seed that was not written down cannot be used again, so neither can the run.
-3. **Seeds are derived, not improvised.** Choose one *base seed* for the whole experiment and derive each replicate's seed from it and from the replicate's position in the design.
+1. Every replicate gets a distinct seed. Replicates that share a seed are the same run, counted twice.
+2. Every seed is recorded with the output it produced. A seed that was not written down cannot be used again, so neither can the run.
+3. Seeds are derived, not improvised. Choose one *base seed* for the whole experiment and derive each replicate's seed from it and from the replicate's position in the design.
 
 `std::seed_seq` does the derivation. It takes several integers and mixes them into well-spread 32-bit words, so that seeds derived from (2024, 0, 0), (2024, 0, 1) and (2024, 1, 0) share no obvious structure:
 
@@ -119,11 +118,11 @@ The C++ standard specifies exactly what `std::mt19937_64` and `std::seed_seq` co
 
 A seed alone does not make a run reproducible. Record with every output file the *metadata* that someone (often you, six months later) needs to recreate it:
 
-- the model and its **code version** (a version control commit identifier);
-- every **parameter value**, including the ones you did not vary;
-- the **base seed** and the seed of each replicate;
-- the **date** of the run;
-- the **compiler**, its version and the language standard.
+- the model and its code version (a version control commit identifier);
+- every parameter value, including the ones you did not vary;
+- the base seed and the seed of each replicate;
+- the date of the run;
+- the compiler, its version and the language standard.
 
 ### Files and folders
 

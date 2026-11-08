@@ -1,5 +1,5 @@
 // Title: Counting the kinds of individual a model would have to track
-// Standard: C++17
+// Standard: C++23
 // Each individual carries a genotype at L biallelic loci, one of 10 age
 // classes and one of 3 body conditions. An aggregate model needs a state
 // variable for every possible kind; an individual-based model needs one

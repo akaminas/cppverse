@@ -1,5 +1,5 @@
 // Title: Geometric growth over generations
-// Standard: C++17
+// Standard: C++23
 // A for loop repeats the one-generation update, turning it into a
 // simulation of the whole trajectory.
 

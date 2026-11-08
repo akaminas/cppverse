@@ -1,5 +1,5 @@
 // Title: Choosing mothers in proportion to their eggs
-// Standard: C++17
+// Standard: C++23
 // std::discrete_distribution returns index i with probability w_i / sum(w).
 // The weights are the egg counts of five females. Assigning many offspring
 // to mothers shows each female's share approaching her share of the eggs;

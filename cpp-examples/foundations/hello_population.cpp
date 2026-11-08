@@ -1,5 +1,5 @@
 // Title: Printing text and computed values
-// Standard: C++17
+// Standard: C++23
 // std::cout prints text and numbers; << chains several items together.
 
 #include <iostream>

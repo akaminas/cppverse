@@ -1,5 +1,5 @@
 // Title: The same seed-bank calculation, tidied
-// Standard: C++17
+// Standard: C++23
 // An annual plant with a persistent seed bank, counted each spring:
 //     S(t+1) = S(t) * (g * s * f + (1 - g) * v)
 // Names follow the model, and each pathway of the model has its own line.

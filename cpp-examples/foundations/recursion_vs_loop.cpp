@@ -1,5 +1,5 @@
 // Title: The same count by recursion and by a loop
-// Standard: C++17
+// Standard: C++23
 // Both functions count the descendants of one founder over n generations.
 // The loop adds up the size of each generation; the recursion follows the
 // definition. They agree for every n.

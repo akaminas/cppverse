@@ -1,5 +1,5 @@
 // Title: Seasonal events as a class hierarchy with virtual functions
-// Standard: C++17
+// Standard: C++23
 // Every kind of event derives from the abstract base class Event and overrides
 // apply(). The yearly schedule stores std::unique_ptr<Event>, so a single loop
 // runs every kind of event without knowing which kinds exist.

@@ -10,7 +10,7 @@ export const anatomies: Record<string, Anatomy> = {
     parts: {
       format: {
         label: 'std::format',
-        role: 'Function (C++20, <format>)',
+        role: 'Function (<format>)',
         explain:
           'Returns a std::string built from a format string and arguments. The format string is checked at compile time: a field that does not suit its argument’s type is a compile error, not a garbled line in your output file.',
       },

@@ -1,5 +1,5 @@
 // Title: Von Bertalanffy growth: the program
-// Standard: C++17
+// Standard: C++23
 // Uses the growth model only through its header. Build both source files:
 //     g++ -std=c++17 -Wall -Wextra -pedantic main.cpp growth.cpp -o growth
 

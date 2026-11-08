@@ -60,12 +60,12 @@ export default function CodeBlock({ html, code, name, title, standard, download,
     }
   };
 
-  const isNew = standard !== 'c++17';
+  const isNew = standard === 'c++26';
   return (
     <figure className="code-figure">
       <figcaption className="code-head">
         <span className="code-name">{name}</span>
-        <span className={`std-badge${isNew ? ' is-new' : ''}`} title={isNew ? `Needs a compiler with ${standard.toUpperCase()} support` : 'Compiles with any C++17 compiler'}>
+        <span className={`std-badge${isNew ? ' is-new' : ''}`} title={isNew ? 'C++26: needs a very recent compiler (experimental)' : 'Compiles with a C++23 compiler'}>
           {standard.toUpperCase()}
         </span>
         {title && title !== name && <span className="code-title">{title}</span>}

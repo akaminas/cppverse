@@ -1,5 +1,5 @@
 // Title: Taking a sample code apart
-// Standard: C++17
+// Standard: C++23
 // A sample identifier such as "PLOT07-Q3" encodes a plot and a quadrat.
 // find, substr and std::stoi recover the numbers; + builds a new code.
 

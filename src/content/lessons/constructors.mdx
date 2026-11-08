@@ -10,12 +10,11 @@ objectives:
   - Initialise members with a member initialiser list and with default member initialisers
   - Remove duplicated set-up code with a delegating constructor and prevent silent conversions with explicit
   - Say which special member functions the compiler writes for you, and apply the rule of zero
-standard: c++17
 references:
   - "cppreference.com: Constructors and member initializer lists"
   - "cppreference.com: Default member initializer; explicit specifier"
   - "cppreference.com: The rule of three/five/zero"
-  - "C++ Core Guidelines: C.40–C.52 (constructors)"
+  - "C++ Core Guidelines: C.40 to C.52 (constructors)"
 ---
 
 ## What it is
@@ -28,9 +27,9 @@ You have used constructors all along. `std::vector<double> survival(10, 0.9)` ca
 
 ## Why it matters
 
-Without a constructor, creating an object is a two-step affair: declare it, then set its members. Between those steps the object exists in an undefined or half-set state, and if a step is forgotten, the model carries on with garbage. A two-step object also cannot be `const`, because the second step changes it.
+Without a constructor, creating an object takes two steps: declare it, then set its members. Between those steps the object is in an undefined or half-set state, and if the second step is forgotten, the model carries on with garbage. A two-step object also cannot be `const`, because the second step changes it.
 
-In a model, invalid objects are worse than crashes. An individual with a negative body mass or a juvenile of age 30 will not stop the program: it will feed a wrong number into a growth function, a fecundity schedule or a census, and the error surfaces, if at all, as an odd pattern in a figure weeks later. A constructor that rejects invalid state at the moment of creation reports the problem where it happened, with a message that says what went wrong.
+In a model, invalid objects are worse than crashes. An individual with a negative body mass or a juvenile of age 30 will not stop the program: it will feed a wrong number into a growth function, a fecundity schedule or a census, and the error shows up, if at all, as an odd pattern in a figure weeks later. A constructor that rejects invalid state at the moment of creation reports the problem where it happened, with a message that says what went wrong.
 
 ## How it works in C++
 
@@ -51,7 +50,7 @@ const Individual female{3, Stage::adult, 41.5};  // three arguments
 const Individual newborn{2.8};                   // one argument
 ```
 
-Brace initialisation, as here, is the safest way to call a constructor: it refuses narrowing conversions (a `double` silently squeezed into an `int`), and it avoids a famous trap described under *Common mistakes*.
+Brace initialisation, as here, is the safest way to call a constructor. It refuses narrowing conversions (a `double` silently squeezed into an `int`), and it avoids a well-known trap described under *Common mistakes*.
 
 ### The member initialiser list
 
@@ -87,7 +86,7 @@ private:
 };
 ```
 
-Two rules apply. First, members are initialised in the order in which the class *declares* them, whatever order you write in the list. If one member's initial value depends on another, declare them in that order; GCC and Clang warn about a mismatched list with `-Wall` (`-Wreorder`). Second, an empty body `{}` is perfectly normal: often the initialiser list does all the work.
+Two rules apply. First, members are initialised in the order in which the class *declares* them, whatever order you write in the list. If one member's initial value depends on another, declare them in that order; GCC and Clang warn about a mismatched list with `-Wall` (`-Wreorder`). Second, an empty body `{}` is normal: often the initialiser list does all the work.
 
 <Callout kind="pitfall" title="const data members block assignment">
 A `const` member makes its whole object impossible to assign: `a = b;` no longer compiles. That sounds harmless until you store such objects in a `std::vector` and call `erase`, `std::sort` or `std::remove_if`, all of which move elements around by assignment. To protect a value that never changes, it is usually better to make the member private and simply not provide a function that changes it.
@@ -105,8 +104,8 @@ private:
 
 Any constructor that does not mention `offspring_` in its initialiser list uses this value. With several constructors this is the simplest way to make sure that all of them leave the object in the same starting state: there is one place to look, and a new constructor cannot forget a member. A constructor that does mention the member in its list overrides the default.
 
-<Callout kind="manual" title="Additions to the course manual">
-The manual introduces constructors and initialiser lists and warns that all constructors of a class should leave the object consistently initialised. Two C++11 features make that easy and are used throughout this site: default member initialisers (above) and delegating constructors (below). The manual also notes that functions defined inside the class are implicitly `inline`; today that matters for the one-definition rule, not for speed, because the compiler decides by itself what to inline.
+<Callout kind="manual" title="Share set-up code instead of repeating it">
+Older code often repeats the same assignments in every constructor, so that one of them eventually leaves a member unset. All constructors of a class should leave the object consistently initialised. Two C++11 features make that easy and are used throughout this site: default member initialisers (above) and delegating constructors (below). Functions defined inside the class are implicitly `inline`. Today that matters for the one-definition rule, not for speed, because the compiler decides by itself what to inline.
 </Callout>
 
 ### Delegating constructors
@@ -165,7 +164,7 @@ The program below defines an `Individual` that cannot be created in an invalid s
 
 <Example file="architecture/constructors_individual.cpp" mark="15-22,33-34" />
 
-Notice the test `!(massGrams > 0.0)` rather than `massGrams <= 0.0`. The two differ for NaN ("not a number", the result of, for example, `0.0 / 0.0`): every comparison with NaN is false, so `NaN <= 0.0` is false and would let a NaN mass through, while `!(NaN > 0.0)` is true and rejects it.
+The constructor tests `!(massGrams > 0.0)` rather than `massGrams <= 0.0`. The two differ for NaN ("not a number", the result of, for example, `0.0 / 0.0`): every comparison with NaN is false, so `NaN <= 0.0` is false and would let a NaN mass through, while `!(NaN > 0.0)` is true and rejects it.
 
 ## Explore it
 

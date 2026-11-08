@@ -1,7 +1,7 @@
 // Figure for the procedural-review lesson: the run that
 // cpp-examples/architecture/two_stage_sim.cpp performs with its .args file
 // (b = 5, sj = 0.25, sa = 0.5, M = 50, J0 = 0, A0 = 10, 40 generations).
-// Recruitment b A / (1 + A / M) is exactly the tested Beverton–Holt step with
+// Recruitment b A / (1 + A / M) is exactly the tested Beverton-Holt step with
 // R0 = b; maturation and adult survival are a linear combination.
 import type { FigureSpec } from './types';
 import { bevertonHoltStep } from '../simulations/discrete';

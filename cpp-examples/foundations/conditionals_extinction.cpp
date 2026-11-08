@@ -1,5 +1,5 @@
 // Title: An extinction check after one winter
-// Standard: C++17
+// Standard: C++23
 // An if-else statement chooses between two actions: report quasi-extinction
 // when fewer than one individual is expected, otherwise report persistence.
 

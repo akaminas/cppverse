@@ -106,23 +106,94 @@ const checked = [
         </li>
         <li><strong>Years of dynamics.</strong> At least {MIN_YEARS} years, without collapse or explosion, with every guild still present at the end.</li>
       </ol>
-      <p>A few relations you will need, in one form or another:</p>
+      <p>
+        A few relations you will need, in one form or another. You do not need an ecology background: each one is explained in words first, then
+        every symbol is named, with its unit and a typical size where that helps. The numbers are only illustrations, and your own values are yours
+        to choose.
+      </p>
       <div class="deep-eqs">
         <figure>
+          <h3>Who eats how much: the type II functional response</h3>
+          <p class="eq-plain">
+            A predator cannot eat without limit. When prey are scarce it eats roughly in proportion to how many it meets. When prey are plentiful it
+            is busy handling and digesting what it already caught, so its intake levels off at a ceiling. This saturating curve is called a
+            <em>Holling type II</em> response (after the ecologist C. S. Holling). With several kinds of prey, the predator splits its effort
+            among them according to how much it likes each.
+          </p>
           <div set:html={tex(String.raw`I_{ij} = \frac{c_j\, w_{ij} X_i}{h_j + \sum_k w_{kj} X_k}\, X_j`)} />
           <figcaption>Consumer <i>j</i> eating prey <i>i</i>: a multi-prey type II functional response with preferences <i>w</i>.</figcaption>
+          <dl class="eq-vars">
+            <div><dt set:html={tex(String.raw`I_{ij}`, false)} /><dd>The <strong>intake</strong>: how much of prey <i>i</i> the consumer <i>j</i> eats per day, in biomass per day (for example mg per litre per day). This is the flux you take out of the prey pool and put into the consumer.</dd></div>
+            <div><dt set:html={tex(String.raw`j`, false)} /><dd>The <strong>consumer</strong> doing the eating, such as a zooplankton group or a fish guild.</dd></div>
+            <div><dt set:html={tex(String.raw`i`, false)} /><dd>One kind of <strong>prey</strong>, such as phytoplankton or detritus. The letter <i>k</i> in the sum runs over every prey the consumer could eat, <i>i</i> included.</dd></div>
+            <div><dt set:html={tex(String.raw`X_i,\ X_k`, false)} /><dd>The <strong>biomass</strong> (amount of living matter) of a prey pool, in whatever unit you picked. More prey means more encounters.</dd></div>
+            <div><dt set:html={tex(String.raw`X_j`, false)} /><dd>The biomass of the <strong>consumer</strong>. Twice as many predators eat twice as much, so intake scales with it.</dd></div>
+            <div><dt set:html={tex(String.raw`c_j`, false)} /><dd>The <strong>maximum feeding rate</strong> per unit of consumer biomass, per day. It is the ceiling the curve flattens out to. Small, fast animals such as zooplankton have high values (around 0.5 to 2 per day), large fish much lower.</dd></div>
+            <div><dt set:html={tex(String.raw`h_j`, false)} /><dd>The <strong>half-saturation constant</strong>, in prey biomass units: the amount of food at which the consumer eats half of its maximum. A small <i>h</i> means the consumer reaches its ceiling even when food is thin. A large <i>h</i> means it needs a lot of food before it feeds well.</dd></div>
+            <div><dt set:html={tex(String.raw`w_{ij}`, false)} /><dd>The <strong>preference</strong> of consumer <i>j</i> for prey <i>i</i>, from 0 (never eaten) to 1 (favourite). A mbuna that scrapes algae has a high weight on algae and a near-zero weight on zooplankton. The weights are what give each guild its own diet and its own niche.</dd></div>
+            <div><dt set:html={tex(String.raw`\sum_k w_{kj} X_k`, false)} /><dd>The <strong>total food on offer</strong> to <i>j</i>, each prey counted by how much <i>j</i> likes it. It sits in the denominator, so the more food of all kinds, the closer the consumer is to its ceiling. It also means a prey is eaten less when a better one is around.</dd></div>
+          </dl>
         </figure>
         <figure>
+          <h3>Acidity from carbon: the carbonate system</h3>
+          <p class="eq-plain">
+            Dissolved CO₂ behaves as a weak acid in water, so photosynthesis (which removes CO₂) raises the pH and respiration (which adds it) lowers
+            it. Alkalinity is the water's buffer, its capacity to soak up acid. It changes slowly, so together with the total dissolved carbon it lets
+            you work out the acidity at each step.
+          </p>
           <div set:html={tex(String.raw`A_T = C_T\,\frac{K_1[\mathrm{H^+}] + 2K_1K_2}{[\mathrm{H^+}]^2 + K_1[\mathrm{H^+}] + K_1K_2} + \frac{K_w}{[\mathrm{H^+}]} - [\mathrm{H^+}]`)} />
           <figcaption>Alkalinity from dissolved inorganic carbon: solve for [H⁺] at every step, and pH = −log₁₀[H⁺].</figcaption>
+          <dl class="eq-vars">
+            <div><dt set:html={tex(String.raw`A_T`, false)} /><dd>The <strong>total alkalinity</strong>, the buffering capacity of the water, in mol per litre. In a simple lake you can keep it constant, or let it change only through inflows and losses.</dd></div>
+            <div><dt set:html={tex(String.raw`C_T`, false)} /><dd>The <strong>dissolved inorganic carbon</strong>: all the carbon dissolved as CO₂, bicarbonate and carbonate together, in the same unit as <i>A<sub>T</sub></i>. This is the carbon pool your model tracks (the <code>co2 or dic</code> column).</dd></div>
+            <div><dt set:html={tex(String.raw`[\mathrm{H^+}]`, false)} /><dd>The <strong>hydrogen ion concentration</strong>, in mol per litre, and the unknown you solve for. The more H⁺, the more acidic the water. It is a tiny number (about 10⁻⁸ in lake water), which is why pH, its negative base-10 logarithm, is used: pH 8 means [H⁺] = 10⁻⁸.</dd></div>
+            <div><dt set:html={tex(String.raw`K_1,\ K_2`, false)} /><dd>The <strong>dissociation constants</strong> of carbonic acid: fixed numbers from chemistry that say how readily CO₂ gives up hydrogen ions, first to bicarbonate, then to carbonate. You do not tune them; they come from tables and shift a little with temperature. Near 25 °C, <i>K</i><sub>1</sub> ≈ 10<sup>−6.35</sup> and <i>K</i><sub>2</sub> ≈ 10<sup>−10.33</sup> mol per litre.</dd></div>
+            <div><dt set:html={tex(String.raw`K_w`, false)} /><dd>The <strong>ionic product of water</strong>, about 10<sup>−14</sup> at 25 °C. It links H⁺ to OH⁻ (the base), and the term <i>K<sub>w</sub></i>/[H⁺] is the hydroxide in the balance.</dd></div>
+            <div><dt>Solving</dt><dd>[H⁺] appears in a way you cannot rearrange, so you find the value that makes the right-hand side equal the known <i>A<sub>T</sub></i> with a root-finding method (bisection or Newton). The pH then follows. Keep all units consistent, in mol per litre.</dd></div>
+          </dl>
         </figure>
         <figure>
+          <h3>How high up the food chain: the trophic level</h3>
+          <p class="eq-plain">
+            Trophic level counts the steps from the base of the food web. Plants, algae and dead matter are level 1. An animal that eats only those is
+            at level 2, one that eats level-2 animals is at 3, and so on. An animal that eats a mix sits in between, at the diet-weighted average
+            plus one. So a fish that eats both zooplankton and other fish can have a level such as 3.4. Such an animal, feeding on more than one
+            level, is called an <em>omnivore</em>.
+          </p>
           <div set:html={tex(String.raw`\mathrm{TL}_j = 1 + \sum_i d_{ij}\,\mathrm{TL}_i`)} />
           <figcaption>Trophic level from diet fractions <i>d</i>, with producers and detritus at level 1.</figcaption>
+          <dl class="eq-vars">
+            <div><dt set:html={tex(String.raw`\mathrm{TL}_j`, false)} /><dd>The <strong>trophic level</strong> of animal <i>j</i>, a plain number (1, 2, 3.4, …). It is what you are computing. The trial asks that the top predator reaches 3.5 or more.</dd></div>
+            <div><dt set:html={tex(String.raw`\mathrm{TL}_i`, false)} /><dd>The trophic level of each <strong>item in its diet</strong>. It appears on both sides, so start from producers and detritus (level 1) and work upward, or solve the whole web at once.</dd></div>
+            <div><dt set:html={tex(String.raw`d_{ij}`, false)} /><dd>The <strong>diet fraction</strong>: the share of consumer <i>j</i>'s food that is prey <i>i</i>, from 0 to 1, with one consumer's fractions adding up to 1. A guild that gets 70% of its food from zooplankton and 30% from insect larvae has <i>d</i> = 0.7 and 0.3. These are the numbers in the <code>fraction</code> column of <code>food_web.csv</code>.</dd></div>
+            <div><dt set:html={tex(String.raw`\sum_i`, false)} /><dd>Add up over <strong>every prey</strong> the consumer eats.</dd></div>
+            <div><dt set:html={tex(String.raw`1 +`, false)} /><dd>The <strong>one step up</strong>: a consumer is always one level above the average of what it eats.</dd></div>
+          </dl>
+          <p class="eq-example">
+            Example: zooplankton eat only phytoplankton (level 1), so TL = 1 + 1·1 = 2. A guild that eats 60% zooplankton and 40% detritus has
+            TL = 1 + 0.6·2 + 0.4·1 = 2.6.
+          </p>
         </figure>
         <figure>
+          <h3>How much two diets overlap: Pianka's index</h3>
+          <p class="eq-plain">
+            Two guilds compete when they eat the same things. Pianka's index measures how similar two diets are, from 0 (nothing shared, so no
+            competition for food) to 1 (identical menus, so maximum competition). Competitors that live together for long usually differ somewhere,
+            so the trial wants guilds that compete for a shared resource and whose diets still differ.
+          </p>
           <div set:html={tex(String.raw`O_{jk} = \frac{\sum_i d_{ij} d_{ik}}{\sqrt{\sum_i d_{ij}^2 \,\sum_i d_{ik}^2}}`)} />
           <figcaption>Pianka's overlap between the diets of guilds <i>j</i> and <i>k</i>: 0 apart, 1 identical.</figcaption>
+          <dl class="eq-vars">
+            <div><dt set:html={tex(String.raw`O_{jk}`, false)} /><dd>The <strong>niche overlap</strong> between guild <i>j</i> and guild <i>k</i>, a number from 0 to 1.</dd></div>
+            <div><dt set:html={tex(String.raw`j,\ k`, false)} /><dd>The <strong>two guilds</strong> you compare, such as mbuna and utaka. The index is the same whichever way round you put them.</dd></div>
+            <div><dt set:html={tex(String.raw`d_{ij},\ d_{ik}`, false)} /><dd>The diet fractions of the two guilds for the same food item <i>i</i>, the same quantity as in the trophic level formula.</dd></div>
+            <div><dt set:html={tex(String.raw`\sum_i d_{ij} d_{ik}`, false)} /><dd>The <strong>shared diet</strong>: for each food item, multiply the two shares, then add up. It is large only when both guilds eat much of the same items, and zero if they never eat the same thing.</dd></div>
+            <div><dt>Denominator</dt><dd>A <strong>scale factor</strong> that keeps the answer between 0 and 1, so that a guild with a broad diet is not made to look different by size alone. It makes the index the cosine of the angle between the two diet vectors.</dd></div>
+          </dl>
+          <p class="eq-example">
+            Example: guild A eats 50% algae and 50% zooplankton, guild B eats 100% algae. The shared part is 0.5·1 = 0.5. The denominator is
+            √((0.25 + 0.25)·1) ≈ 0.71, so O ≈ 0.71: a strong overlap, but not identical.
+          </p>
         </figure>
       </div>
     </section>

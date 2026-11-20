@@ -7,14 +7,14 @@
 .deep-list { padding-left: 1.3em; }
 .deep-list li + li { margin-top: 0.6em; }
 
-.deep-eqs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 20px 0 0; }
+.deep-eqs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 20px 0 0; }
 .deep-eqs figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; overflow-x: auto; }
 .deep-eqs figcaption { font-size: var(--t-tiny); color: var(--v-secondary); margin-top: 8px; }
 @media (max-width: 720px) { .deep-eqs { grid-template-columns: minmax(0, 1fr); } }
 
 .deep-table { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: var(--radius); }
 .deep-table table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
-.deep-table th, .deep-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.deep-table th, .deep-table td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .deep-table th { background: var(--panel); color: var(--v-secondary); font-weight: 600; }
 .deep-table tr:last-child td { border-bottom: 0; }
 .deep-table td > code { white-space: nowrap; }
@@ -59,7 +59,7 @@
 .lt-meter span { display: block; height: 100%; background: var(--accent); transition: width 0.4s ease; }
 .lt-group h4 { font-size: var(--t-small); font-weight: 600; color: var(--v-secondary); margin: 20px 0 6px; }
 .lt-group ul { list-style: none; padding: 0; margin: 0; }
-.lt-check { display: grid; grid-template-columns: 1.6em minmax(0, 1fr); gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.lt-check { display: grid; grid-template-columns: 1.6em minmax(0, 1fr); gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .lt-mark { font-weight: 700; text-align: center; line-height: 1.5; }
 .lt-check.is-pass .lt-mark { color: var(--v-status-good); }
 .lt-check.is-fail .lt-mark { color: var(--v-status-critical); }
@@ -75,3 +75,12 @@
 .lt-crown .lt-crown-rim { fill: none; }
 .lt-crown circle { fill: #e8c0b2; }
 .lt-crown .lt-crown-pearl { fill: #a5d5d7; }
+
+.deep-eqs h3 { margin: 0 0 8px; font-size: 1.05rem; }
+.deep-eqs .eq-plain { margin: 0 0 12px; }
+.eq-vars { margin: 14px 0 0; display: grid; gap: 8px; }
+.eq-vars > div { display: grid; grid-template-columns: minmax(90px, 140px) minmax(0, 1fr); gap: 4px 14px; align-items: baseline; padding-top: 8px; border-top: 1px solid var(--line); }
+.eq-vars dt { margin: 0; overflow-x: auto; }
+.eq-vars dd { margin: 0; font-size: var(--t-small); }
+.eq-example { margin: 12px 0 0; font-size: var(--t-small); color: var(--v-secondary); }
+@media (max-width: 720px) { .eq-vars > div { grid-template-columns: minmax(0, 1fr); } }

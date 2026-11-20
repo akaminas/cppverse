@@ -79,8 +79,8 @@
 .deep-eqs h3 { margin: 0 0 8px; font-size: 1.05rem; }
 .deep-eqs .eq-plain { margin: 0 0 12px; }
 .eq-vars { margin: 14px 0 0; display: grid; gap: 8px; }
-.eq-vars > div { display: grid; grid-template-columns: minmax(90px, 140px) minmax(0, 1fr); gap: 4px 14px; align-items: baseline; padding-top: 8px; border-top: 1px solid var(--line); }
-.eq-vars dt { margin: 0; overflow-x: auto; }
+.eq-vars > div { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 4px 14px; align-items: baseline; padding-top: 8px; border-top: 1px solid var(--line); }
+.eq-vars dt { margin: 0; }
 .eq-vars dd { margin: 0; font-size: var(--t-small); }
 .eq-example { margin: 12px 0 0; font-size: var(--t-small); color: var(--v-secondary); }
 @media (max-width: 720px) { .eq-vars > div { grid-template-columns: minmax(0, 1fr); } }
